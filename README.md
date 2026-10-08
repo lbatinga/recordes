@@ -1,4 +1,4 @@
-# Recordes de Corrida
+# Recordes
 
 PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, provas e medalhas do mês. Cada pessoa entra com a própria conta do Strava e vê só os próprios dados.
 
@@ -6,7 +6,7 @@ PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, pr
 
 | Parte | Onde |
 |---|---|
-| App (HTML único + manifest + service worker) | GitHub Pages: `https://lbatinga.github.io/recordes-corrida/` |
+| App (HTML único + manifest + service worker) | GitHub Pages: `https://lbatinga.github.io/recordes/` |
 | Backend | Supabase, projeto **Recordes de Corrida** (`npekkekabsoyoagnelsp`), Edge Function `api` |
 | Dados | Strava API (app `285788`), só leitura (`read,activity:read_all`) |
 

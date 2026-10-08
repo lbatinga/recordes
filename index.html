@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Recordes de corrida</title>
+<title>Recordes</title>
 <meta name="theme-color" content="#E7EAED" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1D2126" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
@@ -482,7 +482,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 <div class="wrap">
   <header>
     <div class="hdr-title">
-      <h1>Recordes de corrida</h1>
+      <h1>Recordes</h1>
       <p class="status" id="status" aria-live="polite"></p>
     </div>
     <div class="hdr-btns"><button class="icon-btn" id="export" type="button" hidden aria-label="Exportar planilha" title="Exportar planilha"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" id="refresh" type="button" aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button><button class="icon-btn" id="help-btn" type="button" aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg></button></div>
@@ -2222,7 +2222,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
   function loginScreen(){
     return (state.error ? errorBox(state.error) : '') +
       '<article class="bib login-card">' +
-        '<div class="band band-prova"><span>Recordes de corrida</span><span class="bd">Strava</span></div>' +
+        '<div class="band band-prova"><span>Recordes</span><span class="bd">Strava</span></div>' +
         '<div class="bib-body">' +
           '<p class="bib-num">RC</p>' +
           '<p>Recordes, metas, provas e medalhas a partir dos seus treinos no Strava.</p>' +
@@ -2533,7 +2533,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       g.fillStyle = x[1]; g.beginPath(); g.arc(bx + 82, yy - 12, 9, 0, Math.PI * 2); g.fill();
       fitFont(g, x[0], '700', UI, 38, bw - 180); g.fillText(x[0], bx + 104, yy);
     });
-    g.fillStyle = '#9BA4AE'; g.font = '600 34px ' + UI; g.textAlign = 'center'; g.fillText('Recordes de corrida', 540, 1282);
+    g.fillStyle = '#9BA4AE'; g.font = '600 34px ' + UI; g.textAlign = 'center'; g.fillText('Recordes', 540, 1282);
     return await new Promise(function(res, rej){ c.toBlob(function(b){ b ? res(b) : rej(new Error('blob')); }, 'image/png'); });
   }
   function saveFile(blob, filename){
@@ -2638,7 +2638,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       var X = await loadXLSX();
       var buf = buildWorkbook(X);
       var dd = new Date();
-      saveFile(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'recordes-corrida-' + isoOf(dd) + '.xlsx');
+      saveFile(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'recordes-' + isoOf(dd) + '.xlsx');
     } catch (e) {
       $('#status').textContent = 'Não consegui montar a planilha agora.';
     }
