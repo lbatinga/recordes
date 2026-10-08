@@ -6,7 +6,7 @@ PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, pr
 
 | Parte | Onde |
 |---|---|
-| App (HTML único + manifest + service worker) | GitHub Pages: `https://lbatinga.github.io/recordes/` |
+| App (HTML único + manifest + service worker) | Vercel: `https://recordes-pi.vercel.app` (publica sozinho a cada push na `main`) |
 | Backend | Supabase, projeto **Recordes de Corrida** (`npekkekabsoyoagnelsp`), Edge Function `api` |
 | Dados | Strava API (app `285788`), só leitura (`read,activity:read_all`) |
 

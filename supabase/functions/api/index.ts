@@ -6,8 +6,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const CLIENT_ID = '285788';
 const CLIENT_SECRET = Deno.env.get('STRAVA_CLIENT_SECRET') ?? '';
-const APP_ORIGIN = 'https://lbatinga.github.io';
-const DEV_ORIGINS = ['http://localhost:8080', 'http://127.0.0.1:8080'];
+const APP_ORIGIN = 'https://recordes-pi.vercel.app';
+const OTHER_ORIGINS = ['https://lbatinga.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 const STRAVA = 'https://www.strava.com/api/v3';
 const COLS = ['efforts', 'config'];
 
@@ -30,7 +30,7 @@ class HttpError extends Error {
 
 function cors(req: Request): Record<string, string> {
   const o = req.headers.get('origin') ?? '';
-  const allow = o === APP_ORIGIN || DEV_ORIGINS.includes(o) ? o : APP_ORIGIN;
+  const allow = o === APP_ORIGIN || OTHER_ORIGINS.includes(o) ? o : APP_ORIGIN;
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Headers': 'content-type, x-session, apikey, authorization, x-client-info',
