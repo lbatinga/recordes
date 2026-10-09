@@ -204,7 +204,8 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const items = b && Array.isArray(b.items) ? b.items : b ? [b] : [];
     if (!items.length || items.length > 100) throw new HttpError(400, 'bad_request');
     const rows = items.map((it: { col?: string; id?: string; data?: unknown }) => {
-      if (!COLS.includes(String(it.col)) || !/^[A-Za-z0-9_-]{1,40}$/.test(String(it.id)) || !it.data || typeof it.data !== 'object') {
+      if (!COLS.includes(String(it.col)) || !/^[A-Za-z0-9_-]{1,40}$/.test(String(it.id)) || !it.data || typeof it.data !== 'object' ||
+          (it.col === 'config' && it.id === 'partner')) {
         throw new HttpError(400, 'bad_request');
       }
       if (JSON.stringify(it.data).length > 60000) throw new HttpError(413, 'too_large');
@@ -213,6 +214,19 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const { error } = await sb.from('docs').upsert(rows);
     if (error) throw new HttpError(500, 'db_error', error.message);
     return json(req, { ok: true });
+  }
+  if (path === '/partner' && req.method === 'GET') {
+    // Only when both athletes point at each other (set by the owner, never by the app).
+    const mine = await sb.from('docs').select('data').eq('athlete_id', aid).eq('col', 'config').eq('id', 'partner').maybeSingle();
+    const pid = Number(mine.data?.data?.athlete_id) || 0;
+    if (!pid || pid === aid) return json(req, { partner: null });
+    const theirs = await sb.from('docs').select('data').eq('athlete_id', pid).eq('col', 'config').eq('id', 'partner').maybeSingle();
+    if (Number(theirs.data?.data?.athlete_id) !== aid) return json(req, { partner: null });
+    const [sum, ath] = await Promise.all([
+      sb.from('docs').select('data, updated_at').eq('athlete_id', pid).eq('col', 'config').eq('id', 'summary').maybeSingle(),
+      sb.from('athletes').select('firstname').eq('athlete_id', pid).maybeSingle(),
+    ]);
+    return json(req, { partner: { id: pid, firstname: ath.data?.firstname ?? null, summary: sum.data?.data ?? null, updated_at: sum.data?.updated_at ?? null } });
   }
   if (path === '/logout' && req.method === 'POST') {
     const tok = req.headers.get('x-session') ?? '';

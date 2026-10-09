@@ -476,6 +476,22 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg .err{color:var(--rec);font-size:14px;margin:0}
 .race-edit{width:100%;margin-top:12px}
 .add-race{width:100%;margin-top:4px}
+.bnav-in.six{grid-template-columns:repeat(6,minmax(0,1fr))}
+.bnav-in.six button{font-size:11px;padding-left:0;padding-right:0}
+.duo-score .bib-body{padding-top:16px}
+.duo-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px;text-align:center}
+.duo-names .nm{font-weight:700;font-size:16px;color:var(--bib-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.duo-names .bib-num{font-size:clamp(64px,20vw,96px);line-height:.9}
+.duo-names .x{font-family:var(--font-num);font-weight:800;font-size:34px;color:var(--bib-muted);padding-bottom:10px}
+.duo-lead{margin:10px 0 0;text-align:center;font-weight:700}
+.duo-tbl{table-layout:fixed;margin-top:16px}
+.duo-tbl th, .duo-tbl td{width:50%;text-align:center}
+.duo-tbl tbody tr:nth-child(even){background:transparent}
+.duo-tbl tr.duo-k th{background:var(--surface-2);color:var(--ink);font-size:14px;font-weight:700;text-align:left;padding-top:7px;padding-bottom:7px}
+.duo-tbl .v{font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.duo-tbl td.win .v{color:var(--ok)}
+.duo-tbl td.win .v::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
+.duo-tbl .t-sub{display:block;font-weight:500}
 </style>
 </head>
 <body>
@@ -499,6 +515,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     <button type="button" data-view="evolucao"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M5 15l4-4 3 3 7-7"/><path d="M15 7h4v4"/></svg><span>Evolução</span></button>
     <button type="button" data-view="provas"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 9h16"/><circle cx="7" cy="7" r=".6"/><circle cx="17" cy="7" r=".6"/><path d="M9 13h6M10 16h4"/></svg><span>Provas</span></button>
     <button type="button" data-view="conquistas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="14" r="6"/><path d="M9 3l3 5 3-5"/><path d="M12 11.5l.9 1.8 2 .3-1.4 1.4.3 2-1.8-.9-1.8.9.3-2-1.4-1.4 2-.3z"/></svg><span>Conquistas</span></button>
+    <button type="button" data-view="dupla" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><path d="M14 14.6c.8-.4 1.6-.6 2.5-.6 2.3 0 4.2 1.5 4.7 4.5"/></svg><span>Dupla</span></button>
   </div>
 </nav>
 
@@ -543,6 +560,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
   /* Per-athlete settings (config/settings): history start and old walks that count. */
   var RANGE_START = '';
   var WALK_UNTIL = '';
+  var SEX = '', BIRTH = '';
   var WALK_MIN_M = 500;
   /* Distance measured by the watch itself when Strava recalculated it lower. */
   var VERIFIED = { '16892557982': { m: 4000, src: 'Samsung Health' } };
@@ -695,7 +713,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 
   var TABS = ['esteira', 'ruat', 'prova', 'tudo'];
   var tab = 'tudo';
-  var VIEWS = ['inicio', 'recordes', 'evolucao', 'provas', 'conquistas'];
+  var VIEWS = ['inicio', 'recordes', 'evolucao', 'provas', 'conquistas', 'dupla'];
   var view = 'inicio';
   var unitSys = 'km';
   var effDist = null;
@@ -1965,6 +1983,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos; o plano pede 3. Em prova, vale a distância oficial.') +
+      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida. Cada linha vale um ponto; empate não pontua. Os números do outro são os da última vez que ele abriu o app.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -1994,6 +2013,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       html += '<div class="msg"><strong>Histórico incompleto</strong>Parte dos treinos não carregou. Toque em Atualizar para tentar de novo.</div>';
     }
     if (view === 'provas') return html + '<h2 class="first">Provas</h2>' + provasTab();
+    if (view === 'dupla') return html + '<h2 class="first">Dupla</h2>' + duplaTab();
 
     var all = analyze(state.sessions, 'tudo').list;
     if (!all.length) return html + '<div class="msg"><strong>Nenhum treino ainda</strong>Treinos de corrida aparecem aqui assim que chegam ao Strava.</div>';
@@ -2084,6 +2104,8 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       if (b.getAttribute('data-view') === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     maybeUpdateGoal();
+    publishSummary();
+    syncDuoNav();
     if (!editingGoal) $('#races').innerHTML = racesSection();
     var panel = $('#panel');
     var ae = document.activeElement;
@@ -2378,6 +2400,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     skipIds = {};
     effortErr = null;
     render();
+    loadPartner();
     await loadActivities();
   }
 
@@ -2716,6 +2739,113 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     }
   });
 
+  /* ---------- duo (partner comparison) ---------- */
+
+  var partner = null, partnerLoaded = false, lastSummary = null;
+  var AG_STD = { M: 769, F: 834 }; /* 5 km road open standards: 12:49 and 13:54 */
+  function ageAt(dateIso){
+    var b = parseIso(BIRTH), d = parseIso(dateIso);
+    if (!b || !d) return null;
+    var a = d.getFullYear() - b.getFullYear();
+    if (d.getMonth() < b.getMonth() || (d.getMonth() === b.getMonth() && d.getDate() < b.getDate())) a--;
+    return a;
+  }
+  /* Age factor is 1.0 through 35; beyond that a gentle approximation. */
+  function ageFactor(age){ return age == null || age <= 35 ? 1 : Math.max(0.5, 1 - 0.0075 * (age - 35)); }
+
+  function buildSummary(){
+    var all = analyze(state.sessions, 'tudo').list;
+    var rua = analyze(state.sessions, 'rua');
+    var t5 = rua.tables['5000'] || [];
+    var best5 = t5[0] || null, first5 = null;
+    t5.forEach(function(e){ if (!e.s.walk && (!first5 || e.s.date < first5.s.date)) first5 = e; });
+    var ag = null;
+    if (best5 && AG_STD[SEX]) ag = Math.round(AG_STD[SEX] / ageFactor(ageAt(isoOf(best5.s.d))) / best5.t * 1000) / 10;
+    var evo = best5 && first5 && first5 !== best5 ? Math.round((first5.t - best5.t) / first5.t * 1000) / 10 : (best5 ? 0 : null);
+    var st = streakInfo(all.slice());
+    var ms = monthStats(), now = mkey(new Date());
+    var kmNow = ms.km[now] || 0, dNow = ms.days[now] || 0;
+    var kt = tierOf(kmNow, kmTiers(ms, now)), dt = tierOf(dNow, daysTiers(ms, now));
+    var beats = 0;
+    GOAL_KEYS.forEach(function(k){
+      var tb = rua.tables[k];
+      if (!tb || !tb.length) return;
+      var sim = simulateGoals(k, tb);
+      Object.keys(sim).forEach(function(id){ if (sim[id].beat) beats++; });
+    });
+    return {
+      v: 1, at: Date.now(), month: now,
+      ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
+      streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek,
+      kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
+      medals: (kt + 1) + (dt + 1), beats: beats
+    };
+  }
+  function publishSummary(){
+    if (!db || !session || !allAnalyzed()) return;
+    var s;
+    try { s = buildSummary(); } catch (e) { return; }
+    var key = JSON.stringify(Object.assign({}, s, { at: 0 }));
+    if (key === lastSummary) return;
+    lastSummary = key;
+    putDoc('config', 'summary', s);
+  }
+  function loadPartner(){
+    return apiFetch('/partner').then(function(j){
+      partner = j && j.partner ? j.partner : null;
+      partnerLoaded = true;
+      syncDuoNav();
+      if (view === 'dupla') render();
+    }).catch(function(){});
+  }
+  function syncDuoNav(){
+    var b = document.querySelector('.bnav [data-view="dupla"]');
+    if (!b) return;
+    b.hidden = !partner;
+    document.querySelector('.bnav-in').classList.toggle('six', !!partner);
+    if (partnerLoaded && !partner && view === 'dupla') { view = 'inicio'; }
+  }
+
+  function duplaTab(){
+    if (!partnerLoaded) return skeleton();
+    if (!partner) return '<div class="msg"><strong>Sem dupla</strong>Nenhuma dupla ligada a esta conta.</div>';
+    var mine = state.sessions && allAnalyzed() ? buildSummary() : null;
+    var his = partner.summary;
+    var myName = (me && me.firstname) || 'Você', hisName = partner.firstname || 'Dupla';
+    if (!mine) return '<div class="msg"><strong>Calculando</strong>Seus números ainda estão sendo calculados.</div>';
+    if (!his) return '<div class="msg"><strong>' + esc(hisName) + ' ainda não tem números</strong>Eles aparecem aqui depois que ' + esc(hisName) + ' abrir o app.</div>';
+    var sameMonth = his.month === mine.month;
+    var rows = [
+      { k: 'Nota por idade e sexo', a: mine.ag, b: his.ag, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
+        sa: mine.best5 ? '5 km em ' + fmtTime(mine.best5) : 'sem 5 km na rua', sb: his.best5 ? '5 km em ' + fmtTime(his.best5) : 'sem 5 km na rua' },
+      { k: 'Evolução nos 5 km', a: mine.evo, b: his.evo, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
+        sa: mine.first5 && mine.best5 ? 'de ' + fmtTime(mine.first5) : '', sb: his.first5 && his.best5 ? 'de ' + fmtTime(his.first5) : '' },
+      { k: 'Constância', a: mine.streak, b: his.streak, f: function(v){ return v == null ? '--' : v + (v === 1 ? ' semana' : ' semanas'); },
+        sa: 'recorde ' + mine.bestStreak, sb: 'recorde ' + his.bestStreak },
+      { k: 'Medalhas do mês', a: mine.medals, b: sameMonth ? his.medals : 0, f: function(v){ return v == null ? '--' : String(v); },
+        sa: fmtKm(mine.kmMonth) + ' km, ' + mine.daysMonth + ' dias', sb: sameMonth ? fmtKm(his.kmMonth) + ' km, ' + his.daysMonth + ' dias' : 'mês sem dados' },
+      { k: 'Metas batidas', a: mine.beats, b: his.beats, f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
+    ];
+    var pa = 0, pb = 0;
+    var body = rows.map(function(r){
+      var wa = r.a != null && (r.b == null || r.a > r.b), wb = r.b != null && (r.a == null || r.b > r.a);
+      if (wa) pa++; if (wb) pb++;
+      return '<tr class="duo-k"><th colspan="2">' + r.k + '</th></tr><tr>' +
+        '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + r.f(r.a) + '</span>' + (r.sa ? '<span class="t-sub">' + esc(r.sa) + '</span>' : '') + '</td>' +
+        '<td' + (wb ? ' class="win"' : '') + '><span class="v">' + r.f(r.b) + '</span>' + (r.sb ? '<span class="t-sub">' + esc(r.sb) + '</span>' : '') + '</td></tr>';
+    }).join('');
+    var lead = pa === pb ? 'Empate' : (pa > pb ? myName : hisName) + ' na frente';
+    var upd = partner.updated_at ? new Date(partner.updated_at) : null;
+    return '<article class="bib duo-score"><div class="band band-prova"><span>Placar</span><span class="bd">' + MON_FULL[new Date().getMonth()] + '</span></div>' +
+      '<div class="bib-body"><div class="duo-names">' +
+        '<div><p class="bib-num">' + pa + '</p><span class="nm">' + esc(myName) + '</span></div>' +
+        '<span class="x">×</span>' +
+        '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
+      '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
+      '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.</p>' : '');
+  }
+
   /* ---------- race editor ---------- */
 
   var raceEdit = null;
@@ -2805,7 +2935,8 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
         if (d.col === 'efforts') effortDocs[d.id] = v;
         else if (d.col === 'config' && d.id === 'metas') loadGoals(v.goals);
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
-        else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; }
+        else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
+        else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
       });
       GOAL = getGoal(goalK);
     }).catch(function(){ db = null; }).then(function(){
@@ -2829,6 +2960,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       if (j && j.athlete) { me = j.athlete; try { localStorage.setItem('rc-me', JSON.stringify(me)); } catch(e) {} }
     }).catch(function(){});
     loadActivities();
+    loadPartner();
   }
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
