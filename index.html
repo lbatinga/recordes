@@ -2813,7 +2813,8 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     var his = partner.summary;
     var myName = (me && me.firstname) || 'Você', hisName = partner.firstname || 'Dupla';
     if (!mine) return '<div class="msg"><strong>Calculando</strong>Seus números ainda estão sendo calculados.</div>';
-    if (!his) return '<div class="msg"><strong>' + esc(hisName) + ' ainda não tem números</strong>Eles aparecem aqui depois que ' + esc(hisName) + ' abrir o app.</div>';
+    var waiting = !his;
+    if (waiting) his = {};
     var sameMonth = his.month === mine.month;
     var rows = [
       { k: 'Nota por idade e sexo', a: mine.ag, b: his.ag, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
@@ -2827,8 +2828,9 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       { k: 'Metas batidas', a: mine.beats, b: his.beats, f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
     ];
     var pa = 0, pb = 0;
+    if (waiting) rows.forEach(function(r){ r.b = null; r.sb = ''; });
     var body = rows.map(function(r){
-      var wa = r.a != null && (r.b == null || r.a > r.b), wb = r.b != null && (r.a == null || r.b > r.a);
+      var wa = !waiting && r.a != null && (r.b == null || r.a > r.b), wb = !waiting && r.b != null && (r.a == null || r.b > r.a);
       if (wa) pa++; if (wb) pb++;
       return '<tr class="duo-k"><th colspan="2">' + r.k + '</th></tr><tr>' +
         '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + r.f(r.a) + '</span>' + (r.sa ? '<span class="t-sub">' + esc(r.sa) + '</span>' : '') + '</td>' +
@@ -2836,13 +2838,15 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     }).join('');
     var lead = pa === pb ? 'Empate' : (pa > pb ? myName : hisName) + ' na frente';
     var upd = partner.updated_at ? new Date(partner.updated_at) : null;
+    var table = '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>';
+    if (waiting) return '<div class="msg"><strong>Esperando ' + esc(hisName) + '</strong>O placar começa quando ' + esc(hisName) + ' abrir o app. Por enquanto, seus números:</div>' + table;
     return '<article class="bib duo-score"><div class="band band-prova"><span>Placar</span><span class="bd">' + MON_FULL[new Date().getMonth()] + '</span></div>' +
       '<div class="bib-body"><div class="duo-names">' +
         '<div><p class="bib-num">' + pa + '</p><span class="nm">' + esc(myName) + '</span></div>' +
         '<span class="x">×</span>' +
         '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
       '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
-      '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      table +
       (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.</p>' : '');
   }
 
