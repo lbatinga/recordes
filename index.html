@@ -570,6 +570,9 @@ html,body{overscroll-behavior-y:contain}
 </dialog>
 
 <script>
+if (location.hostname === 'lbatinga.github.io') location.replace('https://recordes-pi.vercel.app/');
+</script>
+<script>
 (function(){
   'use strict';
 
@@ -2008,7 +2011,7 @@ html,body{overscroll-behavior-y:contain}
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos; o plano pede 3. Em prova, vale a distância oficial.') +
       p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
       p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +
-      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida. Cada linha vale um ponto; empate não pontua. Os números do outro são os da última vez que ele abriu o app.') +
+      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 3 meses. Cada linha vale um ponto; empate não pontua. Os números do outro são os da última vez que ele abriu o app.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -2928,15 +2931,16 @@ html,body{overscroll-behavior-y:contain}
     var ms = monthStats(), now = mkey(new Date());
     var kmNow = ms.km[now] || 0, dNow = ms.days[now] || 0;
     var kt = tierOf(kmNow, kmTiers(ms, now)), dt = tierOf(dNow, daysTiers(ms, now));
-    var beats = 0;
+    var beats = 0, since90 = isoMinus(89), byId = {};
+    state.sessions.forEach(function(x){ byId[x.id] = x; });
     GOAL_KEYS.forEach(function(k){
       var tb = rua.tables[k];
       if (!tb || !tb.length) return;
       var sim = simulateGoals(k, tb);
-      Object.keys(sim).forEach(function(id){ if (sim[id].beat) beats++; });
+      Object.keys(sim).forEach(function(id){ var x = byId[id]; if (sim[id].beat && x && x.d && isoOf(x.d) >= since90) beats++; });
     });
     return {
-      v: 1, at: Date.now(), month: now,
+      v: 2, at: Date.now(), month: now,
       ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek,
       kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
@@ -2987,12 +2991,12 @@ html,body{overscroll-behavior-y:contain}
         sa: 'recorde ' + mine.bestStreak, sb: 'recorde ' + his.bestStreak },
       { k: 'Medalhas do mês', a: mine.medals, b: sameMonth ? his.medals : 0, f: function(v){ return v == null ? '--' : String(v); },
         sa: fmtKm(mine.kmMonth) + ' km, ' + mine.daysMonth + ' dias', sb: sameMonth ? fmtKm(his.kmMonth) + ' km, ' + his.daysMonth + ' dias' : 'mês sem dados' },
-      { k: 'Metas batidas', a: mine.beats, b: his.beats, f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
+      { k: 'Metas batidas em 3 meses', a: mine.beats, b: his.v >= 2 ? his.beats : null, skip: !(his.v >= 2), f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
     ];
     var pa = 0, pb = 0;
     if (waiting) rows.forEach(function(r){ r.b = null; r.sb = ''; });
     var body = rows.map(function(r){
-      var wa = !waiting && r.a != null && (r.b == null || r.a > r.b), wb = !waiting && r.b != null && (r.a == null || r.b > r.a);
+      var wa = !waiting && !r.skip && r.a != null && (r.b == null || r.a > r.b), wb = !waiting && !r.skip && r.b != null && (r.a == null || r.b > r.a);
       if (wa) pa++; if (wb) pb++;
       return '<tr class="duo-k"><th colspan="2">' + r.k + '</th></tr><tr>' +
         '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + r.f(r.a) + '</span>' + (r.sa ? '<span class="t-sub">' + esc(r.sa) + '</span>' : '') + '</td>' +
