@@ -500,6 +500,20 @@ html,body{overscroll-behavior-y:contain}
 .wt-acts{display:flex;gap:8px;margin-top:12px}
 .wt-acts .strava-btn{min-height:40px;font-size:16px;flex:1}
 .bnav-in.six{grid-template-columns:repeat(6,minmax(0,1fr))}
+.linkbtn{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--prova-txt);text-decoration:underline;cursor:pointer}
+.ch-push{margin:10px 0 0;font-size:14px;color:var(--muted)}
+.ch-push-btn{margin-top:12px;width:100%}
+.wx{display:flex;align-items:center;gap:6px}
+.wx svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.recap-btn{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}
+.recap-btn svg{width:16px;height:16px;fill:none;stroke:var(--prova-txt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.recap-msg{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.recap-msg strong{margin:0}
+.duo-together{margin-top:16px;padding:14px 16px}
+.duo-together .dt-top{display:flex;align-items:baseline;gap:10px}
+.duo-together .dt-n{font-family:var(--font-num);font-weight:800;font-size:44px;line-height:1}
+.duo-together .dt-t{font-weight:700}
+.duo-together p{margin:6px 0 0;color:var(--muted);font-size:15px}
 .bnav-in.six button{font-size:11px;padding-left:0;padding-right:0}
 .duo-score .bib-body{padding-top:16px}
 .duo-names{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px;text-align:center}
@@ -555,7 +569,10 @@ html,body{overscroll-behavior-y:contain}
       <label>Data<input name="date" type="date" required></label>
       <label>Distância em km<input name="km" type="text" inputmode="decimal" autocomplete="off" required placeholder="5"></label>
     </div>
-    <label>Local<input name="local" type="text" autocomplete="off" placeholder="A confirmar"></label>
+    <div class="row2">
+      <label>Local<input name="local" type="text" autocomplete="off" placeholder="A confirmar"></label>
+      <label>Largada<input name="time" type="time"></label>
+    </div>
     <div class="row2">
       <label>Número de peito<input name="bib" type="text" inputmode="numeric" autocomplete="off"></label>
       <label>Observação<input name="note" type="text" autocomplete="off"></label>
@@ -836,6 +853,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         name: a.name || '',
         walk: type === 'Walk',
         place: a.location_summary || '',
+        latlng: Array.isArray(a.latlng) && a.latlng.length === 2 ? a.latlng : null,
         cadence: typeof s.avg_cadence === 'number' ? Math.round(s.avg_cadence * 2) : null,
         broke: [],
         prs: []
@@ -1059,6 +1077,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '</div>' +
         (lines.length ? '<ul class="rec-lines">' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
         (pl.top.length ? '<p class="bib-note">Top 5 em ' + esc(joinPt(pl.top)) + '</p>' : '') +
+        wxLine(s) +
       '</div><div class="bib-foot"></div></section>';
   }
 
@@ -1624,7 +1643,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         keys.map(function(k){
           var v = st.km[k] || 0, dd = st.days[k] || 0;
           var t1 = tierOf(v, kmTiers(st, k)), t2 = tierOf(dd, daysTiers(st, k));
-          return '<tr><td class="md-month">' + mlabel(k) + '</td>' +
+          return '<tr><td class="md-month"><button type="button" class="recap-btn" data-recap="' + k + '" aria-label="Cartão de ' + mlabel(k, true) + '">' + mlabel(k) + RECAP_ICON + '</button></td>' +
             '<td><span class="md-cell">' + medalSVG('km', t1, '', 40) + '<span><span class="md-ct">' + (t1 >= 0 ? TIER_NAMES[t1] : 'Sem medalha') + '</span><span class="t-sub">' + fmtKm(v) + ' km</span></span></span></td>' +
             '<td><span class="md-cell">' + medalSVG('dias', t2, '', 40) + '<span><span class="md-ct">' + (t2 >= 0 ? TIER_NAMES[t2] : 'Sem medalha') + '</span><span class="t-sub">' + dd + (dd === 1 ? ' dia' : ' dias') + '</span></span></span></td></tr>';
         }).join('') + '</tbody></table>';
@@ -1647,6 +1666,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<div class="ch-top"><span class="ch-num">' + st.current + '</span><span class="ch-txt">' + (st.current === 1 ? 'semana seguida' : 'semanas seguidas') + '</span></div>' +
       '<div class="wk-row"><span>Esta semana: ' + Math.min(st.thisWeek, 99) + (st.thisWeek === 1 ? ' treino' : ' treinos') + '</span><span class="wk-dots">' + dots + '</span></div>' +
       (bestTxt ? '<p class="ch-note">' + bestTxt + '</p>' : '') +
+      pushControl() +
       '</section>';
 
     // 2. cumulative km
@@ -1902,6 +1922,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
             '</div>' + era + splitTbl +
             '<dl class="rc-grid">' +
               '<div><dt>No relógio</dt><dd>' + fmtKm(s.km) + ' km em ' + fmtTime(s.elapsed) + '</dd></div>' +
+              (function(){ var w = wxOfSession(s); return w ? '<div><dt>Clima na largada</dt><dd>' + fmtWx(w) + '</dd></div>' : ''; })() +
               inside.join('') +
             '</dl>' + prs +
             (info.note ? '<p class="rc-note">' + esc(info.note) + '</p>' : '') +
@@ -1946,13 +1967,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var g = k ? GOALS[k] : null;
       var rows = '<tr><td><span class="t-lbl">Objetivo</span></td><td class="t-val">' + (best ? fmtTime(best.t) : '--') + '</td></tr>' +
         (g && g.hi != null ? '<tr><td><span class="t-lbl">Meta</span></td><td class="t-val wrap">' + fmtGoalOf(g) + '</td></tr>' : '') +
-        '<tr><td><span class="t-lbl">Número de peito</span></td><td class="t-val">' + (r.bib ? esc(r.bib) : '--') + '</td></tr>';
+        '<tr><td><span class="t-lbl">Número de peito</span></td><td class="t-val">' + (r.bib ? esc(r.bib) : '--') + '</td></tr>' +
+        (r.time ? '<tr><td><span class="t-lbl">Largada</span></td><td class="t-val">' + r.time.replace(':', 'h') + '</td></tr>' : '');
+      var fc = raceForecast(r, days);
       return '<article class="bib">' +
         '<div class="band band-prova"><span>' + esc(r.name) + '</span><span class="bd">' + r.km + ' km</span></div>' +
         '<div class="bib-body">' +
           '<div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
           '<p class="bib-sub">' + fmtDate(d) + ', ' + esc(r.local && r.local !== 'A confirmar' ? r.local : 'local a confirmar') + '</p>' +
           '<table class="tbl era-tbl"><tbody>' + rows + '</tbody></table>' +
+          (fc ? '<p class="bib-note wx">' + WX_ICON + 'Previsão' + (r.time ? ' às ' + r.time.replace(':', 'h') : ' do dia') + ': ' + fc + '</p>' : '') +
           (r.note ? '<p class="rc-note">' + esc(r.note) + '</p>' : '') +
           '<button type="button" class="btn race-edit" data-race-edit="' + r.date + '">Editar</button>' +
         '</div><div class="bib-foot"></div></article>';
@@ -2011,7 +2035,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos; o plano pede 3. Em prova, vale a distância oficial.') +
       p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia, o primeiro peso novo do dia; se o valor não mudou, o app entende que você não se pesou. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
       p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +
-      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 3 meses. Cada linha vale um ponto; empate não pontua. Os números do outro são os da última vez que ele abriu o app.') +
+      p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
+      p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
+      p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
+      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 3 meses. Cada linha vale um ponto; empate não pontua. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Os números do outro são os da última vez que ele abriu o app.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -2052,6 +2079,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       html += '<h2>Último treino</h2>' + hero(last, ae.tables);
       html += weightCard();
       html += monthCompare();
+      html += recapBanner();
       html += medalsSection(true);
       var recent = all.slice().reverse().slice(0, 5);
       analyze(state.sessions, 'tudo');
@@ -2904,6 +2932,262 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     window.addEventListener('touchcancel', function(){ if (pulling) reset(); startY = null; pulling = false; });
   })();
 
+  /* ---------- weather (Open-Meteo, free, no key) ---------- */
+
+  var WX_HOME = [-9.67, -35.74];
+  var wx = {};
+  try { wx = JSON.parse(localStorage.getItem('rc-wx') || '{}') || {}; } catch(e) { wx = {}; }
+  var wxPending = {}, wxTimer = null;
+  function wxSave(){
+    try {
+      var keys = Object.keys(wx);
+      if (keys.length > 400) keys.slice(0, keys.length - 400).forEach(function(k){ delete wx[k]; });
+      localStorage.setItem('rc-wx', JSON.stringify(wx));
+    } catch(e) {}
+  }
+  function daysFromToday(iso){ return Math.round((parseIso(iso) - dayOnly(new Date())) / 86400000); }
+  function wxGet(key, url, pick){
+    var v = wx[key];
+    if (v && !v.miss) return v;
+    if ((v && v.miss && Date.now() - v.miss < 6 * 3600000) || wxPending[key]) return null;
+    wxPending[key] = true;
+    fetch(url).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }).then(function(j){
+      var out = null;
+      try { out = j ? pick(j) : null; } catch(e) { out = null; }
+      wx[key] = out || { miss: Date.now() };
+      wxSave();
+      delete wxPending[key];
+      if (out) { clearTimeout(wxTimer); wxTimer = setTimeout(function(){ if (session) render(); }, 200); }
+    });
+    return null;
+  }
+  function llOf(ll){ ll = ll || WX_HOME; return [ll[0].toFixed(2), ll[1].toFixed(2)]; }
+  function wxAt(dateIso, hour, ll){
+    var c = llOf(ll), ago = -daysFromToday(dateIso);
+    if (ago < -15) return null;
+    var archive = ago > 6;
+    var vars = 'temperature_2m,relative_humidity_2m,apparent_temperature' + (archive ? '' : ',precipitation_probability');
+    var url = (archive ? 'https://archive-api.open-meteo.com/v1/archive' : 'https://api.open-meteo.com/v1/forecast') +
+      '?latitude=' + c[0] + '&longitude=' + c[1] + '&hourly=' + vars + '&timezone=America%2FSao_Paulo&start_date=' + dateIso + '&end_date=' + dateIso;
+    return wxGet('h|' + dateIso + '|' + hour + '|' + c.join(','), url, function(j){
+      var h = j.hourly, i = h && h.time ? h.time.indexOf(dateIso + 'T' + pad(hour) + ':00') : -1;
+      if (i < 0 || h.temperature_2m[i] == null) return null;
+      return { t: h.temperature_2m[i], rh: h.relative_humidity_2m[i], f: h.apparent_temperature[i],
+               p: h.precipitation_probability ? h.precipitation_probability[i] : null };
+    });
+  }
+  function wxDay(dateIso, ll){
+    var c = llOf(ll);
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + c[0] + '&longitude=' + c[1] +
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=America%2FSao_Paulo&start_date=' + dateIso + '&end_date=' + dateIso;
+    return wxGet('d|' + dateIso + '|' + c.join(','), url, function(j){
+      var d = j.daily;
+      if (!d || !d.time || !d.time.length || d.temperature_2m_max[0] == null) return null;
+      return { max: d.temperature_2m_max[0], min: d.temperature_2m_min[0], p: d.precipitation_probability_max[0] };
+    });
+  }
+  function fmtWx(w){
+    return Math.round(w.t) + '°C, umidade ' + Math.round(w.rh) + '%' + (w.f - w.t >= 2 ? ', sensação ' + Math.round(w.f) + '°C' : '') +
+      (w.p != null && w.p >= 20 ? ', chuva ' + Math.round(w.p) + '%' : '');
+  }
+  function wxOfSession(s){
+    if (!s || !s.d || s.env === 'esteira') return null;
+    var h = s.d.getHours() + (s.d.getMinutes() >= 30 ? 1 : 0);
+    var d = new Date(s.d.getFullYear(), s.d.getMonth(), s.d.getDate(), h);
+    return wxAt(isoOf(d), d.getHours(), s.latlng);
+  }
+  var WX_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  function wxLine(s){
+    var w = wxOfSession(s);
+    return w ? '<p class="bib-note wx">' + WX_ICON + fmtWx(w) + '</p>' : '';
+  }
+  function raceForecast(r, days){
+    if (days < 0 || days > 15) return '';
+    if (r.time) {
+      var hh = +r.time.slice(0, 2) + (+r.time.slice(3, 5) >= 30 ? 1 : 0);
+      if (hh > 23) hh = 23;
+      var w = wxAt(r.date, hh, null);
+      return w ? fmtWx(w) : '';
+    }
+    var dd = wxDay(r.date, null);
+    return dd ? Math.round(dd.min) + '°C a ' + Math.round(dd.max) + '°C' + (dd.p != null ? ', chuva ' + Math.round(dd.p) + '%' : '') : '';
+  }
+
+  /* ---------- streak reminders (Web Push) ---------- */
+
+  var pushState = 'unknown';
+  function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:'; }
+  function refreshPushState(){
+    if (!pushSupported()) { pushState = 'unsupported'; return Promise.resolve(); }
+    if (Notification.permission === 'denied') { pushState = 'denied'; return Promise.resolve(); }
+    return navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); })
+      .then(function(sub){ pushState = sub ? 'on' : 'off'; }).catch(function(){ pushState = 'off'; });
+  }
+  function b64uToBytes(b64){
+    var str = (b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(str), out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  async function enablePush(){
+    pushState = 'busy'; render();
+    try {
+      var perm = await Notification.requestPermission();
+      if (perm !== 'granted') { pushState = perm === 'denied' ? 'denied' : 'off'; render(); return; }
+      var reg = await navigator.serviceWorker.ready;
+      var k = await apiFetch('/push/key');
+      var sub = await reg.pushManager.getSubscription() ||
+        await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(k.publicKey) });
+      await apiFetch('/push/subscribe', { method: 'POST', body: { subscription: sub.toJSON() } });
+      pushState = 'on';
+    } catch (e) {
+      pushState = 'off';
+      $('#status').textContent = 'Não consegui ligar os avisos agora.';
+    }
+    render();
+  }
+  async function disablePush(){
+    pushState = 'busy'; render();
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        try { await apiFetch('/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }); } catch(e) {}
+        await sub.unsubscribe();
+      }
+    } catch(e) {}
+    pushState = 'off';
+    render();
+  }
+  function pushControl(){
+    if (pushState === 'unsupported' || pushState === 'unknown') return '';
+    if (pushState === 'denied') return '<p class="ch-push">Avisos bloqueados nas configurações do celular.</p>';
+    if (pushState === 'busy') return '<p class="ch-push">Um instante…</p>';
+    if (pushState === 'on') return '<p class="ch-push">Avisos ligados neste celular · <button type="button" class="linkbtn" data-push="off">Desligar</button></p>';
+    return '<button type="button" class="btn ch-push-btn" data-push="on">Avisar quando faltar treino</button>';
+  }
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('[data-push]');
+    if (!b) return;
+    if (b.getAttribute('data-push') === 'on') enablePush(); else disablePush();
+  });
+
+  /* ---------- runs together (duo) ---------- */
+
+  function togetherBlock(a, b){
+    if (!Array.isArray(a) || !Array.isArray(b) || !b.length) return '';
+    function mins(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }
+    var bt = b.map(mins).filter(function(x){ return x != null; });
+    var used = {}, hits = [];
+    a.forEach(function(t){
+      var m = mins(t);
+      if (m == null) return;
+      for (var i = 0; i < bt.length; i++) {
+        if (!used[i] && Math.abs(bt[i] - m) <= 20) { used[i] = true; hits.push(t); break; }
+      }
+    });
+    var ws = weekStart(new Date()).getTime();
+    var week = hits.filter(function(t){ return weekStart(parseLocal(t)).getTime() === ws; }).length;
+    var last = hits.length ? hits.slice().sort().pop() : null;
+    return '<div class="panel duo-together"><div class="dt-top"><span class="dt-n">' + hits.length + '</span><span class="dt-t">' +
+      (hits.length === 1 ? 'treino juntos' : 'treinos juntos') + '</span></div>' +
+      '<p>Nos últimos 4 meses' + (hits.length ? ', ' + week + ' nesta semana. Último: ' + fmtShort(parseLocal(last)) : '') + '.</p></div>';
+  }
+
+  /* ---------- monthly recap card ---------- */
+
+  var RECAP_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 13v7h14v-7"/></svg>';
+  function prevMonthKey(){ var n = new Date(); return mkey(new Date(n.getFullYear(), n.getMonth() - 1, 1)); }
+  function recapBanner(){
+    if (new Date().getDate() > 7 || !state.sessions) return '';
+    var k = prevMonthKey();
+    if (!state.sessions.some(function(x){ return x.d && mkey(x.d) === k; })) return '';
+    var nm = MON_FULL[+k.slice(5, 7) - 1];
+    return '<div class="msg recap-msg"><strong>Retrospectiva de ' + nm + '</strong><button type="button" class="btn" data-recap="' + k + '">Gerar cartão</button></div>';
+  }
+  function recapData(k){
+    var list = analyze(state.sessions, 'tudo').list.filter(function(x){ return x.d && mkey(x.d) === k; });
+    var o = { k: k, n: list.length, km: 0, kr: 0, ke: 0, kp: 0, time: 0, prs: [], races: [] };
+    list.forEach(function(x){
+      o.km += x.km; o.time += x.time;
+      if (x.race) { o.kp += x.km; o.races.push(raceShort(x)); } else if (x.env === 'esteira') o.ke += x.km; else o.kr += x.km;
+      (x.prs || []).forEach(function(pk){ if (o.prs.indexOf(pk) === -1) o.prs.push(pk); });
+    });
+    var st = monthStats();
+    o.days = st.days[k] || 0;
+    o.kt = tierOf(st.km[k] || 0, kmTiers(st, k));
+    o.dt = tierOf(o.days, daysTiers(st, k));
+    var wp = (weight.points || []).filter(function(p){ return p.d && p.d.slice(0, 7) === k; });
+    o.wDelta = wp.length >= 2 ? Math.round((wp[wp.length - 1].kg - wp[0].kg) * 10) / 10 : null;
+    return o;
+  }
+  async function makeRecapCard(k){
+    var o = recapData(k);
+    var NUM = '"Big Shoulders Display", "Barlow Condensed", Impact, sans-serif', UI = 'Barlow, "Segoe UI", Roboto, sans-serif';
+    try { await Promise.all([document.fonts.load('900 200px "Big Shoulders Display"'), document.fonts.load('800 100px "Big Shoulders Display"'), document.fonts.load('700 40px Barlow'), document.fonts.load('500 40px Barlow')]); } catch(e) {}
+    var c = document.createElement('canvas'); c.width = 1080; c.height = 1350;
+    var g = c.getContext('2d');
+    g.fillStyle = '#1D2126'; g.fillRect(0, 0, 1080, 1350);
+    var bx = 80, by = 90, bw = 920, bh = 1110;
+    g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 40; g.shadowOffsetY = 14;
+    rrect(g, bx, by, bw, bh, 18); g.fillStyle = '#fff'; g.fill(); g.restore();
+    g.save(); rrect(g, bx, by, bw, bh, 18); g.clip(); g.fillStyle = '#0E9F9A'; g.fillRect(bx, by, bw, 120); g.restore();
+    g.fillStyle = '#1D2126';
+    [[bx + 34, by + 34], [bx + bw - 34, by + 34], [bx + 34, by + bh - 34], [bx + bw - 34, by + bh - 34]].forEach(function(pt){ g.beginPath(); g.arc(pt[0], pt[1], 13, 0, Math.PI * 2); g.fill(); });
+    var mName = MON_FULL[+k.slice(5, 7) - 1], year = k.slice(0, 4);
+    g.textBaseline = 'middle'; g.fillStyle = '#fff';
+    g.textAlign = 'left'; g.font = '700 44px ' + UI; g.fillText('Retrospectiva', bx + 70, by + 62);
+    g.textAlign = 'right'; g.fillText(mName.charAt(0).toUpperCase() + mName.slice(1) + ' de ' + year, bx + bw - 70, by + 62);
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    var kmTxt = fmtKm(o.km);
+    g.fillStyle = '#15181C'; fitFont(g, kmTxt, '900', NUM, 300, bw - 260); g.fillText(kmTxt, bx + 70, by + 400);
+    var kw = g.measureText(kmTxt).width;
+    g.fillStyle = '#5E6772'; g.font = '700 64px ' + UI; g.fillText('km', bx + 90 + kw, by + 400);
+    var sub = o.n + (o.n === 1 ? ' treino, ' : ' treinos, ') + fmtTime(o.time) + ' em movimento, ' + o.days + (o.days === 1 ? ' dia ativo' : ' dias ativos');
+    fitFont(g, sub, '500', UI, 38, bw - 140); g.fillText(sub, bx + 70, by + 470);
+    var parts = [];
+    if (o.kr > 0) parts.push(['#0E9F9A', fmtKm(o.kr) + ' km na rua']);
+    if (o.kp > 0) parts.push(['#2B4BD8', fmtKm(o.kp) + ' km em prova']);
+    if (o.ke > 0) parts.push(['#F2B300', fmtKm(o.ke) + ' km na esteira']);
+    var px = bx + 70;
+    g.font = '600 32px ' + UI;
+    parts.forEach(function(pt){
+      g.fillStyle = pt[0]; g.beginPath(); g.arc(px + 10, by + 520, 10, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#3A424C'; g.fillText(pt[1], px + 30, by + 531);
+      px += 30 + g.measureText(pt[1]).width + 36;
+    });
+    g.save(); g.setLineDash([16, 12]); g.strokeStyle = '#D9DEE3'; g.lineWidth = 4; g.beginPath(); g.moveTo(bx + 70, by + 580); g.lineTo(bx + bw - 70, by + 580); g.stroke(); g.restore();
+    function medal(x, y, tier, label, value){
+      var col = tier >= 0 ? TIER_COLORS[tier] : { o: '#8A939D', m: '#B9C0C7', i: '#E6E9EC' };
+      g.fillStyle = col.o; g.beginPath(); g.arc(x, y, 62, 0, Math.PI * 2); g.fill();
+      g.fillStyle = col.m; g.beginPath(); g.arc(x, y, 54, 0, Math.PI * 2); g.fill();
+      g.fillStyle = col.i; g.beginPath(); g.arc(x, y, 42, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#15181C'; g.font = '700 34px ' + UI; g.fillText(tier >= 0 ? TIER_NAMES[tier] : 'Sem medalha', x + 90, y - 8);
+      g.fillStyle = '#5E6772'; g.font = '500 30px ' + UI; g.fillText(label + ': ' + value, x + 90, y + 32);
+    }
+    medal(bx + 140, by + 680, o.kt, 'Km do mês', fmtKm(o.km) + ' km');
+    medal(bx + 140, by + 820, o.dt, 'Dias ativos', String(o.days));
+    var hl = [];
+    if (o.prs.length) hl.push(['#D92D27', 'Recorde em ' + joinPt(o.prs.slice(0, 3).map(function(pk){ return DIST_BY[pk].label; })) + (o.prs.length > 3 ? ' e mais' : '')]);
+    if (o.races.length) hl.push(['#2B4BD8', (o.races.length === 1 ? 'Prova: ' : 'Provas: ') + joinPt(o.races)]);
+    if (o.wDelta != null && o.wDelta !== 0) hl.push(['#3A424C', 'Peso no mês: ' + (o.wDelta > 0 ? '+' : '−') + fmt1(Math.abs(o.wDelta)) + ' kg']);
+    hl.slice(0, 3).forEach(function(x, i){
+      var yy = by + 945 + i * 52;
+      g.fillStyle = x[0]; g.beginPath(); g.arc(bx + 82, yy - 11, 9, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#15181C'; fitFont(g, x[1], '700', UI, 36, bw - 180); g.fillText(x[1], bx + 104, yy);
+    });
+    g.fillStyle = '#9BA4AE'; g.font = '600 34px ' + UI; g.textAlign = 'center'; g.fillText('Recordes', 540, 1282);
+    return await new Promise(function(res, rej){ c.toBlob(function(b){ b ? res(b) : rej(new Error('blob')); }, 'image/png'); });
+  }
+  document.addEventListener('click', async function(ev){
+    var b = ev.target.closest && ev.target.closest('[data-recap]');
+    if (!b || !state.sessions) return;
+    b.disabled = true;
+    try { await shareOrSave(await makeRecapCard(b.getAttribute('data-recap')), 'retrospectiva-' + b.getAttribute('data-recap') + '.png'); }
+    catch (e) { $('#status').textContent = 'Não consegui gerar o cartão agora.'; }
+    b.disabled = false;
+  });
+
   /* ---------- duo (partner comparison) ---------- */
 
   var partner = null, partnerLoaded = false, lastSummary = null;
@@ -2940,7 +3224,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       Object.keys(sim).forEach(function(id){ var x = byId[id]; if (sim[id].beat && x && x.d && isoOf(x.d) >= since90) beats++; });
     });
     return {
-      v: 2, at: Date.now(), month: now,
+      v: 3, at: Date.now(), month: now,
+      runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
       ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek,
       kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
@@ -3006,13 +3291,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var upd = partner.updated_at ? new Date(partner.updated_at) : null;
     var table = '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>';
     if (waiting) return '<div class="msg"><strong>Esperando ' + esc(hisName) + '</strong>O placar começa quando ' + esc(hisName) + ' abrir o app. Por enquanto, seus números:</div>' + table;
+    var together = togetherBlock(mine.runs, his.runs);
     return '<article class="bib duo-score"><div class="band band-prova"><span>Placar</span><span class="bd">' + MON_FULL[new Date().getMonth()] + '</span></div>' +
       '<div class="bib-body"><div class="duo-names">' +
         '<div><p class="bib-num">' + pa + '</p><span class="nm">' + esc(myName) + '</span></div>' +
         '<span class="x">×</span>' +
         '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
       '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
-      table +
+      together + table +
       (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.</p>' : '');
   }
 
@@ -3031,6 +3317,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     raceField('local').value = r && r.local !== 'A confirmar' ? r.local : '';
     raceField('bib').value = r ? r.bib || '' : '';
     raceField('note').value = r ? r.note || '' : '';
+    raceField('time').value = r ? r.time || '' : '';
     $('#race-dlg-title').textContent = r ? 'Editar prova' : 'Nova prova';
     $('#race-del').hidden = !r;
     $('#race-err').hidden = true;
@@ -3054,7 +3341,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (clash) return raceErr('Já existe uma prova nesse dia.');
     var old = raceEdit && raceEdit.orig ? RACE_INFO.filter(function(x){ return x.date === raceEdit.orig; })[0] : null;
     var item = { date: date, name: name, short: old && old.name === name ? old.short : name, km: Math.round(km * 1000) / 1000,
-      local: raceField('local').value.trim() || 'A confirmar', bib: raceField('bib').value.trim(), note: raceField('note').value.trim() };
+      local: raceField('local').value.trim() || 'A confirmar', bib: raceField('bib').value.trim(), note: raceField('note').value.trim(),
+      time: /^\d{2}:\d{2}$/.test(raceField('time').value) ? raceField('time').value : '' };
     var list = RACE_INFO.filter(function(x){ return !old || x !== old; }).concat([item]);
     setRaces(list);
     saveRaces();
@@ -3087,7 +3375,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     (Array.isArray(list) ? list : []).forEach(function(r){
       if (!r || !/^\d{4}-\d{2}-\d{2}$/.test(r.date || '') || !(Number(r.km) > 0)) return;
       RACE_INFO.push({ date: r.date, bib: r.bib ? String(r.bib) : '', short: r.short || r.name || 'Prova', name: r.name || r.short || 'Prova',
-        km: Number(r.km), local: r.local || '', note: r.note || '' });
+        km: Number(r.km), local: r.local || '', note: r.note || '', time: /^\d{2}:\d{2}$/.test(r.time || '') ? r.time : '' });
     });
     RACE_INFO.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
   }
@@ -3133,6 +3421,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     loadActivities();
     loadPartner();
     loadWeight();
+    refreshPushState().then(function(){ if (view === 'conquistas') render(); });
   }
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {

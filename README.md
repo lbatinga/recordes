@@ -8,7 +8,7 @@ PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, pr
 |---|---|
 | App (HTML único + manifest + service worker) | Vercel: `https://recordes-pi.vercel.app` (publica sozinho a cada push na `main`) |
 | Backend | Supabase, projeto **Recordes de Corrida** (`npekkekabsoyoagnelsp`), Edge Function `api` |
-| Dados | Strava API (app `285788`), só leitura (`read,activity:read_all`) |
+| Dados | Strava API (app `285788`), só leitura (`read,activity:read_all,profile:read_all`) |
 
 - O login é o próprio "Conectar com Strava" (OAuth). A troca do código, a renovação dos tokens e todas as chamadas ao Strava acontecem na Edge Function. O **Client Secret** fica só no Supabase, em *Edge Functions → Secrets* (`STRAVA_CLIENT_SECRET`), e nunca no código do app.
 - O app guarda uma sessão aleatória no aparelho. No banco fica só o hash SHA-256 dela.
@@ -17,10 +17,13 @@ PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, pr
 
 ## Rotas da função `api`
 
-`POST /auth` · `GET /me` · `GET /activities` · `GET /streams?id=` · `GET /docs` · `PUT /docs` · `GET /weight` · `GET /partner` · `POST /logout` · `POST /cron/weights`
+`POST /auth` · `GET /me` · `GET /activities` · `GET /streams?id=` · `GET /docs` · `PUT /docs` · `GET /weight` · `GET /partner` · `GET /push/key` · `POST /push/subscribe` · `POST /push/unsubscribe` · `POST /logout` · `POST /cron/weights` · `POST /cron/push`
 
-- **Peso:** lido do perfil do Strava (`profile:read_all`), um ponto por dia em `config/weights`. Uma rotina do pg_cron (`rc-weights`, 9h e 21h de Brasília) chama `/cron/weights` com um token guardado no Vault (`rc_cron_token`); a função só compara o hash dele.
-- **Dupla:** cada app publica `config/summary`; `/partner` só devolve o resumo do outro quando os dois `config/partner` apontam um pro outro.
+- **Peso:** lido do perfil do Strava (`profile:read_all`), um ponto por dia em `config/weights`. Só registra quando o valor muda e mantém a primeira pesagem do dia. Uma rotina do pg_cron (`rc-weights`, 9h e 21h de Brasília) chama `/cron/weights` com um token guardado no Vault (`rc_cron_token`); a função só compara o hash dele.
+- **Dupla:** cada app publica `config/summary` (v3, com a lista de horários dos treinos dos últimos 120 dias para "treinos juntos"); `/partner` só devolve o resumo do outro quando os dois `config/partner` apontam um pro outro.
+- **Avisos (Web Push):** as chaves VAPID são geradas pela própria função e ficam em `docs (0, system, vapid)`. Os aparelhos inscritos ficam em `config/push`. As rotinas `rc-push-semana` (qui e sex, 18h) e `rc-push-sabado` (sáb, 8h) chamam `/cron/push`, que só avisa quem ainda não tem 2 corridas na semana (domingo a sábado).
+- **Clima:** Open-Meteo, direto do app e sem chave (previsão até 15 dias, arquivo histórico para datas antigas). Usa o ponto de largada do treino (arredondado a 2 casas) ou Maceió.
+- **Retrospectiva:** imagem 1080×1350 gerada no próprio aparelho (canvas), a partir da Coleção ou do aviso no Início nos dias 1 a 7.
 
 O código da função está em `supabase/functions/api/index.ts` (cópia de referência; o deploy é feito no Supabase).
 

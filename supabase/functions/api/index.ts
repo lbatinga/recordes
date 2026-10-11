@@ -3,6 +3,7 @@
 // a read-only proxy to the athlete's own activities, and a small per-athlete
 // document store. Sessions are random tokens; only their SHA-256 is stored.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3.6.7';
 
 const CLIENT_ID = '285788';
 const CLIENT_SECRET = Deno.env.get('STRAVA_CLIENT_SECRET') ?? '';
@@ -10,7 +11,8 @@ const APP_ORIGIN = 'https://recordes-pi.vercel.app';
 const OTHER_ORIGINS = ['https://lbatinga.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 const STRAVA = 'https://www.strava.com/api/v3';
 const COLS = ['efforts', 'config'];
-const PROTECTED_CONFIG = ['partner', 'weights'];
+const PROTECTED_CONFIG = ['partner', 'weights', 'push'];
+const APP_URL = 'https://recordes-pi.vercel.app/';
 
 function serviceKey(): string {
   try {
@@ -139,6 +141,90 @@ async function snapshotWeight(aid: number, scope: string): Promise<{ scopeOk: bo
   return { scopeOk: true, points: keep };
 }
 
+// ---------- push notifications (Web Push, VAPID keys generated and kept in the database) ----------
+type PushSub = { endpoint: string; keys: { p256dh: string; auth: string }; at?: string };
+async function systemDoc(id: string) {
+  const { data } = await sb.from('docs').select('data').eq('athlete_id', 0).eq('col', 'system').eq('id', id).maybeSingle();
+  return data?.data ?? null;
+}
+async function vapid(): Promise<{ publicKey: string; privateKey: string }> {
+  const cur = await systemDoc('vapid');
+  if (cur?.publicKey && cur?.privateKey) return cur;
+  const k = webpush.generateVAPIDKeys();
+  await sb.from('docs').upsert({ athlete_id: 0, col: 'system', id: 'vapid', data: k, updated_at: new Date().toISOString() });
+  return k;
+}
+async function readSubs(aid: number): Promise<PushSub[]> {
+  const { data } = await sb.from('docs').select('data').eq('athlete_id', aid).eq('col', 'config').eq('id', 'push').maybeSingle();
+  return Array.isArray(data?.data?.subs) ? data.data.subs : [];
+}
+async function writeSubs(aid: number, subs: PushSub[]) {
+  await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'push', data: { subs }, updated_at: new Date().toISOString() });
+}
+// Sends to every device of the athlete; drops subscriptions the push service says are gone.
+async function sendPush(aid: number, msg: { title: string; body: string; tag?: string }): Promise<{ sent: number; failed: number }> {
+  const subs = await readSubs(aid);
+  if (!subs.length) return { sent: 0, failed: 0 };
+  const k = await vapid();
+  const keep: PushSub[] = [];
+  let sent = 0, failed = 0;
+  for (const sub of subs) {
+    try {
+      const det = webpush.generateRequestDetails(sub, JSON.stringify({ ...msg, url: APP_URL }), {
+        vapidDetails: { subject: APP_URL, publicKey: k.publicKey, privateKey: k.privateKey }, TTL: 6 * 3600,
+      });
+      const r = await fetch(det.endpoint, { method: 'POST', headers: det.headers as Record<string, string>, body: new Uint8Array(det.body as Uint8Array) as unknown as BodyInit });
+      if (r.status === 404 || r.status === 410) { failed++; continue; }
+      if (r.ok) sent++; else failed++;
+      keep.push(sub);
+    } catch (_) { failed++; keep.push(sub); }
+  }
+  if (keep.length !== subs.length) await writeSubs(aid, keep);
+  return { sent, failed };
+}
+
+// Weeks run Sunday to Saturday (Brazil time). Streak = completed weeks in a row with 2+ runs.
+function brNow(): Date { return new Date(Date.now() - 3 * 3600 * 1000); }
+function weekKey(iso: string): string {
+  const d = new Date(iso.slice(0, 10) + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  return d.toISOString().slice(0, 10);
+}
+async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: number }> {
+  const after = Math.floor(Date.now() / 1000) - 100 * 86400;
+  const acts = await stravaGet(aid, '/athlete/activities?per_page=200&after=' + after);
+  const counts: Record<string, number> = {};
+  // deno-lint-ignore no-explicit-any
+  (Array.isArray(acts) ? acts : []).forEach((a: any) => {
+    const t = a.sport_type || a.type;
+    if (!['Run', 'TrailRun', 'VirtualRun'].includes(t) || !(a.distance > 0)) return;
+    const k = weekKey(String(a.start_date_local ?? ''));
+    counts[k] = (counts[k] ?? 0) + 1;
+  });
+  const cur = weekKey(brNow().toISOString());
+  let streak = 0;
+  const w = new Date(cur + 'T00:00:00Z');
+  for (let i = 0; i < 14; i++) {
+    w.setUTCDate(w.getUTCDate() - 7);
+    if ((counts[w.toISOString().slice(0, 10)] ?? 0) >= 2) streak++; else break;
+  }
+  return { thisWeek: counts[cur] ?? 0, streak };
+}
+function reminderText(day: number, thisWeek: number, streak: number): { title: string; body: string } | null {
+  const need = 2 - thisWeek;
+  if (need <= 0) return null;
+  const n = need === 1 ? 'falta 1 treino' : 'faltam 2 treinos';
+  const sem = streak === 1 ? '1 semana seguida' : streak + ' semanas seguidas';
+  if (day === 6) {
+    return streak > 0
+      ? { title: 'Último dia da semana', body: 'Hoje ' + n + ' pra manter ' + sem + '.' }
+      : { title: 'Último dia da semana', body: 'Hoje ' + n + ' pra semana contar na constância.' };
+  }
+  return streak > 0
+    ? { title: 'Sequência de ' + sem, body: 'Até sábado ' + n + ' pra manter.' }
+    : { title: 'Bora começar uma sequência', body: 'Até sábado ' + n + ' pra semana contar.' };
+}
+
 // Same shape the page already understood (id, sport_type, start_local, summary…).
 // deno-lint-ignore no-explicit-any
 function mapActivity(a: any) {
@@ -155,6 +241,8 @@ function mapActivity(a: any) {
     is_trainer: a.trainer === true,
     activity_tags: tags,
     location_summary: '',
+    latlng: Array.isArray(a.start_latlng) && a.start_latlng.length === 2
+      ? [Math.round(a.start_latlng[0] * 100) / 100, Math.round(a.start_latlng[1] * 100) / 100] : null,
     summary: {
       distance: a.distance ?? 0,
       moving_time: a.moving_time ?? 0,
@@ -208,11 +296,30 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     return json(req, { session, athlete: { id: ath.id, firstname: ath.firstname, lastname: ath.lastname, profile: ath.profile_medium ?? null } });
   }
 
-  if (path === '/cron/weights' && req.method === 'POST') {
+  if (path.startsWith('/cron/') && req.method === 'POST') {
     // The token lives only in the database (Vault); here we compare its hash.
     const tok = req.headers.get('x-cron-secret') ?? '';
-    const sys = await sb.from('docs').select('data').eq('athlete_id', 0).eq('col', 'system').eq('id', 'cron').maybeSingle();
-    if (tok.length < 32 || !sys.data?.data?.hash || sys.data.data.hash !== await sha256(tok)) throw new HttpError(401, 'no_session');
+    const sys = await systemDoc('cron');
+    if (tok.length < 32 || !sys?.hash || sys.hash !== await sha256(tok)) throw new HttpError(401, 'no_session');
+  }
+  if (path === '/cron/push' && req.method === 'POST') {
+    const day = brNow().getUTCDay();
+    if (day < 4) return json(req, { skipped: 'day' });
+    const { data } = await sb.from('docs').select('athlete_id').eq('col', 'config').eq('id', 'push');
+    let sent = 0, none = 0, fail = 0;
+    for (const row of data ?? []) {
+      const aid = Number(row.athlete_id);
+      try {
+        const st = await weekStatus(aid);
+        const msg = reminderText(day, st.thisWeek, st.streak);
+        if (!msg) { none++; continue; }
+        const r = await sendPush(aid, { ...msg, tag: 'constancia' });
+        sent += r.sent; fail += r.failed;
+      } catch (_) { fail++; }
+    }
+    return json(req, { sent, none, fail });
+  }
+  if (path === '/cron/weights' && req.method === 'POST') {
     const { data } = await sb.from('athletes').select('athlete_id, scope').like('scope', '%profile:read_all%');
     let ok = 0, fail = 0;
     for (const row of data ?? []) {
@@ -223,6 +330,27 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
 
   const aid = await athleteFromSession(req);
 
+  if (path === '/push/key' && req.method === 'GET') {
+    return json(req, { publicKey: (await vapid()).publicKey });
+  }
+  if (path === '/push/subscribe' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({}));
+    const sub = b?.subscription;
+    if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) {
+      throw new HttpError(400, 'bad_request');
+    }
+    const subs = (await readSubs(aid)).filter((x) => x.endpoint !== sub.endpoint);
+    subs.push({ endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, at: new Date().toISOString() });
+    await writeSubs(aid, subs.slice(-5));
+    const r = await sendPush(aid, { title: 'Avisos ligados', body: 'Quinta e sexta à noite e sábado de manhã, se faltar treino pra manter a sequência.', tag: 'teste' });
+    return json(req, { ok: true, ...r });
+  }
+  if (path === '/push/unsubscribe' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({}));
+    const subs = (await readSubs(aid)).filter((x) => x.endpoint !== String(b?.endpoint ?? ''));
+    await writeSubs(aid, subs);
+    return json(req, { ok: true });
+  }
   if (path === '/me' && req.method === 'GET') {
     const { data } = await sb.from('athletes').select('athlete_id, firstname, lastname, profile, scope').eq('athlete_id', aid).maybeSingle();
     if (!data) throw new HttpError(401, 'needs_reauth');
