@@ -476,6 +476,25 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg .err{color:var(--rec);font-size:14px;margin:0}
 .race-edit{width:100%;margin-top:12px}
 .add-race{width:100%;margin-top:4px}
+html,body{overscroll-behavior-y:contain}
+.ptr{position:fixed;top:-40px;left:50%;width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.2);display:grid;place-items:center;z-index:30;opacity:0;transform:translate(-50%,0);transition:transform .2s ease,opacity .2s ease;pointer-events:none}
+.ptr.drag{transition:none}
+.ptr svg{width:22px;height:22px;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ptr.ready svg, .ptr.spin svg{stroke:var(--ink)}
+.ptr.spin svg{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+.wt{padding:14px 16px}
+.wt-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.wt-v{font-family:var(--font-num);font-weight:800;font-size:44px;line-height:1}
+.wt-v .u{font-size:20px;margin-left:4px;color:var(--muted)}
+.wt-d{color:var(--muted);font-weight:600;font-size:14px}
+.wt-spark{display:block;width:100%;height:46px;margin:10px 0 4px}
+.wt-spark polyline{fill:none;stroke:var(--muted);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.wt-spark circle{fill:var(--ink)}
+.wt-sub{margin:6px 0 0;font-size:15px;color:var(--muted)}
+.wt-sub b{color:var(--ink)}
+.wt-acts{display:flex;gap:8px;margin-top:12px}
+.wt-acts .strava-btn{min-height:40px;font-size:16px;flex:1}
 .bnav-in.six{grid-template-columns:repeat(6,minmax(0,1fr))}
 .bnav-in.six button{font-size:11px;padding-left:0;padding-right:0}
 .duo-score .bib-body{padding-top:16px}
@@ -1983,6 +2002,8 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos; o plano pede 3. Em prova, vale a distância oficial.') +
+      p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
+      p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +
       p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida. Cada linha vale um ponto; empate não pontua. Os números do outro são os da última vez que ele abriu o app.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
@@ -2022,6 +2043,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
       var last = all[all.length - 1];
       var ae = analyze(state.sessions, last.env === 'esteira' ? 'esteira' : 'rua');
       html += '<h2>Último treino</h2>' + hero(last, ae.tables);
+      html += weightCard();
       html += monthCompare();
       html += medalsSection(true);
       var recent = all.slice().reverse().slice(0, 5);
@@ -2207,7 +2229,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     var st = randomState();
     try { localStorage.setItem('rc-oauth-state', st); } catch(e) {}
     location.href = 'https://www.strava.com/oauth/authorize?client_id=' + STRAVA_CLIENT_ID +
-      '&response_type=code&approval_prompt=auto&scope=' + encodeURIComponent('read,activity:read_all') +
+      '&response_type=code&approval_prompt=auto&scope=' + encodeURIComponent('read,activity:read_all,profile:read_all') +
       '&redirect_uri=' + encodeURIComponent(APP_URL) + '&state=' + st;
   }
   async function finishOAuth(params){
@@ -2401,6 +2423,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     effortErr = null;
     render();
     loadPartner();
+    loadWeight();
     await loadActivities();
   }
 
@@ -2739,6 +2762,122 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     }
   });
 
+  /* ---------- body weight (from the Strava profile) ---------- */
+
+  var weight = { scopeOk: null, points: [] };
+  function loadWeight(){
+    return apiFetch('/weight').then(function(j){
+      weight = { scopeOk: !!(j && j.scopeOk), points: j && Array.isArray(j.points) ? j.points : weight.points };
+      if (view === 'inicio' && session) render();
+    }).catch(function(){});
+  }
+  function isoMinus(n){ var d = new Date(); d.setDate(d.getDate() - n); return isoOf(d); }
+  function fmtKg(v){ return fmt1(v); }
+  function weightCard(){
+    if (weight.scopeOk === false) {
+      var off = false;
+      try { off = localStorage.getItem(lsKey('rc-wt-off')) === '1'; } catch(e) {}
+      if (off) return '';
+      return '<h2>Peso</h2><div class="panel wt"><p class="wt-sub">Pra ver aqui o peso que chega no seu Strava, conecte de novo e autorize ler o perfil.</p>' +
+        '<div class="wt-acts"><button type="button" class="btn" id="wt-off">Agora não</button><button type="button" class="strava-btn" id="connect">Conectar de novo</button></div></div>';
+    }
+    var pts = (weight.points || []).filter(function(p){ return p && p.d && p.kg > 0; });
+    if (!pts.length) return '';
+    var last = pts[pts.length - 1];
+    var today = isoOf(new Date());
+    var when = last.d === today ? 'hoje' : last.d === isoMinus(1) ? 'ontem' : fmtShort(parseIso(last.d));
+    function avg(from, to){
+      var s = 0, n = 0;
+      pts.forEach(function(p){ if (p.d >= from && p.d <= to) { s += p.kg; n++; } });
+      return n ? s / n : null;
+    }
+    var a7 = avg(isoMinus(6), today), p7 = avg(isoMinus(13), isoMinus(7));
+    var sub = '';
+    function delta(v){ var r = Math.round(v * 10) / 10; return r === 0 ? 'igual' : (r > 0 ? '+' : '−') + fmtKg(Math.abs(r)) + ' kg'; }
+    if (a7 != null && p7 != null) sub = 'Média de 7 dias: <b>' + fmtKg(a7) + ' kg</b>, ' + delta(a7 - p7) + ' na semana';
+    else if (pts.length >= 2) sub = 'Desde ' + fmtShort(parseIso(pts[0].d)) + ': <b>' + delta(last.kg - pts[0].kg) + '</b>';
+    var spark = '';
+    var recent = pts.filter(function(p){ return p.d >= isoMinus(29); });
+    if (recent.length >= 2) {
+      var t0 = parseIso(isoMinus(29)).getTime(), span = parseIso(today).getTime() - t0 || 1;
+      var lo = Math.min.apply(null, recent.map(function(p){ return p.kg; })), hi = Math.max.apply(null, recent.map(function(p){ return p.kg; }));
+      if (hi - lo < 1) { var mid = (hi + lo) / 2; lo = mid - 0.5; hi = mid + 0.5; }
+      var xy = recent.map(function(p){
+        var x = (parseIso(p.d).getTime() - t0) / span * 296 + 2;
+        var y = 44 - (p.kg - lo) / (hi - lo) * 40;
+        return [x.toFixed(1), y.toFixed(1)];
+      });
+      spark = '<svg class="wt-spark" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + xy.map(function(a){ return a.join(','); }).join(' ') + '"/></svg>';
+    }
+    return '<h2>Peso</h2><div class="panel wt"><div class="wt-top"><span class="wt-v">' + fmtKg(last.kg) + '<span class="u">kg</span></span><span class="wt-d">' + when + '</span></div>' +
+      spark + (sub ? '<p class="wt-sub">' + sub + '</p>' : '') + '</div>';
+  }
+  document.addEventListener('click', function(ev){
+    if (ev.target.closest && ev.target.closest('#wt-off')) {
+      try { localStorage.setItem(lsKey('rc-wt-off'), '1'); } catch(e) {}
+      render();
+    }
+  });
+
+  /* ---------- pull to refresh ---------- */
+
+  (function(){
+    var startY = null, pulling = false, dist = 0, el = null, busy = false;
+    var TRIGGER = 64;
+    function ind(){
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'ptr';
+        el.setAttribute('aria-hidden', 'true');
+        el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>';
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+    function reset(){
+      var i = ind();
+      i.classList.remove('drag', 'ready', 'spin');
+      i.style.transform = 'translate(-50%,0)';
+      i.style.opacity = '0';
+    }
+    window.addEventListener('touchstart', function(e){
+      startY = null;
+      if (busy || window.scrollY > 0 || e.touches.length !== 1 || !mcp || !session) return;
+      if (document.body.classList.contains('login') || document.querySelector('dialog[open]')) return;
+      startY = e.touches[0].clientY; pulling = false; dist = 0;
+    }, { passive: true });
+    window.addEventListener('touchmove', function(e){
+      if (startY == null) return;
+      var dy = e.touches[0].clientY - startY;
+      if (dy <= 0 || window.scrollY > 0) { if (pulling) reset(); startY = null; pulling = false; return; }
+      pulling = true;
+      dist = Math.min(110, dy * 0.5);
+      var i = ind();
+      i.classList.add('drag');
+      i.classList.toggle('ready', dist >= TRIGGER);
+      i.style.opacity = String(Math.min(1, dist / TRIGGER));
+      i.style.transform = 'translate(-50%,' + dist + 'px) rotate(' + Math.round(dist * 3) + 'deg)';
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    window.addEventListener('touchend', function(){
+      if (!pulling) { startY = null; return; }
+      var go = dist >= TRIGGER;
+      startY = null; pulling = false;
+      if (!go) { reset(); return; }
+      var i = ind();
+      i.classList.remove('drag', 'ready');
+      i.classList.add('spin');
+      i.style.opacity = '1';
+      i.style.transform = 'translate(-50%,64px)';
+      busy = true;
+      var t0 = Date.now();
+      Promise.resolve(refresh()).catch(function(){}).then(function(){
+        setTimeout(function(){ busy = false; reset(); }, Math.max(0, 600 - (Date.now() - t0)));
+      });
+    });
+    window.addEventListener('touchcancel', function(){ if (pulling) reset(); startY = null; pulling = false; });
+  })();
+
   /* ---------- duo (partner comparison) ---------- */
 
   var partner = null, partnerLoaded = false, lastSummary = null;
@@ -2940,6 +3079,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
         else if (d.col === 'config' && d.id === 'metas') loadGoals(v.goals);
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
+        else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
       });
       GOAL = getGoal(goalK);
@@ -2965,6 +3105,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
     }).catch(function(){});
     loadActivities();
     loadPartner();
+    loadWeight();
   }
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {

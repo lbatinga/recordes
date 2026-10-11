@@ -17,7 +17,10 @@ PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, pr
 
 ## Rotas da função `api`
 
-`POST /auth` · `GET /me` · `GET /activities` · `GET /streams?id=` · `GET /docs` · `PUT /docs` · `POST /logout`
+`POST /auth` · `GET /me` · `GET /activities` · `GET /streams?id=` · `GET /docs` · `PUT /docs` · `GET /weight` · `GET /partner` · `POST /logout` · `POST /cron/weights`
+
+- **Peso:** lido do perfil do Strava (`profile:read_all`), um ponto por dia em `config/weights`. Uma rotina do pg_cron (`rc-weights`, 9h e 21h de Brasília) chama `/cron/weights` com um token guardado no Vault (`rc_cron_token`); a função só compara o hash dele.
+- **Dupla:** cada app publica `config/summary`; `/partner` só devolve o resumo do outro quando os dois `config/partner` apontam um pro outro.
 
 O código da função está em `supabase/functions/api/index.ts` (cópia de referência; o deploy é feito no Supabase).
 

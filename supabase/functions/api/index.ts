@@ -10,6 +10,7 @@ const APP_ORIGIN = 'https://recordes-pi.vercel.app';
 const OTHER_ORIGINS = ['https://lbatinga.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 const STRAVA = 'https://www.strava.com/api/v3';
 const COLS = ['efforts', 'config'];
+const PROTECTED_CONFIG = ['partner', 'weights'];
 
 function serviceKey(): string {
   try {
@@ -109,6 +110,38 @@ async function stravaGet(aid: number, path: string): Promise<unknown> {
   return await r.json();
 }
 
+// Body weight comes from the Strava profile (needs profile:read_all), one point per day.
+function todayBR(): string {
+  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+}
+type WeightPoint = { d: string; kg: number };
+async function readWeights(aid: number): Promise<WeightPoint[]> {
+  const { data } = await sb.from('docs').select('data').eq('athlete_id', aid).eq('col', 'config').eq('id', 'weights').maybeSingle();
+  const pts = data?.data?.points;
+  return Array.isArray(pts) ? pts : [];
+}
+async function snapshotWeight(aid: number, scope: string): Promise<{ scopeOk: boolean; points: WeightPoint[] }> {
+  const points = await readWeights(aid);
+  if (!scope.includes('profile:read_all')) return { scopeOk: false, points };
+  // deno-lint-ignore no-explicit-any
+  const a: any = await stravaGet(aid, '/athlete');
+  const kg = typeof a?.weight === 'number' ? Math.round(a.weight * 10) / 10 : 0;
+  if (!(kg > 20 && kg < 400)) return { scopeOk: true, points };
+  const d = todayBR();
+  const last = points[points.length - 1];
+  if (last && last.d === d) {
+    if (last.kg === kg) return { scopeOk: true, points };
+    last.kg = kg;
+  } else if (!last || last.d < d) {
+    points.push({ d, kg });
+  } else {
+    return { scopeOk: true, points };
+  }
+  const keep = points.slice(-1500);
+  await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'weights', data: { points: keep }, updated_at: new Date().toISOString() });
+  return { scopeOk: true, points: keep };
+}
+
 // Same shape the page already understood (id, sport_type, start_local, summary…).
 // deno-lint-ignore no-explicit-any
 function mapActivity(a: any) {
@@ -178,12 +211,29 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     return json(req, { session, athlete: { id: ath.id, firstname: ath.firstname, lastname: ath.lastname, profile: ath.profile_medium ?? null } });
   }
 
+  if (path === '/cron/weights' && req.method === 'POST') {
+    // The token lives only in the database (Vault); here we compare its hash.
+    const tok = req.headers.get('x-cron-secret') ?? '';
+    const sys = await sb.from('docs').select('data').eq('athlete_id', 0).eq('col', 'system').eq('id', 'cron').maybeSingle();
+    if (tok.length < 32 || !sys.data?.data?.hash || sys.data.data.hash !== await sha256(tok)) throw new HttpError(401, 'no_session');
+    const { data } = await sb.from('athletes').select('athlete_id, scope').like('scope', '%profile:read_all%');
+    let ok = 0, fail = 0;
+    for (const row of data ?? []) {
+      try { await snapshotWeight(Number(row.athlete_id), String(row.scope ?? '')); ok++; } catch (_) { fail++; }
+    }
+    return json(req, { ok, fail });
+  }
+
   const aid = await athleteFromSession(req);
 
   if (path === '/me' && req.method === 'GET') {
-    const { data } = await sb.from('athletes').select('athlete_id, firstname, lastname, profile').eq('athlete_id', aid).maybeSingle();
+    const { data } = await sb.from('athletes').select('athlete_id, firstname, lastname, profile, scope').eq('athlete_id', aid).maybeSingle();
     if (!data) throw new HttpError(401, 'needs_reauth');
-    return json(req, { athlete: { id: data.athlete_id, firstname: data.firstname, lastname: data.lastname, profile: data.profile } });
+    return json(req, { athlete: { id: data.athlete_id, firstname: data.firstname, lastname: data.lastname, profile: data.profile, scope: data.scope ?? '' } });
+  }
+  if (path === '/weight' && req.method === 'GET') {
+    const { data } = await sb.from('athletes').select('scope').eq('athlete_id', aid).maybeSingle();
+    return json(req, await snapshotWeight(aid, String(data?.scope ?? '')));
   }
   if (path === '/activities' && req.method === 'GET') {
     const after = Number(url.searchParams.get('after')) || null;
@@ -205,7 +255,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     if (!items.length || items.length > 100) throw new HttpError(400, 'bad_request');
     const rows = items.map((it: { col?: string; id?: string; data?: unknown }) => {
       if (!COLS.includes(String(it.col)) || !/^[A-Za-z0-9_-]{1,40}$/.test(String(it.id)) || !it.data || typeof it.data !== 'object' ||
-          (it.col === 'config' && it.id === 'partner')) {
+          (it.col === 'config' && PROTECTED_CONFIG.includes(String(it.id)))) {
         throw new HttpError(400, 'bad_request');
       }
       if (JSON.stringify(it.data).length > 60000) throw new HttpError(413, 'too_large');
