@@ -127,16 +127,13 @@ async function snapshotWeight(aid: number, scope: string): Promise<{ scopeOk: bo
   const a: any = await stravaGet(aid, '/athlete');
   const kg = typeof a?.weight === 'number' ? Math.round(a.weight * 10) / 10 : 0;
   if (!(kg > 20 && kg < 400)) return { scopeOk: true, points };
+  // Strava keeps only the latest weight, with no date. A value equal to the last one
+  // means no new weigh-in yet, and the first new value of the day (the fasted morning
+  // reading) is kept, so later readings never overwrite it.
   const d = todayBR();
   const last = points[points.length - 1];
-  if (last && last.d === d) {
-    if (last.kg === kg) return { scopeOk: true, points };
-    last.kg = kg;
-  } else if (!last || last.d < d) {
-    points.push({ d, kg });
-  } else {
-    return { scopeOk: true, points };
-  }
+  if (last && (last.d >= d || last.kg === kg)) return { scopeOk: true, points };
+  points.push({ d, kg });
   const keep = points.slice(-1500);
   await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'weights', data: { points: keep }, updated_at: new Date().toISOString() });
   return { scopeOk: true, points: keep };
