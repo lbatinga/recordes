@@ -488,7 +488,11 @@ html,body{overscroll-behavior-y:contain}
 .wt-v{font-family:var(--font-num);font-weight:800;font-size:44px;line-height:1}
 .wt-v .u{font-size:20px;margin-left:4px;color:var(--muted)}
 .wt-d{color:var(--muted);font-weight:600;font-size:14px}
-.wt-spark{display:block;width:100%;height:46px;margin:10px 0 4px}
+.wt-chart{position:relative;margin:10px 0 2px}
+.wt-spark{display:block;width:100%;height:64px}
+.wt-hi,.wt-lo{position:absolute;right:0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;background:var(--surface);padding:0 2px}
+.wt-hi{top:-2px}.wt-lo{bottom:-2px}
+.wt-seg{margin-top:12px}
 .wt-spark polyline{fill:none;stroke:var(--muted);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
 .wt-spark circle{fill:var(--ink)}
 .wt-sub{margin:6px 0 0;font-size:15px;color:var(--muted)}
@@ -2795,23 +2799,42 @@ html,body{overscroll-behavior-y:contain}
     var sub = '';
     function delta(v){ var r = Math.round(v * 10) / 10; return r === 0 ? 'igual' : (r > 0 ? '+' : '−') + fmtKg(Math.abs(r)) + ' kg'; }
     if (a7 != null && p7 != null) sub = 'Média de 7 dias: <b>' + fmtKg(a7) + ' kg</b>, ' + delta(a7 - p7) + ' na semana';
-    else if (pts.length >= 2) sub = 'Desde ' + fmtShort(parseIso(pts[0].d)) + ': <b>' + delta(last.kg - pts[0].kg) + '</b>';
-    var spark = '';
-    var recent = pts.filter(function(p){ return p.d >= isoMinus(29); });
-    if (recent.length >= 2) {
-      var t0 = parseIso(isoMinus(29)).getTime(), span = parseIso(today).getTime() - t0 || 1;
-      var lo = Math.min.apply(null, recent.map(function(p){ return p.kg; })), hi = Math.max.apply(null, recent.map(function(p){ return p.kg; }));
+    var range = wtRange, from = range === 'all' ? pts[0].d : isoMinus(range === '90' ? 89 : 29);
+    var inR = pts.filter(function(p){ return p.d >= from; });
+    function dfmt(iso){ var dd = parseIso(iso); return otherYear(dd) ? pad(dd.getDate()) + '/' + pad(dd.getMonth() + 1) + '/' + String(dd.getFullYear()).slice(-2) : fmtShort(dd); }
+    var chart = '';
+    if (inR.length >= 2) {
+      var t0 = parseIso(from).getTime(), span = parseIso(today).getTime() - t0 || 1;
+      var kgs = inR.map(function(p){ return p.kg; });
+      var hiV = Math.max.apply(null, kgs), loV = Math.min.apply(null, kgs), lo = loV, hi = hiV;
       if (hi - lo < 1) { var mid = (hi + lo) / 2; lo = mid - 0.5; hi = mid + 0.5; }
-      var xy = recent.map(function(p){
+      var xy = inR.map(function(p){
         var x = (parseIso(p.d).getTime() - t0) / span * 296 + 2;
-        var y = 44 - (p.kg - lo) / (hi - lo) * 40;
-        return [x.toFixed(1), y.toFixed(1)];
+        var y = 60 - (p.kg - lo) / (hi - lo) * 56;
+        return x.toFixed(1) + ',' + y.toFixed(1);
       });
-      spark = '<svg class="wt-spark" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + xy.map(function(a){ return a.join(','); }).join(' ') + '"/></svg>';
+      chart = '<div class="wt-chart"><svg class="wt-spark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + xy.join(' ') + '"/></svg>' +
+        '<span class="wt-hi">' + fmtKg(hiV) + '</span><span class="wt-lo">' + fmtKg(loV) + '</span></div>';
+      var first = inR[0];
+      sub = (range === 'all' ? 'Desde ' + dfmt(first.d) : range === '90' ? 'Em 3 meses' : 'Em 30 dias') + ': <b>' + delta(last.kg - first.kg) + '</b>' +
+        (range === 'all' && hiV > first.kg ? ', ' + delta(last.kg - hiV) + ' desde o maior (' + fmtKg(hiV) + ' kg)' : '') +
+        (sub ? '<br>' + sub : '');
     }
+    var seg = '<div class="seg wt-seg" role="group" aria-label="Período">' + [['30', '30 dias'], ['90', '3 meses'], ['all', 'Tudo']].map(function(o){
+      return '<button type="button" data-wtr="' + o[0] + '" aria-pressed="' + (range === o[0]) + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
     return '<h2>Peso</h2><div class="panel wt"><div class="wt-top"><span class="wt-v">' + fmtKg(last.kg) + '<span class="u">kg</span></span><span class="wt-d">' + when + '</span></div>' +
-      spark + (sub ? '<p class="wt-sub">' + sub + '</p>' : '') + '</div>';
+      chart + (sub ? '<p class="wt-sub">' + sub + '</p>' : '') + (pts.length >= 2 ? seg : '') + '</div>';
   }
+  var wtRange = '30';
+  try { var swr = localStorage.getItem('rc-wt-range'); if (swr === '30' || swr === '90' || swr === 'all') wtRange = swr; } catch(e) {}
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest && ev.target.closest('[data-wtr]');
+    if (!b) return;
+    wtRange = b.getAttribute('data-wtr');
+    try { localStorage.setItem('rc-wt-range', wtRange); } catch(e) {}
+    render();
+  });
   document.addEventListener('click', function(ev){
     if (ev.target.closest && ev.target.closest('#wt-off')) {
       try { localStorage.setItem(lsKey('rc-wt-off'), '1'); } catch(e) {}
