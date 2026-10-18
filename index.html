@@ -643,6 +643,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   /* Official info for each race, matched to Strava by date (config/races). */
   var RACE_INFO = [];
+  var ENV_OVERRIDE = {};
   var RACES = RACE_INFO;
 
   var session = null, me = null;
@@ -777,7 +778,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       ctx:function(s){ return fmtKm(s.km) + ' km'; } },
     { id:'eff', label:'Menor esforço por km', chip:'esforço por km',
       empty:'Ainda sem treino de 2 km ou mais com esforço registrado.',
-      ok:function(s){ return s.km >= 2 && s.effKm != null; },
+      ok:function(s){ return s.km >= 2 && s.effKm != null && !(effortDocs[s.id] && effortDocs[s.id].noStreams); },
       better:function(a,b){ return a.effKm < b.effKm; },
       val:function(s){ return [fmt1(s.effKm), 'por km']; },
       ctx:function(s){ return 'esforço ' + s.effort + ' em ' + fmtKm(s.km) + ' km'; } }
@@ -864,7 +865,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var km = meters / 1000;
       var time = Number(s.moving_time) || Number(s.elapsed_time) || 0;
       if (km <= 0 || time <= 0) return;
-      var indoor = a.is_trainer === true || type === 'VirtualRun' || /esteira/i.test(a.name || '');
+      var isRace = Array.isArray(a.activity_tags) && a.activity_tags.indexOf('Race') !== -1;
+      // A run with no GPS start point (manual entry, indoor watch mode) is treated as treadmill,
+      // unless the athlete marked it otherwise in config/overrides.
+      var noGps = a.latlng === null && isRun && !isRace;
+      var ov = ENV_OVERRIDE[String(a.id)];
+      var indoor = ov ? ov === 'esteira' : (a.is_trainer === true || type === 'VirtualRun' || /esteira/i.test(a.name || '') || noGps);
       var effort = typeof s.relative_effort === 'number' ? s.relative_effort : null;
       out.push({
         id: String(a.id),
@@ -985,7 +991,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     anCache[env] = { ver: dataVer, res: res };
     return res;
   }
+  /* A race with an official (chip) time is shown with the official distance and
+     time everywhere; the watch numbers stay in watchKm / watchTime for "No relógio". */
+  function applyOfficial(list){
+    list.forEach(function(s){
+      if (s.watchKm == null) { s.watchKm = s.km; s.watchTime = s.time; }
+      var info = s.race ? infoFor(s.d) : null;
+      var on = !!(info && info.chip > 0 && info.km > 0);
+      s.km = on ? info.km : s.watchKm;
+      s.time = on ? info.chip : s.watchTime;
+      s.pace = s.time / s.km;
+      s.effKm = s.effort != null ? s.effort / s.km : null;
+      s.official = on;
+    });
+  }
   function analyzeRaw(all, env){
+    applyOfficial(all);
     var list = all.filter(function(s){
       if (env === 'tudo') return true;
       if (env === 'prova') return s.race;
@@ -1096,8 +1117,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var pl = placingsOf(s, tables);
     var rec = s.broke.length > 0 || pl.first.length > 0;
     var lines = [];
-    if (pl.first.length) lines.push('Recorde em ' + esc(joinPt(pl.first)));
-    s.broke.forEach(function(id){ lines.push('Recorde de ' + REC_BY[id].chip); });
+    var where = s.env === 'esteira' ? ' na esteira' : ' na rua';
+    if (pl.first.length) lines.push('Recorde' + where + ' em ' + esc(joinPt(pl.first)));
+    s.broke.forEach(function(id){ lines.push('Recorde' + where + ' de ' + REC_BY[id].chip); });
     var bandCls = s.race ? 'band-prova' : (s.env === 'esteira' ? 'band-esteira' : 'band-rua');
     var bandTxt = s.race ? 'Prova, ' + esc(raceShort(s)) : 'Último treino, ' + (s.env === 'esteira' ? 'esteira' : 'rua');
     return '<section class="bib" aria-label="Último treino">' +
@@ -1106,12 +1128,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<div class="bib-body">' +
         '<p class="bib-num">' + fmtKm(s.km) + '<span class="u">km</span></p>' +
         '<div class="bib-stats">' +
-          '<div><span class="st-v">' + fmtTime(s.time) + '</span><span class="st-k">Tempo em movimento</span></div>' +
+          '<div><span class="st-v">' + fmtTime(s.time) + '</span><span class="st-k">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</span></div>' +
           '<div><span class="st-v">' + fmtPace(s.pace) + '</span><span class="st-k">Ritmo por km</span></div>' +
           '<div><span class="st-v">' + (s.effort != null ? s.effort : '--') + '</span><span class="st-k">Esforço</span></div>' +
         '</div>' +
         (lines.length ? '<ul class="rec-lines">' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
-        (pl.top.length ? '<p class="bib-note">Top 5 em ' + esc(joinPt(pl.top)) + '</p>' : '') +
+        (pl.top.length ? '<p class="bib-note">Top 5' + where + ' em ' + esc(joinPt(pl.top)) + '</p>' : '') +
         wxLine(s) +
       '</div><div class="bib-foot"></div></section>';
   }
@@ -1972,7 +1994,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
             '<td class="t-val ' + (ctx.meta.kind === 'hit' ? 'good' : '') + '">' + (ctx.meta.kind === 'hit' ? 'batida' : ctx.meta.kind === 'base' ? 'base' : 'não batida') + '</td></tr>' : '';
           era = '<table class="tbl era-tbl"><thead><tr><th colspan="2">Na época</th></tr></thead><tbody>' + objRow + metaRow + '</tbody></table>';
         }
-        var prs = s.prs && s.prs.length ? '<ul class="rec-lines"><li>Recorde em ' + esc(joinPt(s.prs.map(function(k){ return DIST_BY[k].label; }))) + '</li></ul>' : '';
+        var ruaPrs = (s.prsBy && s.prsBy.rua) || s.prs || [];
+        var prs = ruaPrs.length ? '<ul class="rec-lines"><li>Recorde na rua em ' + esc(joinPt(ruaPrs.map(function(k){ return DIST_BY[k].label; }))) + '</li></ul>' : '';
         var splitTbl = splitsTable(doc);
         return '<article class="bib">' +
           '<div class="band band-prova"><span>' + esc(name) + '</span><span class="bd">' + (info.km ? info.km + ' km' : fmtKm(s.km) + ' km') + '</span></div>' +
@@ -1985,7 +2008,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
               '<div><span class="st-v">' + (s.effort != null ? s.effort : '--') + '</span><span class="st-k">Esforço</span></div>' +
             '</div>' + era + splitTbl +
             '<dl class="rc-grid">' +
-              '<div><dt>No relógio</dt><dd>' + fmtKm(s.km) + ' km em ' + fmtTime(s.elapsed) + '</dd></div>' +
+              '<div><dt>No relógio</dt><dd>' + fmtKm(s.watchKm != null ? s.watchKm : s.km) + ' km em ' + fmtTime(s.elapsed) + '</dd></div>' +
               (function(){ var w = wxOfSession(s); return w ? '<div><dt>Clima na largada</dt><dd>' + fmtWx(w) + '</dd></div>' : ''; })() +
               inside.join('') +
             '</dl>' + prs +
@@ -2091,7 +2114,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var p = function(t, x){ return '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
     return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Esteira usa a distância do relógio, que bate com o painel da máquina no total do treino. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
       p('Melhores esforços', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
-      p('Provas e distâncias conferidas', 'Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
+      p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
       p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
@@ -3574,6 +3597,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
+        else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; }
         else if (d.col === 'config' && d.id === 'pauses') { PAUSES = v.weeks && typeof v.weeks === 'object' ? v.weeks : {}; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
       });
