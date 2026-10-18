@@ -656,7 +656,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var goalK = '5000';
   try { var sk = localStorage.getItem(lsKey('recordes-meta-k')); if (GOAL_KEYS.indexOf(sk) !== -1) goalK = sk; } catch(e) {}
   var GOAL = getGoal(goalK);
-  var GOAL_RULE = 4;
+  var GOAL_RULE = 5;
   var NO_RACE_DAYS = 42;
   var NEXT_LO = 0.93, NEXT_HI = 0.95;
   var goalLoaded = false;
@@ -1254,9 +1254,41 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Base is fixed until the goal is beaten in a race (tagged Race in Strava).
      Then that race time becomes the new base, and the goal is set
      5 to 7 percent below the base. Training never moves the goal. */
+  /* Rebuilds a goal from the whole street history with the same rule the app
+     applies day to day, so the goal card and the Dupla count the same hits. */
+  function rebuildGoal(k){
+    var tb = analyze(state.sessions, 'rua').tables[k];
+    if (!tb || !tb.length) return false;
+    var entries = tb.slice().filter(function(e){ return e.s.d; }).sort(function(a, b){ return a.s.date < b.s.date ? -1 : a.s.date > b.s.date ? 1 : 0; });
+    var races = state.sessions.filter(function(x){ return x.race && x.d; });
+    function noRecentRace(s){
+      var lim = s.d.getTime() - NO_RACE_DAYS * 86400000;
+      return !races.some(function(r){ return r.date < s.date && r.d.getTime() >= lim; });
+    }
+    var g = getGoal(k), hist = [];
+    g.baseT = null;
+    entries.forEach(function(e){
+      var kind = e.s.race ? 'prova' : 'treino', d = isoOf(e.s.d);
+      if (g.baseT == null) { g.baseT = e.t; g.baseDate = d; g.baseKind = kind; }
+      else if (e.t <= g.hi && (e.s.race || isTrainDist(k) || noRecentRace(e.s))) {
+        hist.push({ t: e.t, date: d, kind: kind, lo: g.lo, hi: g.hi, baseT: g.baseT, baseDate: g.baseDate, setDate: g.setDate });
+        g.baseT = e.t; g.baseDate = d; g.baseKind = kind;
+      } else return;
+      var hi = Math.round(g.baseT * NEXT_HI);
+      g.hi = hi; g.lo = Math.min(hi, Math.round(g.baseT * NEXT_LO)); g.setDate = g.baseDate; g.rule = GOAL_RULE;
+    });
+    g.history = hist; g.lastHit = hist.length ? hist[hist.length - 1] : null;
+    return true;
+  }
   function maybeUpdateGoal(){
     if (!allAnalyzed()) return;
     var sel = GOAL, any = false;
+    if (GOAL_KEYS.some(function(k){ return GOALS[k] && GOALS[k].baseT != null && GOALS[k].rule !== GOAL_RULE; })) {
+      GOAL_KEYS.forEach(function(k){ rebuildGoal(k); });
+      GOAL = getGoal(goalK);
+      persistGoals();
+      return;
+    }
     GOAL_KEYS.forEach(function(k){
       if (!GOALS[k] && !currentBest(k)) return;
       GOAL = getGoal(k);
