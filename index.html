@@ -3,6 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+/* Error monitoring (Sentry) and visit counts (Vercel Web Analytics), only on the published app.
+   No personal data is sent: Sentry gets the error, the screen and the athlete's first name. */
+window.sentryOnLoad = function(){
+  Sentry.init({ enabled: location.hostname === 'recordes-pi.vercel.app', environment: 'production', sendDefaultPii: false });
+  try { var m = JSON.parse(localStorage.getItem('rc-me') || 'null'); if (m && m.firstname) Sentry.setTag('atleta', m.firstname); } catch (e) {}
+};
+window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script async src="https://js.sentry-cdn.com/dd4ad173e5003051fd946aae98ce0c5c.min.js" crossorigin="anonymous"></script>
+<script defer src="/_vercel/insights/script.js"></script>
 <title>Recordes</title>
 <meta name="theme-color" content="#E7EAED" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1D2126" media="(prefers-color-scheme: dark)">

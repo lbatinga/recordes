@@ -29,6 +29,11 @@ PWA pessoal que lê os treinos de corrida do Strava e mostra recordes, metas, pr
 
 O código da função está em `supabase/functions/api/index.ts` (cópia de referência; o deploy é feito no Supabase).
 
+## Monitoramento
+
+- **Sentry**: projeto `recordes` na organização `batinga`. Erros do app no celular chegam lá (só no endereço publicado), com a etiqueta `atleta` (primeiro nome).
+- **Vercel Web Analytics**: contagem de visitas por tela e aparelho, sem identificar ninguém. Precisa estar ligado em Project → Analytics.
+
 ## Limites do Strava
 
 200 leituras a cada 15 min e 2.000 por dia para o app inteiro, até 10 atletas. O primeiro acesso de alguém novo calcula os esforços treino a treino; se bater no limite, o app pausa e continua sozinho.

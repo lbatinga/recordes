@@ -2,7 +2,7 @@
 // Keeps the app shell available offline. The page itself is always fetched
 // from the network first so updates show up on the next open; Strava data
 // is never cached here (it goes through the backend with no-store).
-const CACHE = 'rc-shell-v3';
+const CACHE = 'rc-shell-v4';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -22,6 +22,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/_vercel/')) return; // analytics goes straight to the network
   e.respondWith(
     fetch(req)
       .then((res) => {
