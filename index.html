@@ -469,6 +469,13 @@ dialog.dlg{border:0;border-radius:14px;padding:0;width:min(520px,calc(100vw - 24
 dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg form{padding:6px 18px 18px;display:grid;gap:12px}
 .dlg label{display:grid;gap:4px;font-size:14px;font-weight:600;color:var(--muted)}
+.dlg .hint{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.dlg select{font:inherit;font-size:16px;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:44px;width:100%;box-sizing:border-box}
+.pz-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.pz-list li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px}
+.pz-w{font-weight:700;color:var(--ink)}
+.pz-r{grid-column:1;color:var(--muted)}
+.pz-list .linkbtn{grid-column:2;grid-row:1 / span 2;align-self:center;font-size:13px}
 .dlg input{font:inherit;font-size:17px;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:44px;width:100%;box-sizing:border-box}
 .dlg .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .dlg .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:4px}
@@ -575,13 +582,29 @@ html,body{overscroll-behavior-y:contain}
     </div>
     <div class="row2">
       <label>Número de peito<input name="bib" type="text" inputmode="numeric" autocomplete="off"></label>
-      <label>Observação<input name="note" type="text" autocomplete="off"></label>
+      <label>Tempo oficial<input name="chip" type="text" inputmode="decimal" autocomplete="off" placeholder="52:18"></label>
     </div>
+    <label>Observação<input name="note" type="text" autocomplete="off"></label>
+    <p class="hint" id="chip-hint">Tempo oficial: o líquido, do resultado da prova. Quando preenchido, vale no lugar do tempo do Strava nos recordes e nas metas.</p>
     <p class="err" id="race-err" hidden></p>
     <div class="acts">
       <button type="button" class="btn del" id="race-del" hidden>Excluir</button>
       <button type="button" class="btn" id="race-cancel">Cancelar</button>
       <button type="submit" class="btn" id="race-save">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="pause-dlg" class="dlg" aria-labelledby="pause-dlg-title">
+  <div class="help-head"><h2 id="pause-dlg-title">Pausar uma semana</h2></div>
+  <form id="pause-form" method="dialog" novalidate>
+    <p class="hint">A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 treinos nela, conta normal. Nessa semana não chega aviso.</p>
+    <label>Semana<select name="week"></select></label>
+    <label>Motivo<input name="reason" type="text" maxlength="80" autocomplete="off" placeholder="Atestado, crise de coluna"></label>
+    <p class="err" id="pause-err" hidden></p>
+    <div class="acts">
+      <button type="button" class="btn" id="pause-cancel">Cancelar</button>
+      <button type="submit" class="btn" id="pause-save">Pausar</button>
     </div>
   </form>
 </dialog>
@@ -976,10 +999,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       });
       var doc = effortDocs[s.id];
       var efforts = (doc && doc.efforts) || {};
+      var rInfo = s.race ? infoFor(s.d) : null;
+      var chipT = rInfo && rInfo.chip > 0 && rInfo.km > 0 ? rInfo.chip : 0;
       DISTS.forEach(function(D){
         var t = Number(efforts[D.k]);
         var official = false;
-        if (!(t > 0) && s.gpsMeters < D.m && ((s.race && s.gpsMeters >= D.m * RACE_TOL) || (s.verified && s.meters >= D.m))) {
+        // The official result, when typed in, is the time at the race distance.
+        if (chipT && Math.abs(D.m - rInfo.km * 1000) < 1) { t = chipT; official = true; }
+        else if (!(t > 0) && s.gpsMeters < D.m && ((s.race && s.gpsMeters >= D.m * RACE_TOL) || (s.verified && s.meters >= D.m))) {
           t = s.elapsed;
           official = true;
         }
@@ -1217,6 +1244,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       GOAL.baseT = b.t; GOAL.baseDate = isoOf(b.s.d); GOAL.baseKind = b.s.race ? 'prova' : 'treino';
       setGoalFromBase();
       changed = true;
+    } else if (chipRebase()) {
+      changed = true;
     } else if (GOAL.rule !== GOAL_RULE) {
       setGoalFromBase();
       changed = true;
@@ -1238,6 +1267,21 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       }
     }
     return changed;
+  }
+
+  /* The official time usually arrives after the app already used the Strava
+     time as the base. When the base race now has an official time for this
+     distance, it replaces the base and the goal is recalculated from it. */
+  function chipRebase(){
+    if (GOAL.baseKind !== 'prova' || !GOAL.baseDate || GOAL.baseT == null) return false;
+    var info = infoFor(parseIso(GOAL.baseDate));
+    if (!info || !(info.chip > 0) || keyForKm(info.km) !== GOAL.k) return false;
+    if (Math.abs(info.chip - GOAL.baseT) < 0.05) return false;
+    GOAL.baseT = info.chip;
+    if (GOAL.lastHit && GOAL.lastHit.date === GOAL.baseDate) GOAL.lastHit.t = info.chip;
+    (GOAL.history || []).forEach(function(h){ if (h.date === GOAL.baseDate) h.t = info.chip; });
+    setGoalFromBase();
+    return true;
   }
 
   function kindDate(kind, d, official){
@@ -1500,6 +1544,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   var WEEK_TARGET = 2;
   var WEEK_PLAN = 3;
+  /* Paused weeks (sick note, travel): keyed by the Sunday that starts the week,
+     with the reason. A paused week short of the target neither counts nor breaks
+     the streak; a paused week that reached the target still counts. */
+  var PAUSES = {};
+  var lastStreak = null;
   var KM_MARKS = [25, 50, 100, 200, 300, 500, 750, 1000];
   var DIST_MARKS = [
     { m:3000, label:'3 km' }, { m:4000, label:'4 km' }, { m:5000, label:'5 km' }, { m:6000, label:'6 km' },
@@ -1532,7 +1581,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var weeks = [];
     if (first) {
       for (var w = weekStart(first); w <= cur; w = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7)) {
-        weeks.push({ start: w, n: counts[w.getTime()] || 0 });
+        weeks.push({ start: w, n: counts[w.getTime()] || 0, pause: PAUSES[isoOf(w)] || '' });
       }
     }
     var best = { len: 0, from: null, to: null }, run = 0, runFrom = null;
@@ -1541,14 +1590,19 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         if (!run) runFrom = wk.start;
         run++;
         if (run > best.len) best = { len: run, from: runFrom, to: wk.start };
-      } else run = 0;
+      } else if (!wk.pause) run = 0;
     });
-    var thisWeek = weeks.length ? weeks[weeks.length - 1].n : 0;
+    var last = weeks.length ? weeks[weeks.length - 1] : null;
+    var thisWeek = last ? last.n : 0;
     var current = 0;
     var i = weeks.length - 1;
     if (i >= 0 && weeks[i].n < WEEK_TARGET) i--;
-    for (; i >= 0 && weeks[i].n >= WEEK_TARGET; i--) current++;
-    return { current: current, best: best, thisWeek: thisWeek };
+    for (; i >= 0; i--) {
+      if (weeks[i].n >= WEEK_TARGET) current++;
+      else if (!weeks[i].pause) break;
+    }
+    return { current: current, best: best, thisWeek: thisWeek, weeks: weeks,
+      pausedNow: last && last.n < WEEK_TARGET ? last.pause : '' };
   }
 
   /* ---------- monthly medals ---------- */
@@ -1656,6 +1710,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
     // 1. weekly consistency
     var st = streakInfo(asc);
+    lastStreak = st;
     var dots = '';
     for (var d = 0; d < WEEK_PLAN; d++) dots += '<span class="wk-dot' + (d < st.thisWeek ? ' on' : '') + (d >= WEEK_TARGET ? ' bonus' : '') + '"></span>';
     var bestTxt = st.best.len
@@ -1666,6 +1721,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<div class="ch-top"><span class="ch-num">' + st.current + '</span><span class="ch-txt">' + (st.current === 1 ? 'semana seguida' : 'semanas seguidas') + '</span></div>' +
       '<div class="wk-row"><span>Esta semana: ' + Math.min(st.thisWeek, 99) + (st.thisWeek === 1 ? ' treino' : ' treinos') + '</span><span class="wk-dots">' + dots + '</span></div>' +
       (bestTxt ? '<p class="ch-note">' + bestTxt + '</p>' : '') +
+      pauseBlock() +
       pushControl() +
       '</section>';
 
@@ -1916,7 +1972,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
             (info.bib ? '<p class="bib-num">' + esc(info.bib) + '</p>' : '<p class="bib-num time">' + fmtTime(resT) + '</p>') +
             '<p class="bib-sub">' + fmtDate(s.d) + (local ? ', ' + esc(local) : '') + '</p>' +
             '<div class="bib-stats">' +
-              '<div><span class="st-v">' + fmtTime(resT) + '</span><span class="st-k">Tempo nos ' + fmtKmShort(distKm) + ' km</span></div>' +
+              '<div><span class="st-v">' + fmtTime(resT) + '</span><span class="st-k">' + (info.chip > 0 ? 'Tempo oficial nos ' : 'Tempo nos ') + fmtKmShort(distKm) + ' km</span></div>' +
               '<div><span class="st-v">' + fmtPace(resT / distKm) + '</span><span class="st-k">Ritmo por km</span></div>' +
               '<div><span class="st-v">' + (s.effort != null ? s.effort : '--') + '</span><span class="st-k">Esforço</span></div>' +
             '</div>' + era + splitTbl +
@@ -2027,12 +2083,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var p = function(t, x){ return '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
     return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Esteira usa a distância do relógio, que bate com o painel da máquina no total do treino. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
       p('Melhores esforços', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
-      p('Provas e distâncias conferidas', 'Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar.') +
+      p('Provas e distâncias conferidas', 'Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
       p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos; o plano pede 3. Em prova, vale a distância oficial.') +
+      p('Semana pausada', 'No card de Constância, em Pausar uma semana, escolha a semana e escreva o motivo (atestado, viagem). Ela não conta pra sequência, mas também não zera; se tiver 2 treinos, conta normal. Dá pra pausar a semana atual e as 8 anteriores, e nessa semana não chega aviso. A sequência da Dupla segue a mesma regra.') +
       p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia, o primeiro peso novo do dia; se o valor não mudou, o app entende que você não se pesou. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
       p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
@@ -3072,6 +3129,67 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (b.getAttribute('data-push') === 'on') enablePush(); else disablePush();
   });
 
+  /* ---------- paused weeks ---------- */
+
+  function weekLabel(w){ var e = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 6); return fmtShort(w) + ' a ' + fmtShort(e); }
+  function pauseBlock(){
+    var from = isoOf(new Date(Date.now() - 182 * 86400000));
+    var rows = Object.keys(PAUSES).filter(function(k){ return k >= from; }).sort().reverse().map(function(k){
+      return '<li><span class="pz-w">Pausada: ' + weekLabel(parseIso(k)) + '</span><span class="pz-r">' + esc(PAUSES[k]) + '</span>' +
+        '<button type="button" class="linkbtn" data-unpause="' + k + '">Tirar pausa</button></li>';
+    }).join('');
+    return (rows ? '<ul class="pz-list" aria-label="Semanas pausadas">' + rows + '</ul>' : '') +
+      '<p class="ch-push"><button type="button" class="linkbtn" data-pause-open>Pausar uma semana</button> (atestado, viagem)</p>';
+  }
+  function pauseField(n){ return $('#pause-form').elements.namedItem(n); }
+  function openPauseDlg(){
+    var counts = {};
+    ((lastStreak && lastStreak.weeks) || []).forEach(function(w){ counts[isoOf(w.start)] = w.n; });
+    var cur = weekStart(new Date()), opts = [];
+    for (var i = 0; i < 9; i++) {
+      var w = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - 7 * i), k = isoOf(w), n = counts[k] || 0;
+      if (PAUSES[k] || n >= WEEK_TARGET) continue;
+      opts.push('<option value="' + k + '">' + weekLabel(w) + (i === 0 ? ' (esta semana)' : '') + ', ' + n + (n === 1 ? ' treino' : ' treinos') + '</option>');
+    }
+    pauseField('week').innerHTML = opts.join('');
+    pauseField('reason').value = '';
+    var err = $('#pause-err');
+    err.hidden = !!opts.length;
+    err.textContent = opts.length ? '' : 'Nas últimas semanas, as que ficaram com menos de 2 treinos já estão pausadas.';
+    $('#pause-save').disabled = !opts.length;
+    var dlg = $('#pause-dlg');
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  }
+  function closePauseDlg(){ var dlg = $('#pause-dlg'); if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); }
+  function savePauses(){
+    putDoc('config', 'pauses', { weeks: PAUSES });
+    flushDocs();
+    bumpData();
+    render();
+  }
+  $('#pause-form').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var k = pauseField('week').value, why = pauseField('reason').value.trim().slice(0, 80);
+    var err = $('#pause-err');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) { err.textContent = 'Escolha a semana.'; err.hidden = false; return; }
+    if (!why) { err.textContent = 'Coloque o motivo.'; err.hidden = false; return; }
+    PAUSES[k] = why;
+    closePauseDlg();
+    savePauses();
+  });
+  $('#pause-cancel').addEventListener('click', closePauseDlg);
+  $('#pause-form').addEventListener('input', function(){ $('#pause-err').hidden = true; });
+  document.addEventListener('click', function(ev){
+    var t = ev.target;
+    if (t.closest && t.closest('[data-pause-open]')) { openPauseDlg(); return; }
+    var un = t.closest && t.closest('[data-unpause]');
+    if (!un) return;
+    var k = un.getAttribute('data-unpause');
+    if (!PAUSES[k] || !window.confirm('Tirar a pausa de ' + weekLabel(parseIso(k)) + '?')) return;
+    delete PAUSES[k];
+    savePauses();
+  });
+
   /* ---------- runs together (duo) ---------- */
 
   function togetherBlock(a, b){
@@ -3304,6 +3422,20 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   /* ---------- race editor ---------- */
 
+  // Official (chip) time: "52:18", "0:52:18.128", "52:18,1", "1:02:03".
+  function parseChip(v){
+    var m = /^(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:[.,](\d{1,3}))?$/.exec(String(v || '').trim());
+    if (!m || +m[3] > 59 || (m[1] && +m[2] > 59)) return null;
+    var t = (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (m[4] ? +('0.' + m[4]) : 0);
+    return t > 0 ? Math.round(t * 1000) / 1000 : null;
+  }
+  function fmtChip(t){
+    var whole = Math.floor(t + 1e-9), ms = Math.round((t - whole) * 1000);
+    var h = Math.floor(whole / 3600), m = Math.floor(whole % 3600 / 60), s = whole % 60;
+    var frac = ms ? ',' + String(ms).padStart(3, '0').replace(/0+$/, '') : '';
+    return (h ? h + ':' + pad(m) : m) + ':' + pad(s) + frac;
+  }
+
   var raceEdit = null;
   function raceField(n){ return $('#race-form').elements.namedItem(n); }
   function openRaceDlg(date, pastId){
@@ -3318,6 +3450,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     raceField('bib').value = r ? r.bib || '' : '';
     raceField('note').value = r ? r.note || '' : '';
     raceField('time').value = r ? r.time || '' : '';
+    raceField('chip').value = r && r.chip > 0 ? fmtChip(r.chip) : '';
     $('#race-dlg-title').textContent = r ? 'Editar prova' : 'Nova prova';
     $('#race-del').hidden = !r;
     $('#race-err').hidden = true;
@@ -3339,10 +3472,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!(km > 0 && km <= 300)) return raceErr('Coloque a distância em km, como 5 ou 21,1.');
     var clash = RACE_INFO.filter(function(x){ return x.date === date && x.date !== (raceEdit && raceEdit.orig); })[0];
     if (clash) return raceErr('Já existe uma prova nesse dia.');
+    var chipRaw = String(raceField('chip').value).trim();
+    var chip = chipRaw ? parseChip(chipRaw) : 0;
+    if (chipRaw && !chip) return raceErr('Tempo oficial no formato 52:18 ou 1:02:03 (pode ter décimos, como 52:18,128).');
     var old = raceEdit && raceEdit.orig ? RACE_INFO.filter(function(x){ return x.date === raceEdit.orig; })[0] : null;
     var item = { date: date, name: name, short: old && old.name === name ? old.short : name, km: Math.round(km * 1000) / 1000,
       local: raceField('local').value.trim() || 'A confirmar', bib: raceField('bib').value.trim(), note: raceField('note').value.trim(),
-      time: /^\d{2}:\d{2}$/.test(raceField('time').value) ? raceField('time').value : '' };
+      time: /^\d{2}:\d{2}$/.test(raceField('time').value) ? raceField('time').value : '', chip: chip || 0 };
     var list = RACE_INFO.filter(function(x){ return !old || x !== old; }).concat([item]);
     setRaces(list);
     saveRaces();
@@ -3375,7 +3511,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     (Array.isArray(list) ? list : []).forEach(function(r){
       if (!r || !/^\d{4}-\d{2}-\d{2}$/.test(r.date || '') || !(Number(r.km) > 0)) return;
       RACE_INFO.push({ date: r.date, bib: r.bib ? String(r.bib) : '', short: r.short || r.name || 'Prova', name: r.name || r.short || 'Prova',
-        km: Number(r.km), local: r.local || '', note: r.note || '', time: /^\d{2}:\d{2}$/.test(r.time || '') ? r.time : '' });
+        km: Number(r.km), local: r.local || '', note: r.note || '', time: /^\d{2}:\d{2}$/.test(r.time || '') ? r.time : '',
+        chip: Number(r.chip) > 0 ? Number(r.chip) : 0 });
     });
     RACE_INFO.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
   }
@@ -3395,6 +3532,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
+        else if (d.col === 'config' && d.id === 'pauses') { PAUSES = v.weeks && typeof v.weeks === 'object' ? v.weeks : {}; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
       });
       GOAL = getGoal(goalK);

@@ -190,7 +190,14 @@ function weekKey(iso: string): string {
   d.setUTCDate(d.getUTCDate() - d.getUTCDay());
   return d.toISOString().slice(0, 10);
 }
-async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: number }> {
+// Weeks the athlete paused (sick note, travel) neither count nor break the streak.
+async function readPauses(aid: number): Promise<Record<string, string>> {
+  const { data } = await sb.from('docs').select('data').eq('athlete_id', aid).eq('col', 'config').eq('id', 'pauses').maybeSingle();
+  const w = data?.data?.weeks;
+  return w && typeof w === 'object' ? w : {};
+}
+async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: number; paused: boolean }> {
+  const pauses = await readPauses(aid);
   const after = Math.floor(Date.now() / 1000) - 100 * 86400;
   const acts = await stravaGet(aid, '/athlete/activities?per_page=200&after=' + after);
   const counts: Record<string, number> = {};
@@ -206,9 +213,11 @@ async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: numb
   const w = new Date(cur + 'T00:00:00Z');
   for (let i = 0; i < 14; i++) {
     w.setUTCDate(w.getUTCDate() - 7);
-    if ((counts[w.toISOString().slice(0, 10)] ?? 0) >= 2) streak++; else break;
+    const k = w.toISOString().slice(0, 10);
+    if ((counts[k] ?? 0) >= 2) streak++;
+    else if (!pauses[k]) break;
   }
-  return { thisWeek: counts[cur] ?? 0, streak };
+  return { thisWeek: counts[cur] ?? 0, streak, paused: !!pauses[cur] };
 }
 function reminderText(day: number, thisWeek: number, streak: number): { title: string; body: string } | null {
   const need = 2 - thisWeek;
@@ -311,7 +320,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
       const aid = Number(row.athlete_id);
       try {
         const st = await weekStatus(aid);
-        const msg = reminderText(day, st.thisWeek, st.streak);
+        const msg = st.paused ? null : reminderText(day, st.thisWeek, st.streak);
         if (!msg) { none++; continue; }
         const r = await sendPush(aid, { ...msg, tag: 'constancia' });
         sent += r.sent; fail += r.failed;
