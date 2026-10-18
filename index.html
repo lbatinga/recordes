@@ -1602,7 +1602,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function streakInfo(list){
     var counts = {}, first = null;
     list.forEach(function(s){
-      if (!s.d) return;
+      // Warm-ups don't count: a run needs 1 km or 10 minutes to count as a training.
+      if (!s.d || !(s.km >= 1 || s.time >= 600)) return;
       var k = weekStart(s.d).getTime();
       counts[k] = (counts[k] || 0) + 1;
       if (!first || s.d < first) first = s.d;
@@ -2119,7 +2120,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
-      p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos; o plano pede 3. Em prova, vale a distância oficial.') +
+      p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos de 1 km ou 10 minutos, no mínimo (aquecimento curto não conta); o plano pede 3. Em prova, vale a distância oficial.') +
       p('Semana pausada', 'No card de Constância, em Pausar uma semana, escolha a semana e escreva o motivo (atestado, viagem). Ela não conta pra sequência, mas também não zera; se tiver 2 treinos, conta normal. Dá pra pausar a semana atual e as 8 anteriores, e nessa semana não chega aviso. A sequência da Dupla segue a mesma regra.') +
       p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia, o primeiro peso novo do dia; se o valor não mudou, o app entende que você não se pesou. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
       p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +

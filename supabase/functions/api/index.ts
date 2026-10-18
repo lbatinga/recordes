@@ -205,6 +205,7 @@ async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: numb
   (Array.isArray(acts) ? acts : []).forEach((a: any) => {
     const t = a.sport_type || a.type;
     if (!['Run', 'TrailRun', 'VirtualRun'].includes(t) || !(a.distance > 0)) return;
+    if (!(a.distance >= 1000 || a.moving_time >= 600)) return; // warm-ups don't count
     const k = weekKey(String(a.start_date_local ?? ''));
     counts[k] = (counts[k] ?? 0) + 1;
   });
