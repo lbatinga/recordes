@@ -536,6 +536,14 @@ html,body{overscroll-behavior-y:contain}
 .recap-msg{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .recap-msg strong{margin:0}
 .duo-together{margin-top:16px;padding:14px 16px}
+.duo-next{margin-bottom:16px}
+.nt-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--bib-line, rgba(0,0,0,.2))}
+.nt-col{display:grid;gap:1px}
+.nt-col .nm{font-weight:800;font-size:16px;margin-bottom:4px}
+.nt-col .t-sub{font-size:12px;color:var(--bib-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:6px}
+.nt-col .v{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.duo-months td.win{color:var(--ok);font-weight:800}
+.duo-months .t-sub, .duo-races .t-sub{display:block;font-weight:500}
 .duo-together .dt-top{display:flex;align-items:baseline;gap:10px}
 .duo-together .dt-n{font-family:var(--font-num);font-weight:800;font-size:44px;line-height:1}
 .duo-together .dt-t{font-weight:700}
@@ -3444,7 +3452,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       Object.keys(sim).forEach(function(id){ var x = byId[id]; if (sim[id].beat && x && x.d && isoOf(x.d) >= since90) beats++; });
     });
     return {
-      v: 5, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
+      v: 6, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
+      nextRaces: duoNextRaces(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
       ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
@@ -3452,6 +3461,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
       medals: (kt + 1) + (dt + 1), beats: beats
     };
+  }
+  function duoNextRaces(){
+    var today = isoOf(new Date());
+    return RACE_INFO.filter(function(r){ return r.date >= today; }).slice(0, 4).map(function(r){
+      var k = keyForKm(r.km), best = k ? currentBest(k) : null, g = k ? GOALS[k] : null;
+      return { date: r.date, short: r.short || r.name, km: r.km, obj: best ? Math.round(best.t * 10) / 10 : null,
+        lo: g && g.baseT != null ? g.lo : null, hi: g && g.baseT != null ? g.hi : null };
+    });
+  }
+  function duoPastRaces(tables){
+    var from = isoMinus(365);
+    return state.sessions.filter(function(x){ return x.race && x.d && isoOf(x.d) >= from; }).map(function(x){
+      var info = infoFor(x.d) || {}, k = info.km ? keyForKm(info.km) : null, t = null;
+      (k && tables[k] || []).forEach(function(e){ if (e.s === x && t == null) t = e.t; });
+      return { date: isoOf(x.d), short: raceShort(x), km: info.km || Math.round(x.km * 100) / 100, t: Math.round((t || x.elapsed) * 1000) / 1000, off: !!info.chip };
+    }).sort(function(a, b){ return a.date < b.date ? 1 : -1; });
   }
   function publishSummary(){
     if (!db || !session || !allAnalyzed()) return;
@@ -3478,6 +3503,47 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (partnerLoaded && !partner && view === 'dupla') { view = 'inicio'; }
   }
 
+  function nextTogetherCard(mine, his, myName, hisName){
+    var hn = {}; (his.nextRaces || []).forEach(function(r){ hn[r.date] = r; });
+    var a = (mine.nextRaces || []).filter(function(r){ return hn[r.date]; })[0];
+    if (!a) return '';
+    var b = hn[a.date], d = parseIso(a.date), days = Math.round((d - dayOnly(new Date())) / 86400000);
+    function col(nm, r){
+      return '<div class="nt-col"><span class="nm">' + esc(nm) + '</span>' +
+        '<span class="t-sub">Objetivo</span><span class="v">' + (r.obj ? fmtTime(r.obj) : '--') + '</span>' +
+        '<span class="t-sub">Meta</span><span class="v">' + (r.hi ? fmtGoalOf(r) : '--') + '</span></div>';
+    }
+    return '<article class="bib duo-next"><div class="band band-prova"><span>Próxima prova juntos: ' + esc(a.short) + '</span><span class="bd">' + a.km + ' km</span></div>' +
+      '<div class="bib-body"><div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
+      '<p class="bib-sub">' + fmtDate(d) + '</p><div class="nt-grid">' + col(myName, a) + col(hisName, b) + '</div></div><div class="bib-foot"></div></article>';
+  }
+  function racesTogetherBlock(mine, his, myName, hisName){
+    var hp = {}; (his.pastRaces || []).forEach(function(r){ hp[r.date] = r; });
+    var rows = (mine.pastRaces || []).filter(function(r){ return hp[r.date]; });
+    if (!rows.length) return '';
+    return '<h3 class="h3">Provas juntos</h3><table class="tbl duo-races"><thead><tr><th>Prova</th><th class="num">' + esc(myName) + '</th><th class="num">' + esc(hisName) + '</th></tr></thead><tbody>' +
+      rows.map(function(r){
+        var o = hp[r.date];
+        return '<tr><td><span class="t-lbl">' + esc(r.short) + '</span><span class="t-sub">' + fmtShort(parseIso(r.date)) + ', ' + r.km + ' km</span></td>' +
+          '<td class="num">' + fmtTime(r.t) + (r.off ? '<span class="t-sub">oficial</span>' : '') + '</td>' +
+          '<td class="num">' + fmtTime(o.t) + (o.off ? '<span class="t-sub">oficial</span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  var duoHist = {};
+  function monthsBlock(pa, pb, myName, hisName){
+    var k = mkey(new Date());
+    if (!duoHist[k] || duoHist[k].a !== pa || duoHist[k].b !== pb) {
+      duoHist[k] = { a: pa, b: pb };
+      if (db) putDoc('config', 'duohist', { months: duoHist });
+    }
+    var keys = Object.keys(duoHist).sort().reverse().slice(0, 12);
+    return '<h3 class="h3">Placar por mês</h3><table class="tbl duo-months"><thead><tr><th>Mês</th><th class="num">' + esc(myName) + '</th><th class="num">' + esc(hisName) + '</th></tr></thead><tbody>' +
+      keys.map(function(m){
+        var x = duoHist[m], wa = x.a > x.b, wb = x.b > x.a;
+        return '<tr><td>' + mlabel(m, true).replace(/^./, function(c){ return c.toUpperCase(); }) + (m === k ? '<span class="t-sub">até agora</span>' : '') + '</td>' +
+          '<td class="num' + (wa ? ' win' : '') + '">' + x.a + '</td><td class="num' + (wb ? ' win' : '') + '">' + x.b + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
   function recSub(x){
     if (x.recNow && x.recPrev) return fmtTime(x.recPrev) + ' → ' + fmtTime(x.recNow);
     return x.recNow ? 'sem 5 km nos 90 dias antes' : 'sem 5 km nos últimos 90 dias';
@@ -3524,13 +3590,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var table = '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>';
     if (waiting) return '<div class="msg"><strong>Esperando ' + esc(hisName) + '</strong>O placar começa quando ' + esc(hisName) + ' abrir o app. Por enquanto, seus números:</div>' + table;
     var together = togetherBlock(mine.runs, his.runs);
-    return '<article class="bib duo-score"><div class="band band-prova"><span>Placar</span><span class="bd">' + MON_FULL[new Date().getMonth()] + '</span></div>' +
+    return nextTogetherCard(mine, his, myName, hisName) +
+      '<article class="bib duo-score"><div class="band band-prova"><span>Placar</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
       '<div class="bib-body"><div class="duo-names">' +
         '<div><p class="bib-num">' + pa + '</p><span class="nm">' + esc(myName) + '</span></div>' +
         '<span class="x">×</span>' +
         '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
       '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
-      together + table +
+      together + table + monthsBlock(pa, pb, myName, hisName) + racesTogetherBlock(mine, his, myName, hisName) +
       (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.</p>' : '');
   }
 
@@ -3647,6 +3714,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
         else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; }
+        else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; }
         else if (d.col === 'config' && d.id === 'pauses') { PAUSES = v.weeks && typeof v.weeks === 'object' ? v.weeks : {}; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
       });
