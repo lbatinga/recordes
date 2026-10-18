@@ -471,6 +471,14 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg label{display:grid;gap:4px;font-size:14px;font-weight:600;color:var(--muted)}
 .dlg .hint{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
 .dlg select{font:inherit;font-size:16px;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:44px;width:100%;box-sizing:border-box}
+.pz-weeks{border:0;margin:0;padding:0;display:grid;gap:6px;min-width:0}
+.pz-weeks legend{font-size:14px;font-weight:600;color:var(--muted);padding:0;margin-bottom:6px}
+.dlg .pz-opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);font-size:16px;color:var(--ink);font-weight:600;cursor:pointer}
+.dlg .pz-opt input{width:20px;height:20px;min-height:0;margin:0;padding:0;flex:none;accent-color:var(--prova-txt)}
+.dlg .pz-opt span{white-space:nowrap}
+.dlg .pz-opt small{margin-left:auto;color:var(--muted);font-weight:500;font-size:13px;text-align:right}
+.dlg .pz-opt:has(input:checked){border-color:var(--prova-txt)}
+.pz-nudge{margin:12px 0 0;font-size:14px;color:var(--ink);line-height:1.4}
 .pz-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
 .pz-list li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px}
 .pz-w{font-weight:700;color:var(--ink)}
@@ -599,7 +607,7 @@ html,body{overscroll-behavior-y:contain}
   <div class="help-head"><h2 id="pause-dlg-title">Pausar uma semana</h2></div>
   <form id="pause-form" method="dialog" novalidate>
     <p class="hint">A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 treinos nela, conta normal. Nessa semana não chega aviso.</p>
-    <label>Semana<select name="week"></select></label>
+    <fieldset class="pz-weeks"><legend>Semana</legend><div id="pause-weeks"></div></fieldset>
     <label>Motivo<input name="reason" type="text" maxlength="80" autocomplete="off" placeholder="Atestado, crise de coluna"></label>
     <p class="err" id="pause-err" hidden></p>
     <div class="acts">
@@ -3132,26 +3140,39 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* ---------- paused weeks ---------- */
 
   function weekLabel(w){ var e = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 6); return fmtShort(w) + ' a ' + fmtShort(e); }
+  /* Last week fell short and ended a streak: offer to pause exactly that week. */
+  function pauseNudge(){
+    var w = (lastStreak && lastStreak.weeks) || [];
+    var n = w.length, prev = w[n - 2];
+    if (!prev || prev.n >= WEEK_TARGET || prev.pause) return '';
+    var before = 0;
+    for (var i = n - 3; i >= 0; i--) { if (w[i].n >= WEEK_TARGET) before++; else if (!w[i].pause) break; }
+    if (!before) return '';
+    var k = isoOf(prev.start);
+    return '<p class="pz-nudge">A sequência de ' + before + (before === 1 ? ' semana' : ' semanas') + ' parou em ' + weekLabel(prev.start) +
+      ' (' + prev.n + (prev.n === 1 ? ' treino' : ' treinos') + '). Se foi atestado ou viagem, <button type="button" class="linkbtn" data-pause-open="' + k + '">pause essa semana</button>.</p>';
+  }
   function pauseBlock(){
     var from = isoOf(new Date(Date.now() - 182 * 86400000));
     var rows = Object.keys(PAUSES).filter(function(k){ return k >= from; }).sort().reverse().map(function(k){
       return '<li><span class="pz-w">Pausada: ' + weekLabel(parseIso(k)) + '</span><span class="pz-r">' + esc(PAUSES[k]) + '</span>' +
         '<button type="button" class="linkbtn" data-unpause="' + k + '">Tirar pausa</button></li>';
     }).join('');
-    return (rows ? '<ul class="pz-list" aria-label="Semanas pausadas">' + rows + '</ul>' : '') +
+    return pauseNudge() + (rows ? '<ul class="pz-list" aria-label="Semanas pausadas">' + rows + '</ul>' : '') +
       '<p class="ch-push"><button type="button" class="linkbtn" data-pause-open>Pausar uma semana</button> (atestado, viagem)</p>';
   }
   function pauseField(n){ return $('#pause-form').elements.namedItem(n); }
-  function openPauseDlg(){
+  function openPauseDlg(pick){
     var counts = {};
     ((lastStreak && lastStreak.weeks) || []).forEach(function(w){ counts[isoOf(w.start)] = w.n; });
     var cur = weekStart(new Date()), opts = [];
     for (var i = 0; i < 9; i++) {
       var w = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - 7 * i), k = isoOf(w), n = counts[k] || 0;
       if (PAUSES[k] || n >= WEEK_TARGET) continue;
-      opts.push('<option value="' + k + '">' + weekLabel(w) + (i === 0 ? ' (esta semana)' : '') + ', ' + n + (n === 1 ? ' treino' : ' treinos') + '</option>');
+      opts.push('<label class="pz-opt"><input type="radio" name="week" value="' + k + '"' + (k === pick ? ' checked' : '') + '><span>' + weekLabel(w) + '</span><small>' +
+        (i === 0 ? 'esta semana, ' : i === 1 ? 'semana passada, ' : '') + n + (n === 1 ? ' treino' : ' treinos') + '</small></label>');
     }
-    pauseField('week').innerHTML = opts.join('');
+    $('#pause-weeks').innerHTML = opts.join('');
     pauseField('reason').value = '';
     var err = $('#pause-err');
     err.hidden = !!opts.length;
@@ -3169,7 +3190,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   $('#pause-form').addEventListener('submit', function(ev){
     ev.preventDefault();
-    var k = pauseField('week').value, why = pauseField('reason').value.trim().slice(0, 80);
+    var picked = $('#pause-form input[name="week"]:checked');
+    var k = picked ? picked.value : '', why = pauseField('reason').value.trim().slice(0, 80);
     var err = $('#pause-err');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) { err.textContent = 'Escolha a semana.'; err.hidden = false; return; }
     if (!why) { err.textContent = 'Coloque o motivo.'; err.hidden = false; return; }
@@ -3181,7 +3203,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   $('#pause-form').addEventListener('input', function(){ $('#pause-err').hidden = true; });
   document.addEventListener('click', function(ev){
     var t = ev.target;
-    if (t.closest && t.closest('[data-pause-open]')) { openPauseDlg(); return; }
+    var po = t.closest && t.closest('[data-pause-open]');
+    if (po) { openPauseDlg(po.getAttribute('data-pause-open') || ''); return; }
     var un = t.closest && t.closest('[data-unpause]');
     if (!un) return;
     var k = un.getAttribute('data-unpause');
