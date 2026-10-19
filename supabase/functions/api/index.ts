@@ -401,17 +401,26 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     return json(req, { ok: true });
   }
   if (path === '/partner' && req.method === 'GET') {
-    // Only when both athletes point at each other (set by the owner, never by the app).
+    // config/partner (set by the owner, never by the app) holds athlete_id or athlete_ids.
+    // Someone shows up only when both sides list each other. One person = Dupla, two or more = Grupo.
+    // deno-lint-ignore no-explicit-any
+    const idsOf = (v: any): number[] => (Array.isArray(v?.athlete_ids) ? v.athlete_ids : v?.athlete_id ? [v.athlete_id] : [])
+      .map(Number).filter((x: number) => x > 0);
     const mine = await sb.from('docs').select('data').eq('athlete_id', aid).eq('col', 'config').eq('id', 'partner').maybeSingle();
-    const pid = Number(mine.data?.data?.athlete_id) || 0;
-    if (!pid || pid === aid) return json(req, { partner: null });
-    const theirs = await sb.from('docs').select('data').eq('athlete_id', pid).eq('col', 'config').eq('id', 'partner').maybeSingle();
-    if (Number(theirs.data?.data?.athlete_id) !== aid) return json(req, { partner: null });
-    const [sum, ath] = await Promise.all([
-      sb.from('docs').select('data, updated_at').eq('athlete_id', pid).eq('col', 'config').eq('id', 'summary').maybeSingle(),
-      sb.from('athletes').select('firstname').eq('athlete_id', pid).maybeSingle(),
+    const want = idsOf(mine.data?.data).filter((x) => x !== aid).slice(0, 9);
+    if (!want.length) return json(req, { partner: null, group: [] });
+    const [theirs, sums, aths] = await Promise.all([
+      sb.from('docs').select('athlete_id, data').in('athlete_id', want).eq('col', 'config').eq('id', 'partner'),
+      sb.from('docs').select('athlete_id, data, updated_at').in('athlete_id', want).eq('col', 'config').eq('id', 'summary'),
+      sb.from('athletes').select('athlete_id, firstname').in('athlete_id', want),
     ]);
-    return json(req, { partner: { id: pid, firstname: ath.data?.firstname ?? null, summary: sum.data?.data ?? null, updated_at: sum.data?.updated_at ?? null } });
+    const mutual = want.filter((pid) => (theirs.data ?? []).some((r) => Number(r.athlete_id) === pid && idsOf(r.data).includes(aid)));
+    const group = mutual.map((pid) => {
+      const sm = (sums.data ?? []).find((r) => Number(r.athlete_id) === pid);
+      const at = (aths.data ?? []).find((r) => Number(r.athlete_id) === pid);
+      return { id: pid, firstname: at?.firstname ?? null, summary: sm?.data ?? null, updated_at: sm?.updated_at ?? null };
+    });
+    return json(req, { partner: group[0] ?? null, group });
   }
   if (path === '/logout' && req.method === 'POST') {
     const tok = req.headers.get('x-session') ?? '';
