@@ -1663,6 +1663,112 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return s.race ? 'prova, ' + raceShort(s) : (s.walk ? 'caminhada' : (s.env === 'esteira' ? 'esteira' : 'rua'));
   }
 
+  /* ---------- firsts: continuous trot, pace, moments ---------- */
+  var TROT_MARKS = [
+    { s:300, label:'5 min seguidos' }, { s:600, label:'10 min seguidos' }, { s:720, label:'12 min seguidos' },
+    { s:1200, label:'20 min seguidos' }, { s:1800, label:'30 min seguidos' }, { m:5000, label:'5 km sem caminhar' }
+  ];
+  var PACE_MARKS = [
+    { k:'1000', t:600, label:'1 km abaixo de 10 min' }, { k:'1000', t:540, label:'1 km abaixo de 9 min' },
+    { k:'1000', t:480, label:'1 km abaixo de 8 min' }, { k:'5000', t:3300, label:'5 km abaixo de 55 min' },
+    { k:'5000', t:3000, label:'5 km abaixo de 50 min' }, { k:'5000', t:2700, label:'5 km abaixo de 45 min' }
+  ];
+  var TROT_MIN_MS = 6 / 3.6; // above 6.0 km/h over 15 s counts as trotting
+  /* Longest stretch trotting without walking, from GPS streams (street only).
+     Speed is smoothed over 15 s; dips shorter than 10 s don't break the stretch. */
+  function longestTrot(time, dist){
+    var n = time.length, i = 0, best = { t: 0, m: 0 }, start = -1, lastRun = -1;
+    function close(){
+      if (start >= 0 && lastRun > start) {
+        var t = time[lastRun] - time[start], m = dist[lastRun] - dist[start];
+        if (t > best.t) best = { t: Math.round(t), m: Math.round(m) };
+      }
+      start = -1; lastRun = -1;
+    }
+    for (var j = 1; j < n; j++) {
+      if (time[j] - time[j - 1] > 30) close();
+      while (i < j - 1 && time[j] - time[i + 1] >= 15) i++;
+      var dt = time[j] - time[i];
+      if (dt < 15) continue;
+      var running = (dist[j] - dist[i]) / dt >= TROT_MIN_MS;
+      if (running) {
+        if (start < 0) start = j;
+        lastRun = j;
+      } else if (start >= 0 && time[j] - time[lastRun] > 10) close();
+    }
+    close();
+    return best;
+  }
+  function bestTimeAt(s, k){
+    var info = s.race ? infoFor(s.d) : null;
+    var D = DIST_BY[k];
+    if (info && info.chip > 0 && info.km > 0 && D && Math.abs(D.m - info.km * 1000) < 1) return info.chip;
+    var doc = effortDocs[s.id];
+    var t = doc && doc.efforts ? Number(doc.efforts[k]) : 0;
+    return t > 0 ? t : 0;
+  }
+  /* Rain: hourly precipitation in Maceió (Open-Meteo), one archive call plus the last week. */
+  function rainMap(firstIso){
+    var today = isoOf(new Date());
+    Object.keys(wx).forEach(function(key){
+      if (/^rain[AF]\|/.test(key) && key.indexOf('|' + today) < 0) delete wx[key];
+    });
+    var c = llOf(WX_HOME), out = {};
+    function pick(j){
+      var h = j.hourly, o = {};
+      if (!h || !h.time) return null;
+      h.time.forEach(function(t, i){ if (h.precipitation[i] > 0) o[t.slice(0, 13)] = h.precipitation[i]; });
+      return { mm: o };
+    }
+    var arch = wxGet('rainA|' + firstIso + '|' + today,
+      'https://archive-api.open-meteo.com/v1/archive?latitude=' + c[0] + '&longitude=' + c[1] +
+      '&hourly=precipitation&timezone=America%2FSao_Paulo&start_date=' + firstIso + '&end_date=' + isoMinus(2), pick);
+    var rec = wxGet('rainF|' + today,
+      'https://api.open-meteo.com/v1/forecast?latitude=' + c[0] + '&longitude=' + c[1] +
+      '&hourly=precipitation&timezone=America%2FSao_Paulo&past_days=7&forecast_days=1', pick);
+    if (!arch && !rec) return null;
+    [arch, rec].forEach(function(x){ if (x && x.mm) Object.keys(x.mm).forEach(function(k){ out[k] = Math.max(out[k] || 0, x.mm[k]); }); });
+    return out;
+  }
+  function rainedOn(s, mm){
+    if (!mm || !s.d) return false;
+    var end = s.d.getTime() + (s.elapsed || s.time || 0) * 1000;
+    for (var t = s.d.getTime(); t <= end + 3600000; t += 3600000) {
+      var d = new Date(t);
+      if ((mm[isoOf(d) + 'T' + pad(d.getHours())] || 0) >= 0.3) return true;
+    }
+    return false;
+  }
+  function firstTogether(asc, runs){
+    if (!Array.isArray(runs) || !runs.length) return null;
+    var bt = runs.map(function(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }).filter(function(x){ return x != null; });
+    for (var i = 0; i < asc.length; i++) {
+      if (!asc[i].d || asc[i].walk) continue;
+      var m = asc[i].d.getTime() / 60000;
+      for (var j = 0; j < bt.length; j++) if (Math.abs(bt[j] - m) <= 20) return asc[i];
+    }
+    return null;
+  }
+  /* One collapsible category: done rows plus the next few locked ones. */
+  function firstsCat(key, title, items, lockShow){
+    var done = items.filter(function(x){ return x.hit; });
+    var shown = 0, lockedAll = items.filter(function(x){ return !x.hit; });
+    var rows = items.map(function(x){
+      if (x.hit) return '<tr><td><span class="t-lbl"><span class="o ' + (x.cls || origCls(x.hit)) + '"></span>' + x.label + '</span></td><td class="t-when">' + fmtDate(x.hit.d) + (x.where ? '<br>' + esc(x.where) : '') + '</td></tr>';
+      if (shown >= lockShow) return '';
+      shown++;
+      return '<tr class="lock"><td><span class="t-lbl"><span class="o ok-lock"></span>' + x.label + '</span></td><td class="t-when">' + esc(x.lockTxt || 'a conquistar') + '</td></tr>';
+    }).join('');
+    var hidden = lockedAll.length - shown;
+    var lastDone = done.slice().sort(function(a, b){ return a.hit.d - b.hit.d; }).pop();
+    var bits = [done.length + ' de ' + items.length];
+    if (lastDone) bits.push('última: ' + lastDone.label);
+    else if (lockedAll.length) bits.push('próxima: ' + lockedAll[0].label);
+    return sec('pv-' + key, title, bits.join(' · '),
+      '<table class="tbl ch-tbl"><thead><tr><th>Marco</th><th class="num">Quando</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      (hidden > 0 ? '<p class="fine">+ ' + hidden + (hidden === 1 ? ' bloqueada' : ' bloqueadas') + '</p>' : ''));
+  }
+
   function streakInfo(list){
     var counts = {}, first = null;
     list.forEach(function(s){
@@ -1841,38 +1947,83 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
     html += medalsSection();
 
-    // 3. distance firsts
+    // 3. firsts, grouped in collapsible categories
     var longest = null;
     asc.forEach(function(s){ if (!longest || coveredM(s) > coveredM(longest)) longest = s; });
-    var shownLocked = 0;
-    var rows = DIST_MARKS.map(function(mk){
+    var distItems = DIST_MARKS.map(function(mk){
       var hit = null;
       for (var i = 0; i < asc.length; i++) { if (coveredM(asc[i]) >= mk.m) { hit = asc[i]; break; } }
-      if (hit) return '<tr><td><span class="t-lbl"><span class="o ' + origCls(hit) + '"></span>' + mk.label + '</span></td><td class="t-when">' + fmtDate(hit.d) + '<br>' + esc(whereOf(hit)) + '</td></tr>';
-      if (shownLocked >= 2) return '';
-      shownLocked++;
       var falta = longest ? (mk.m - coveredM(longest)) / 1000 : mk.m / 1000;
-      return '<tr class="lock"><td><span class="t-lbl"><span class="o ok-lock"></span>' + mk.label + '</span></td><td class="t-when">faltam ' + fmtKm(falta) + ' km</td></tr>';
-    }).join('');
-    html += '<h3 class="h3">Primeiras vezes: distância</h3><table class="tbl ch-tbl"><thead><tr><th>Distância</th><th class="num">Quando</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      return { label: mk.label, hit: hit, where: hit ? whereOf(hit) : '', lockTxt: 'faltam ' + fmtKm(falta) + ' km' };
+    });
 
-    // 4. race firsts
     var races = asc.filter(function(s){ return s.race; });
-    var lockedR = 0;
-    var rrows = RACE_MARKS.map(function(mk){
+    var raceItems = RACE_MARKS.map(function(mk){
       var hit = null;
       for (var i = 0; i < races.length; i++) { if (coveredM(races[i]) / 1000 >= mk.km) { hit = races[i]; break; } }
-      if (hit) return '<tr><td><span class="t-lbl"><span class="o ' + origCls(hit) + '"></span>' + mk.label + '</span></td><td class="t-when">' + fmtDate(hit.d) + '<br>' + esc(raceShort(hit)) + '</td></tr>';
-      if (lockedR >= 1) return '';
-      lockedR++;
-      return '<tr class="lock"><td><span class="t-lbl"><span class="o ok-lock"></span>' + mk.label + '</span></td><td class="t-when">a conquistar</td></tr>';
-    }).join('');
+      return { label: mk.label, hit: hit, where: hit ? raceShort(hit) : '' };
+    });
+
+    // continuous trot: street runs only (GPS); treadmill speed is the watch's guess
+    var street = asc.filter(function(s){ return s.env === 'rua' && !s.walk; });
+    var bestTrot = { t: 0, m: 0 };
+    street.forEach(function(s){ var tr = (effortDocs[s.id] || {}).trot; if (tr && tr.t > bestTrot.t) bestTrot = { t: tr.t, m: tr.m }; });
+    var trotItems = TROT_MARKS.map(function(mk){
+      var hit = null;
+      for (var i = 0; i < street.length; i++) {
+        var tr = (effortDocs[street[i].id] || {}).trot;
+        if (tr && (mk.s ? tr.t >= mk.s : tr.m >= mk.m)) { hit = street[i]; break; }
+      }
+      var lock = mk.s
+        ? (bestTrot.t ? 'faltam ' + fmtTime(Math.max(0, mk.s - bestTrot.t)) : 'a conquistar')
+        : (bestTrot.m ? 'faltam ' + fmtKm(Math.max(0, mk.m - bestTrot.m) / 1000) + ' km' : 'a conquistar');
+      return { label: mk.label, hit: hit, where: hit ? whereOf(hit) : '', lockTxt: lock };
+    });
+
+    // pace: street and races only
+    var paceSrc = asc.filter(function(s){ return s.env !== 'esteira' && !s.walk; });
+    var paceItems = PACE_MARKS.map(function(mk){
+      var hit = null, bestT = 0;
+      paceSrc.forEach(function(s){
+        var t = bestTimeAt(s, mk.k);
+        if (!(t > 0)) return;
+        if (!bestT || t < bestT) bestT = t;
+        if (!hit && t < mk.t) hit = s;
+      });
+      return { label: mk.label, hit: hit, where: hit ? whereOf(hit) + ', ' + fmtTime(Math.round(bestTimeAt(hit, mk.k))) : '',
+        lockTxt: bestT ? 'faltam ' + fmtTime(Math.ceil(bestT - mk.t + 0.001)) : 'a conquistar' };
+    });
+
+    // moments
     var negHit = null;
     races.forEach(function(r){ var dd = effortDocs[r.id]; if (!negHit && dd && dd.half && dd.half.second < dd.half.first) negHit = r; });
-    rrows += negHit
-      ? '<tr><td><span class="t-lbl"><span class="o o-p"></span>Primeiro split negativo</span></td><td class="t-when">' + fmtDate(negHit.d) + '<br>' + esc(raceShort(negHit)) + '</td></tr>'
-      : '<tr class="lock"><td><span class="t-lbl"><span class="o ok-lock"></span>Primeiro split negativo</span></td><td class="t-when">a conquistar</td></tr>';
-    html += '<h3 class="h3">Primeiras vezes: provas</h3><table class="tbl ch-tbl"><thead><tr><th>Marco</th><th class="num">Quando</th></tr></thead><tbody>' + rrows + '</tbody></table>' +
+    var nightHit = null;
+    races.forEach(function(r){ if (!nightHit && r.d && r.d.getHours() >= 18) nightHit = r; });
+    var earlyHit = null;
+    asc.forEach(function(s){ if (!earlyHit && s.d && !s.walk && s.d.getHours() < 6) earlyHit = s; });
+    var rainHit = null;
+    if (street.length) {
+      var mm = rainMap(isoOf(street[0].d));
+      if (mm) street.forEach(function(s){ if (!rainHit && rainedOn(s, mm)) rainHit = s; });
+    }
+    var momItems = [
+      { label: 'Primeiro split negativo', hit: negHit, where: negHit ? raceShort(negHit) : '', cls: 'o-p' },
+      { label: 'Primeira prova noturna', hit: nightHit, where: nightHit ? raceShort(nightHit) : '' },
+      { label: 'Primeira na chuva', hit: rainHit, where: rainHit ? whereOf(rainHit) : '' },
+      { label: 'Primeira antes das 6h', hit: earlyHit, where: earlyHit ? whereOf(earlyHit) + ', ' + pad(earlyHit.d.getHours()) + ':' + pad(earlyHit.d.getMinutes()) : '' }
+    ];
+    (group || []).forEach(function(g){
+      var hit = firstTogether(asc, (g.summary || {}).runs);
+      momItems.push({ label: 'Primeira com ' + esc(g.firstname || 'a dupla'), hit: hit, where: hit ? whereOf(hit) : '' });
+    });
+
+    html += '<h3 class="h3">Primeiras vezes</h3>' +
+      firstsCat('dist', 'Distância', distItems, 2) +
+      firstsCat('provas', 'Provas', raceItems, 1) +
+      firstsCat('trote', 'Trote contínuo', trotItems, 2) +
+      firstsCat('ritmo', 'Ritmo', paceItems, 2) +
+      firstsCat('momentos', 'Momentos', momItems, 5) +
+      '<p class="fine">Trote contínuo só conta corridas na rua, pelo GPS: acima de 6 km/h, sem pausas de mais de 10 s. Ritmo conta rua e provas. Chuva pelo histórico do Open-Meteo em Maceió.</p>' +
       '<div class="legend legend-inline"><span class="lg-r">Rua</span><span class="lg-e">Esteira</span><span class="lg-p">Prova</span></div>';
     return html;
   }
@@ -2490,6 +2641,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (!d) return true;
       if (d.noStreams) return false;
       if (s.race && !d.splits && !d.noSplits) return true;
+      if (s.env === 'rua' && !s.walk && d.trot == null) return true;
       if (d.v === ALGO) return false;
       return (s.gpsMeters || s.meters) >= 4828;
     });
@@ -2505,8 +2657,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var st = extractStreams(parsePayload(r));
         var ex = effortDocs[s.id];
         var keepOld = ex && ex.efforts && Object.keys(ex.efforts).length;
-        var nd = st ? { v: ALGO, efforts: bestEfforts(st.time, st.dist) }
-          : (keepOld ? Object.assign({}, ex, { noSplits: true }) : { v: ALGO, efforts: {}, noStreams: true });
+        var nd = st ? { v: ALGO, efforts: bestEfforts(st.time, st.dist), trot: longestTrot(st.time, st.dist) }
+          : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 } }) : { v: ALGO, efforts: {}, noStreams: true });
         if (st && s.race) { var sp = splitsFrom(st.time, st.dist); nd.splits = sp.splits; nd.half = sp.half; }
         await saveDoc(s.id, nd);
       } catch (e) {
@@ -2514,7 +2666,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         if (code === 'tool_error') {
           var ex2 = effortDocs[s.id];
           await saveDoc(s.id, ex2 && ex2.efforts && Object.keys(ex2.efforts).length
-            ? Object.assign({}, ex2, { noSplits: true })
+            ? Object.assign({}, ex2, { noSplits: true, trot: ex2.trot || { t: 0, m: 0 } })
             : { v: ALGO, efforts: {}, noStreams: true });
         } else if (RETRACT[code]) {
           effortErr = code;
