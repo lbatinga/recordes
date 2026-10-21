@@ -1170,18 +1170,23 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '</div><div class="bib-foot"></div></section>';
   }
 
+  /* Treadmill distance comes from the watch (arm swing), so a stretch inside a
+     treadmill run is an estimate; the whole run (official) is not marked. */
+  function isEstimate(e){ return e && e.s && e.s.env === 'esteira' && !e.official; }
   function effortBlock(D, top, latest){
     var b = top[0];
+    var anyEst = top.some(isEstimate);
     var rows = top.map(function(e, i){
       return '<tr><td class="t-rk"><span>' + (i + 1) + 'º</span></td>' +
-        '<td class="t-time">' + fmtTime(e.t) + '</td>' +
+        '<td class="t-time">' + (isEstimate(e) ? '≈' : '') + fmtTime(e.t) + '</td>' +
         '<td class="t-when"><span class="o ' + origCls(e.s) + '"></span>' + fmtDate(e.s.d).replace(/^[^,]+, /, '') +
         (e.s.race ? ', ' + esc(raceShort(e.s)) : '') + (e.official ? ', tempo total' : '') +
         (e.s === latest ? '<span class="lt">último treino</span>' : '') + '</td></tr>';
     }).join('');
     return '<table class="tbl eff-tbl"><thead><tr><th colspan="3"><div class="t-head"><span class="t-dist">' + D.label + '</span>' +
-      '<span class="t-best">' + fmtPace(b.t / (D.m / 1000)) + ' por km</span></div></th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table>';
+      '<span class="t-best">' + (isEstimate(b) ? '≈' : '') + fmtPace(b.t / (D.m / 1000)) + ' por km</span></div></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>' +
+      (anyEst ? '<p class="fine">≈ trecho dentro de um treino de esteira: a distância vem do relógio, que estima pelo balanço do braço e pode errar uns 5 a 10%.</p>' : '');
   }
 
   function effortsSection(a){
@@ -2989,7 +2994,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var a = analyze(state.sessions, env);
       DISTS.forEach(function(D){
         (a.tables[D.k] || []).slice(0, 5).forEach(function(e, i){
-          esf.push([env === 'tudo' ? 'Tudo' : env === 'rua' ? 'Rua' : 'Esteira', D.label, i + 1, fmtTime(e.t), fmtPace(e.t / (D.m / 1000)), fmtDate(e.s.d), origName(e.s)]);
+          esf.push([env === 'tudo' ? 'Tudo' : env === 'rua' ? 'Rua' : 'Esteira', D.label, i + 1, (isEstimate(e) ? '≈' : '') + fmtTime(e.t), fmtPace(e.t / (D.m / 1000)), fmtDate(e.s.d), origName(e.s)]);
         });
       });
     });
