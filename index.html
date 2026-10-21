@@ -1732,12 +1732,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function rainedOn(s, mm){
     if (!mm || !s.d) return false;
-    var end = s.d.getTime() + (s.elapsed || s.time || 0) * 1000;
-    for (var t = s.d.getTime(); t <= end + 3600000; t += 3600000) {
-      var d = new Date(t);
-      if ((mm[isoOf(d) + 'T' + pad(d.getHours())] || 0) >= 0.3) return true;
+    /* Open-Meteo's value at hour H is the rain of the hour before it, so the run
+       touches the stamps from the hour after it starts to the hour after it ends. */
+    var H = 3600000, t0 = s.d.getTime(), t1 = t0 + (s.elapsed || s.time || 0) * 1000;
+    var wet = 0, minutes = 0;
+    for (var h = Math.floor(t0 / H) * H; h < t1; h += H) {
+      var d = new Date(h + H);
+      var share = (Math.min(t1, h + H) - Math.max(t0, h)) / 60000;
+      if ((mm[isoOf(d) + 'T' + pad(d.getHours())] || 0) >= 1) wet += share;
+      minutes += share;
     }
-    return false;
+    return minutes > 0 && wet / minutes >= 0.5;
   }
   function firstTogether(asc, runs){
     if (!Array.isArray(runs) || !runs.length) return null;
@@ -2023,7 +2028,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       firstsCat('trote', 'Trote contínuo', trotItems, 2) +
       firstsCat('ritmo', 'Ritmo', paceItems, 2) +
       firstsCat('momentos', 'Momentos', momItems, 5) +
-      '<p class="fine">Trote contínuo só conta corridas na rua, pelo GPS: acima de 6 km/h, sem pausas de mais de 10 s. Ritmo conta rua e provas. Chuva pelo histórico do Open-Meteo em Maceió.</p>' +
+      '<p class="fine">Trote contínuo só conta corridas na rua, pelo GPS: acima de 6 km/h, sem pausas de mais de 10 s. Ritmo conta rua e provas. Chuva é estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local, então pode errar.</p>' +
       '<div class="legend legend-inline"><span class="lg-r">Rua</span><span class="lg-e">Esteira</span><span class="lg-p">Prova</span></div>';
     return html;
   }
