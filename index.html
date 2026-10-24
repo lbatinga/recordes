@@ -1786,7 +1786,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       counts[k] = (counts[k] || 0) + 1;
       if (!first || s.d < first) first = s.d;
     });
-    var cur = weekStart(new Date());
+    var cur = weekStart(nowD());
     var weeks = [];
     if (first) {
       for (var w = weekStart(first); w <= cur; w = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7)) {
@@ -3119,7 +3119,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (view === 'inicio' && session) render();
     }).catch(function(){});
   }
-  function isoMinus(n){ var d = new Date(); d.setDate(d.getDate() - n); return isoOf(d); }
+  // AS_OF lets the month summary be rebuilt as it stood on the month's last day.
+  var AS_OF = null;
+  function nowD(){ return AS_OF ? new Date(AS_OF.getTime()) : new Date(); }
+  function isoMinus(n){ var d = nowD(); d.setDate(d.getDate() - n); return isoOf(d); }
   function fmtKg(v){ return fmt1(v); }
   function weightCard(){
     if (weight.scopeOk === false) {
@@ -3591,7 +3594,43 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Age factor is 1.0 through 35; beyond that a gentle approximation. */
   function ageFactor(age){ return age == null || age <= 35 ? 1 : Math.max(0.5, 1 - 0.0075 * (age - 35)); }
 
+  // Adds "prev": the previous month's numbers as they stood on its last day, so the month that
+  // just ended is scored with everything done in it (a race on the 31st opened only on the 1st).
+  var prevCache = { key: '', val: null };
   function buildSummary(){
+    var s = buildSummaryCore();
+    var today = new Date();
+    if (today.getDate() <= 10) s.prev = prevMonthSummary(today);
+    return s;
+  }
+  function prevMonthSummary(today){
+    var k = prevKey(mkey(today), 1);
+    if (prevCache.key === k + '|' + dataVer) return prevCache.val;
+    var end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+    var S = state.sessions, A = state.activeDays, endIso = isoOf(end), val = null;
+    try {
+      state.sessions = S.filter(function(x){ return x.d && x.d <= end; });
+      state.activeDays = {};
+      Object.keys(A || {}).forEach(function(d){ if (d <= endIso) state.activeDays[d] = true; });
+      AS_OF = end; bumpData();
+      var c = buildSummaryCore();
+      val = { v: c.v, month: c.month, ag: c.ag, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
+        recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
+        daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats };
+    } catch (e) { val = null; }
+    finally { state.sessions = S; state.activeDays = A; AS_OF = null; bumpData(); }
+    prevCache = { key: k + '|' + dataVer, val: val };
+    return val;
+  }
+  function duoPoints(m, h){
+    var same = m.month === h.month;
+    var pairs = [[m.ag, h.ag], [m.evo, h.evo], [m.rec, h.v >= 4 ? h.rec : null], [m.streak, h.streak],
+      [m.medals, same ? h.medals : 0], [m.recDays, h.v >= 5 ? h.recDays : null], [m.beats, h.v >= 2 ? h.beats : null]];
+    var a = 0, b = 0;
+    pairs.forEach(function(x){ if (x[0] == null || x[1] == null) return; if (x[0] > x[1]) a++; else if (x[1] > x[0]) b++; });
+    return { a: a, b: b };
+  }
+  function buildSummaryCore(){
     var all = analyze(state.sessions, 'tudo').list;
     var rua = analyze(state.sessions, 'rua');
     var t5 = rua.tables['5000'] || [];
@@ -3621,7 +3660,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         if (bst == null || e.t < bst) bst = e.t;
       });
     });
-    var ms = monthStats(), now = mkey(new Date());
+    var ms = monthStats(), now = mkey(nowD());
     var kmNow = ms.km[now] || 0, dNow = ms.days[now] || 0;
     var kT = kmTiers(ms, now), dT = daysTiers(ms, now);
     var kt = tierOf(kmNow, kT), dt = tierOf(dNow, dT);
@@ -3636,7 +3675,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return {
       v: 7, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
       // v7: what the server needs to keep streak, medals and runs current between app opens
-      week: isoOf(weekStart(new Date())), kmT: kT, dT: dT,
+      week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
       nextRaces: duoNextRaces(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
@@ -3718,12 +3757,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       }).join('') + '</tbody></table>';
   }
   var duoHist = {};
-  function monthsBlock(pa, pb, myName, hisName){
-    var k = mkey(new Date());
-    if (!duoHist[k] || duoHist[k].a !== pa || duoHist[k].b !== pb) {
-      duoHist[k] = { a: pa, b: pb };
-      if (db) putDoc('config', 'duohist', { months: duoHist });
+  function monthsBlock(pa, pb, myName, hisName, mine, his){
+    var k = mkey(new Date()), dirty = false;
+    if (!duoHist[k] || duoHist[k].a !== pa || duoHist[k].b !== pb) { duoHist[k] = { a: pa, b: pb }; dirty = true; }
+    // The month that just ended gets its final score once both sides have published it.
+    var mp = mine && mine.prev, hp = his && his.prev;
+    if (mp && hp && mp.month === hp.month) {
+      var fin = duoPoints(mp, hp), o = duoHist[mp.month];
+      if (!o || o.a !== fin.a || o.b !== fin.b) { duoHist[mp.month] = fin; dirty = true; }
     }
+    if (dirty && db) putDoc('config', 'duohist', { months: duoHist });
     var keys = Object.keys(duoHist).sort().reverse().slice(0, 12);
     return '<h3 class="h3">Placar por mês</h3><table class="tbl duo-months"><thead><tr><th>Mês</th><th class="num">' + esc(myName) + '</th><th class="num">' + esc(hisName) + '</th></tr></thead><tbody>' +
       keys.map(function(m){
@@ -3749,12 +3792,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return { id: g.id, name: g.firstname || 'Atleta', s: g.summary || {}, upd: g.updated_at };
     }));
     var pct = function(v){ return v == null ? '--' : fmt1(v) + '%'; }, num = function(v){ return v == null ? '--' : String(v); };
+    var refMonth = mine.month;
     var defs = [
       { k: 'Nota por idade e sexo', v: 1, get: function(s){ return s.ag; }, f: pct, sub: function(s){ return s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua'; } },
       { k: 'Melhora nos 5 km', v: 1, get: function(s){ return s.evo; }, f: pct, sub: function(s){ return s.first5 && s.best5 ? 'de ' + fmtTime(s.first5) : ''; } },
       { k: 'Melhora recente nos 5 km', v: 4, get: function(s){ return s.rec; }, f: pct, sub: recSub },
       { k: 'Constância', v: 1, get: function(s){ return s.streak; }, f: function(v){ return v == null ? '--' : v + (v === 1 ? ' semana' : ' semanas'); }, sub: function(s){ return 'recorde ' + s.bestStreak; } },
-      { k: 'Medalhas do mês', v: 1, get: function(s){ return s.month === mine.month ? s.medals : 0; }, f: num, sub: function(s){ return s.month === mine.month ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
+      { k: 'Medalhas do mês', v: 1, get: function(s){ return s.month === refMonth ? s.medals : 0; }, f: num, sub: function(s){ return s.month === refMonth ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
       { k: 'Dias com recorde nos últimos 90 dias', v: 5, get: function(s){ return s.recDays; }, f: num, sub: function(){ return ''; } },
       { k: 'Metas batidas nos últimos 90 dias', v: 2, get: function(s){ return s.beats; }, f: num, sub: function(){ return ''; } }
     ];
@@ -3778,7 +3822,21 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var rank = people.slice().sort(function(a, b){ return pts[b.id] - pts[a.id] || ((b.s.ag || 0) - (a.s.ag || 0)); });
     var k = mkey(new Date()), snap = {};
     people.forEach(function(p){ snap[p.id] = pts[p.id]; });
-    if (JSON.stringify(groupHist[k] || {}) !== JSON.stringify(snap)) { groupHist[k] = snap; if (db) putDoc('config', 'grouphist', { months: groupHist }); }
+    var gDirty = JSON.stringify(groupHist[k] || {}) !== JSON.stringify(snap);
+    if (gDirty) groupHist[k] = snap;
+    // Final score of the month that just ended, once everyone has published it.
+    var pm = mine.prev && mine.prev.month;
+    if (pm && people.every(function(p){ return p.s && p.s.prev && p.s.prev.month === pm; })) {
+      var fin = {}; refMonth = pm;
+      people.forEach(function(p){ fin[p.id] = 0; });
+      defs.forEach(function(d){
+        var vals = people.map(function(p){ var q = p.s.prev, x = q && q.v >= d.v ? d.get(q) : null; return { id: p.id, x: x == null ? null : x }; });
+        vals.forEach(function(a){ if (a.x == null) return; vals.forEach(function(b){ if (b !== a && b.x != null && a.x > b.x) fin[a.id]++; }); });
+      });
+      refMonth = mine.month;
+      if (JSON.stringify(groupHist[pm] || {}) !== JSON.stringify(fin)) { groupHist[pm] = fin; gDirty = true; }
+    }
+    if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist });
     var nameOf = {}; people.forEach(function(p){ nameOf[p.id] = p.name; });
     var board = '<article class="bib duo-score"><div class="band band-prova"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
       '<div class="bib-body"><ol class="g-rank">' + rank.map(function(p, i){
@@ -3873,7 +3931,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<span class="x">×</span>' +
         '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
       '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
-      together + table + monthsBlock(pa, pb, myName, hisName) + racesTogetherBlock(mine, his, myName, hisName) +
+      together + table + monthsBlock(pa, pb, myName, hisName, mine, his) + racesTogetherBlock(mine, his, myName, hisName) +
       (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.' +
         (live ? ' Constância, medalhas e treinos juntos atualizados pelo Strava em ' + fmtDate(live).replace(/^[^,]+, /, '') + ' às ' + pad(live.getHours()) + ':' + pad(live.getMinutes()) + '.' : '') + '</p>' : '');
   }
