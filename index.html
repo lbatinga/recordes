@@ -1586,9 +1586,27 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<span class="t-sub"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + '</span></td>' +
       '<td class="t-val">' + v[0] + (v[1] ? '<small>' + v[1] + '</small>' : '') + '</td></tr>';
   }
+  // Pace rows that point to the same workout are merged into one ("2 e 3 km ou mais")
+  // and split again as soon as a different workout takes one of them.
   function recTable(best){
+    var rows = [], i = 0;
+    while (i < RECS.length) {
+      var r = RECS[i], s = best[r.id];
+      if (/^pace\d$/.test(r.id) && s) {
+        var kms = [r.id.slice(4)], j = i + 1;
+        while (j < RECS.length && /^pace\d$/.test(RECS[j].id) && best[RECS[j].id] && best[RECS[j].id].id === s.id) {
+          kms.push(RECS[j].id.slice(4)); j++;
+        }
+        if (kms.length > 1) {
+          var lbl = 'Melhor ritmo, ' + kms.slice(0, -1).join(', ') + ' e ' + kms[kms.length - 1] + ' km ou mais';
+          rows.push(recCard(r, best).replace(REC_SHORT[r.id], lbl));
+          i = j; continue;
+        }
+      }
+      rows.push(recCard(r, best)); i++;
+    }
     return '<table class="tbl rec-tbl"><thead><tr><th>Recorde</th><th class="num">Resultado</th></tr></thead><tbody>' +
-      RECS.map(function(r){ return recCard(r, best); }).join('') + '</tbody></table>';
+      rows.join('') + '</tbody></table>';
   }
 
   function chart(pts){
@@ -2342,7 +2360,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Melhores esforços', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
-      p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
+      p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Quando o mesmo treino é o recorde de ritmo em mais de uma distância, as linhas se juntam numa só. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos de 1 km ou 10 minutos, no mínimo (aquecimento curto não conta); o plano pede 3. Em prova, vale a distância oficial.') +
