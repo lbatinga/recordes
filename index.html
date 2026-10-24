@@ -1576,17 +1576,18 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   var REC_SHORT = { dist:'Maior distância', time:'Mais tempo em movimento', pace2:'Melhor ritmo, 2 km ou mais',
     pace3:'Melhor ritmo, 3 km ou mais', pace5:'Melhor ritmo, 5 km ou mais', eff:'Menor esforço por km' };
-  function recCard(r, best){
+  function recCard(r, best, also){
     var s = best[r.id];
     if (!s) {
       return '<tr class="empty"><td><span class="t-lbl">' + REC_SHORT[r.id] + '</span></td><td class="t-val">--</td></tr>';
     }
     var v = r.val(s);
     return '<tr><td><span class="t-lbl">' + REC_SHORT[r.id] + '</span>' +
-      '<span class="t-sub"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + '</span></td>' +
+      '<span class="t-sub"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') +
+      (also ? ' · também é o melhor em ' + also + ' km ou mais' : '') + '</span></td>' +
       '<td class="t-val">' + v[0] + (v[1] ? '<small>' + v[1] + '</small>' : '') + '</td></tr>';
   }
-  // Pace rows that point to the same workout are merged into one ("2 e 3 km ou mais")
+  // Pace rows that point to the same workout are merged into the shortest one, with a note
   // and split again as soon as a different workout takes one of them.
   function recTable(best){
     var rows = [], i = 0;
@@ -1598,8 +1599,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           kms.push(RECS[j].id.slice(4)); j++;
         }
         if (kms.length > 1) {
-          var lbl = 'Melhor ritmo, ' + kms.slice(0, -1).join(', ') + ' e ' + kms[kms.length - 1] + ' km ou mais';
-          rows.push(recCard(r, best).replace(REC_SHORT[r.id], lbl));
+          var rest = kms.slice(1);
+          var also = rest.length > 1 ? rest.slice(0, -1).join(', ') + ' e ' + rest[rest.length - 1] : rest[0];
+          rows.push(recCard(r, best, also));
           i = j; continue;
         }
       }
@@ -2360,7 +2362,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Melhores esforços', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
-      p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Quando o mesmo treino é o recorde de ritmo em mais de uma distância, as linhas se juntam numa só. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
+      p('Recordes por treino', 'Conta o treino inteiro. Ritmo só vale em treinos de 2 km ou mais. Quando o mesmo treino é o recorde de ritmo em mais de uma distância, aparece uma linha só, com a observação embaixo. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca recorde de ritmo na época. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos de 1 km ou 10 minutos, no mínimo (aquecimento curto não conta); o plano pede 3. Em prova, vale a distância oficial.') +
