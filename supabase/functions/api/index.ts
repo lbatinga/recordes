@@ -11,7 +11,8 @@ const APP_ORIGIN = 'https://recordes-pi.vercel.app';
 const OTHER_ORIGINS = ['https://lbatinga.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 const STRAVA = 'https://www.strava.com/api/v3';
 const COLS = ['efforts', 'config'];
-const PROTECTED_CONFIG = ['partner', 'weights', 'push'];
+const PROTECTED_CONFIG = ['partner', 'weights', 'push', 'live'];
+const FN_URL = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
 const APP_URL = 'https://recordes-pi.vercel.app/';
 
 function serviceKey(): string {
@@ -235,6 +236,88 @@ function reminderText(day: number, thisWeek: number, streak: number): { title: s
     : { title: 'Bora começar uma sequência', body: 'Até sábado ' + n + ' pra semana contar.' };
 }
 
+// ---------- live Dupla numbers (Strava webhook) ----------
+// The app computes everything on the phone and publishes config/summary when opened.
+// Between opens, a Strava webhook lets the server move only the simple parts forward:
+// runs (treinos juntos), this week / streak and the month medals. Kept apart in
+// config/live and merged in /partner only while the summary it started from is current.
+const RUN_TYPES = ['Run', 'TrailRun', 'VirtualRun'];
+async function configDoc(aid: number, id: string) {
+  const { data } = await sb.from('docs').select('data, updated_at').eq('athlete_id', aid).eq('col', 'config').eq('id', id).maybeSingle();
+  return data ?? null;
+}
+function addDays(iso: string, n: number): string {
+  const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+}
+function tierIdx(v: number, tiers: number[]): number { let t = -1; tiers.forEach((x, i) => { if (v >= x) t = i; }); return t; }
+// deno-lint-ignore no-explicit-any
+async function refreshLive(aid: number): Promise<any> {
+  const doc = await configDoc(aid, 'summary');
+  // deno-lint-ignore no-explicit-any
+  const sm: any = doc?.data;
+  if (!sm || !(sm.v >= 7) || !sm.at || !sm.week) return null;
+  const pauses = await readPauses(aid);
+  const after = Math.floor(sm.at / 1000) - 2 * 86400;
+  // deno-lint-ignore no-explicit-any
+  const acts: any[] = (await stravaGet(aid, '/athlete/activities?per_page=100&after=' + after)) as any[];
+  const known = new Set<string>((sm.runs ?? []).map((r: string) => r.slice(0, 16)));
+  const today = brNow().toISOString().slice(0, 10);
+  const month = today.slice(0, 7);
+  const curWeek = weekKey(today);
+  const runs: string[] = (sm.runs ?? []).slice();
+  const days = new Set<string>(sm.actDays ?? []);
+  let km = Number(sm.kmMonth) || 0;
+  const weekAdd: Record<string, number> = {};
+  let newest = '';
+  (Array.isArray(acts) ? acts : []).forEach((a) => {
+    const t = a.sport_type || a.type;
+    const start = String(a.start_date_local ?? '').replace(/Z$/, '').slice(0, 16);
+    if (!start) return;
+    const day = start.slice(0, 10);
+    const isRun = RUN_TYPES.includes(t) && a.distance > 0;
+    if (day.slice(0, 7) === month && (isRun || (a.moving_time ?? 0) >= 600)) days.add(day);
+    if (!isRun || known.has(start)) return;
+    known.add(start); runs.push(start);
+    if (start > newest) newest = start;
+    if (day.slice(0, 7) === month && sm.month === month) km += a.distance / 1000;
+    if (a.distance >= 1000 || (a.moving_time ?? 0) >= 600) {
+      const wk = weekKey(day);
+      weekAdd[wk] = (weekAdd[wk] ?? 0) + 1;
+    }
+  });
+  // Streak: start from the weeks completed before the summary's week, then walk forward.
+  let streak = (Number(sm.streak) || 0) - ((Number(sm.thisWeek) || 0) >= 2 ? 1 : 0);
+  let best = Number(sm.bestStreak) || 0;
+  let thisWeek = 0;
+  for (let wk = sm.week; wk <= curWeek; wk = addDays(wk, 7)) {
+    const n = (wk === sm.week ? (Number(sm.thisWeek) || 0) : 0) + (weekAdd[wk] ?? 0);
+    if (wk === curWeek) { thisWeek = n; if (n >= 2) streak++; }
+    else if (n >= 2) streak++;
+    else if (!pauses[wk]) streak = 0;
+    best = Math.max(best, streak);
+  }
+  // deno-lint-ignore no-explicit-any
+  const live: any = { base: sm.at, at: Date.now(), runs: runs.sort().slice(-400), thisWeek, streak: Math.max(0, streak), bestStreak: best };
+  if (sm.month === month && Array.isArray(sm.kmT) && Array.isArray(sm.dT)) {
+    const kt = tierIdx(km, sm.kmT), dt = tierIdx(days.size, sm.dT);
+    Object.assign(live, { kmMonth: Math.round(km * 1000) / 1000, daysMonth: days.size, kmTier: kt, daysTier: dt, medals: (kt + 1) + (dt + 1) });
+  }
+  const prev = (await configDoc(aid, 'live'))?.data;
+  live.newest = newest || (prev && prev.base === sm.at ? prev.newest ?? '' : '');
+  live.nudged = prev && prev.base === sm.at ? prev.nudged ?? '' : '';
+  await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: live, updated_at: new Date().toISOString() });
+  return live;
+}
+// deno-lint-ignore no-explicit-any
+function mergeLive(summary: any, live: any) {
+  if (!summary || !live || live.base !== summary.at) return { summary, live_at: null };
+  const out = { ...summary };
+  ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals'].forEach((k) => {
+    if (live[k] !== undefined) out[k] = live[k];
+  });
+  return { summary: out, live_at: new Date(live.at).toISOString() };
+}
+
 // Same shape the page already understood (id, sport_type, start_local, summary…).
 // deno-lint-ignore no-explicit-any
 function mapActivity(a: any) {
@@ -307,6 +390,31 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     return json(req, { session, athlete: { id: ath.id, firstname: ath.firstname, lastname: ath.lastname, profile: ath.profile_medium ?? null } });
   }
 
+  if (path === '/webhook' && req.method === 'GET') {
+    // Strava's subscription handshake.
+    const sys = await systemDoc('webhook');
+    if (url.searchParams.get('hub.mode') !== 'subscribe' || !sys?.verify || url.searchParams.get('hub.verify_token') !== sys.verify) {
+      throw new HttpError(403, 'forbidden');
+    }
+    return json(req, { 'hub.challenge': url.searchParams.get('hub.challenge') ?? '' });
+  }
+  if (path === '/webhook' && req.method === 'POST') {
+    const ev = await req.json().catch(() => null);
+    const sys = await systemDoc('webhook');
+    if (ev && sys?.id && Number(ev.subscription_id) === Number(sys.id) && ev.object_type === 'activity') {
+      const aid = Number(ev.owner_id);
+      const work = (async () => {
+        const { data } = await sb.from('athletes').select('athlete_id').eq('athlete_id', aid).maybeSingle();
+        if (data) await refreshLive(aid);
+      })().catch((e) => console.error('webhook', e));
+      // Strava wants an answer within 2 seconds; the work goes on in the background.
+      // deno-lint-ignore no-explicit-any
+      const er = (globalThis as any).EdgeRuntime;
+      if (er?.waitUntil) er.waitUntil(work); else await work;
+    }
+    return json(req, { ok: true });
+  }
+
   if (path.startsWith('/cron/') && req.method === 'POST') {
     // The token lives only in the database (Vault); here we compare its hash.
     const tok = req.headers.get('x-cron-secret') ?? '';
@@ -329,6 +437,40 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
       } catch (_) { fail++; }
     }
     return json(req, { sent, none, fail });
+  }
+  if (path === '/cron/webhook-setup' && req.method === 'POST') {
+    // Creates (once) the Strava push subscription that feeds /webhook.
+    const cur = await systemDoc('webhook');
+    if (cur?.id) return json(req, { id: cur.id, existing: true });
+    const verify = newToken();
+    await sb.from('docs').upsert({ athlete_id: 0, col: 'system', id: 'webhook', data: { verify }, updated_at: new Date().toISOString() });
+    const r = await fetch(STRAVA + '/push_subscriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, callback_url: FN_URL + '/webhook', verify_token: verify }),
+    });
+    const t = await r.json().catch(() => ({}));
+    if (!r.ok || !t.id) return json(req, { ok: false, status: r.status, body: t }, 502);
+    await sb.from('docs').upsert({ athlete_id: 0, col: 'system', id: 'webhook', data: { verify, id: t.id }, updated_at: new Date().toISOString() });
+    return json(req, { ok: true, id: t.id });
+  }
+  if (path === '/cron/nudge' && req.method === 'POST') {
+    // A run the app hasn't seen for a day: one push asking to open it, once per run.
+    const { data } = await sb.from('docs').select('athlete_id, data').eq('col', 'config').eq('id', 'live');
+    let sent = 0;
+    const limit = new Date(brNow().getTime() - 20 * 3600 * 1000).toISOString().slice(0, 16);
+    for (const row of data ?? []) {
+      const aid = Number(row.athlete_id);
+      // deno-lint-ignore no-explicit-any
+      const lv: any = row.data;
+      const sm = (await configDoc(aid, 'summary'))?.data;
+      if (!lv?.newest || !sm || lv.base !== sm.at || lv.nudged === lv.newest || lv.newest > limit) continue;
+      const d = lv.newest.slice(8, 10) + '/' + lv.newest.slice(5, 7);
+      const r = await sendPush(aid, { title: 'Treino novo no Strava', body: 'Abre o Recordes pra atualizar a Dupla com o treino de ' + d + '.', tag: 'dupla' });
+      sent += r.sent;
+      await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: { ...lv, nudged: lv.newest }, updated_at: new Date().toISOString() });
+    }
+    return json(req, { sent });
   }
   if (path === '/cron/weights' && req.method === 'POST') {
     const { data } = await sb.from('athletes').select('athlete_id, scope').like('scope', '%profile:read_all%');
@@ -415,11 +557,14 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
       sb.from('docs').select('athlete_id, data, updated_at').in('athlete_id', want).eq('col', 'config').eq('id', 'summary'),
       sb.from('athletes').select('athlete_id, firstname').in('athlete_id', want),
     ]);
+    const lives = await sb.from('docs').select('athlete_id, data').in('athlete_id', want).eq('col', 'config').eq('id', 'live');
     const mutual = want.filter((pid) => (theirs.data ?? []).some((r) => Number(r.athlete_id) === pid && idsOf(r.data).includes(aid)));
     const group = mutual.map((pid) => {
       const sm = (sums.data ?? []).find((r) => Number(r.athlete_id) === pid);
       const at = (aths.data ?? []).find((r) => Number(r.athlete_id) === pid);
-      return { id: pid, firstname: at?.firstname ?? null, summary: sm?.data ?? null, updated_at: sm?.updated_at ?? null };
+      const lv = (lives.data ?? []).find((r) => Number(r.athlete_id) === pid);
+      const m = mergeLive(sm?.data ?? null, lv?.data ?? null);
+      return { id: pid, firstname: at?.firstname ?? null, summary: m.summary, updated_at: sm?.updated_at ?? null, live_at: m.live_at };
     });
     return json(req, { partner: group[0] ?? null, group });
   }

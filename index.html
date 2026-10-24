@@ -2350,7 +2350,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Melhora nos 5 km: quanto o melhor 5 km melhorou desde o primeiro. Melhora recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 corridas ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dos últimos 90 dias a pessoa superou algum melhor tempo, em qualquer distância (rua, esteira ou prova); um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Os números do outro são os da última vez que ele abriu o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
+      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Melhora nos 5 km: quanto o melhor 5 km melhorou desde o primeiro. Melhora recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 corridas ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dos últimos 90 dias a pessoa superou algum melhor tempo, em qualquer distância (rua, esteira ou prova); um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -3615,7 +3615,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     all.forEach(function(x){ var pr = (x.prsBy && x.prsBy.tudo) || []; if (x.d && pr.length && isoOf(x.d) >= since90r) recDayMap[isoOf(x.d)] = 1; });
     var ms = monthStats(), now = mkey(new Date());
     var kmNow = ms.km[now] || 0, dNow = ms.days[now] || 0;
-    var kt = tierOf(kmNow, kmTiers(ms, now)), dt = tierOf(dNow, daysTiers(ms, now));
+    var kT = kmTiers(ms, now), dT = daysTiers(ms, now);
+    var kt = tierOf(kmNow, kT), dt = tierOf(dNow, dT);
     var beats = 0, since90 = isoMinus(89), byId = {};
     state.sessions.forEach(function(x){ byId[x.id] = x; });
     GOAL_KEYS.forEach(function(k){
@@ -3625,7 +3626,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       Object.keys(sim).forEach(function(id){ var x = byId[id]; if (sim[id].beat && x && x.d && isoOf(x.d) >= since90) beats++; });
     });
     return {
-      v: 6, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
+      v: 7, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
+      // v7: what the server needs to keep streak, medals and runs current between app opens
+      week: isoOf(weekStart(new Date())), kmT: kT, dT: dT,
+      actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
       nextRaces: duoNextRaces(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
       ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
@@ -3846,6 +3850,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var lead = !tie ? (pa > pb ? myName : hisName) + ' na frente'
       : byAg ? (mine.ag > his.ag ? myName : hisName) + ' na frente pelo desempate (nota por idade e sexo)' : 'Empate';
     var upd = partner.updated_at ? new Date(partner.updated_at) : null;
+    var live = partner.live_at ? new Date(partner.live_at) : null;
+    if (live && upd && live <= upd) live = null;
     var table = '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>';
     if (waiting) return '<div class="msg"><strong>Esperando ' + esc(hisName) + '</strong>O placar começa quando ' + esc(hisName) + ' abrir o app. Por enquanto, seus números:</div>' + table;
     var together = togetherBlock(mine.runs, his.runs);
@@ -3857,7 +3863,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
       '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
       together + table + monthsBlock(pa, pb, myName, hisName) + racesTogetherBlock(mine, his, myName, hisName) +
-      (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.</p>' : '');
+      (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.' +
+        (live ? ' Constância, medalhas e treinos juntos atualizados pelo Strava em ' + fmtDate(live).replace(/^[^,]+, /, '') + ' às ' + pad(live.getHours()) + ':' + pad(live.getMinutes()) + '.' : '') + '</p>' : '');
   }
 
   /* ---------- race editor ---------- */
