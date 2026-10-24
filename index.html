@@ -2350,7 +2350,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Melhora nos 5 km: quanto o melhor 5 km melhorou desde o primeiro. Melhora recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 corridas ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dos últimos 90 dias a pessoa superou algum melhor tempo, em qualquer distância (rua, esteira ou prova); um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
+      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Melhora nos 5 km: quanto o melhor 5 km melhorou desde o primeiro. Melhora recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 corridas ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dos últimos 90 dias a pessoa superou um melhor tempo que já existia, em qualquer distância (rua, esteira ou prova); a primeira vez numa distância não conta, e um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua, e linha em que alguém ainda não tem valor não pontua pra ninguém. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -3611,8 +3611,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var rec = cur90 && prev90 ? Math.round((prev90.t - cur90.t) / prev90.t * 1000) / 10 : null;
     var st = streakInfo(all.slice());
     // Days in the last 90 with at least one best time beaten (any distance, street, treadmill or race).
-    var recDayMap = {}, since90r = isoMinus(89);
-    all.forEach(function(x){ var pr = (x.prsBy && x.prsBy.tudo) || []; if (x.d && pr.length && isoOf(x.d) >= since90r) recDayMap[isoOf(x.d)] = 1; });
+    // A day counts when a time that already existed was beaten (any distance, street, treadmill
+    // or race). The first time at a distance doesn't count, or a beginner would score every run.
+    var recDayMap = {}, since90r = isoMinus(89), tt = analyze(state.sessions, 'tudo').tables;
+    Object.keys(tt).forEach(function(k){
+      var rows = tt[k].slice().sort(function(p, q){ return p.s.date < q.s.date ? -1 : p.s.date > q.s.date ? 1 : 0; }), bst = null;
+      rows.forEach(function(e){
+        if (bst != null && e.t < bst && e.s.d && isoOf(e.s.d) >= since90r) recDayMap[isoOf(e.s.d)] = 1;
+        if (bst == null || e.t < bst) bst = e.t;
+      });
+    });
     var ms = monthStats(), now = mkey(new Date());
     var kmNow = ms.km[now] || 0, dNow = ms.days[now] || 0;
     var kT = kmTiers(ms, now), dT = daysTiers(ms, now);
@@ -3755,7 +3763,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     // Each line: one point for every person you beat in it (a tie scores nothing).
     var tables = defs.map(function(d){
       var vals = people.map(function(p){ var ok = p.s && p.s.v >= d.v, x = ok ? d.get(p.s) : null; return { p: p, x: x == null ? null : x, ok: ok }; });
-      vals.forEach(function(a){ if (a.x == null) return; vals.forEach(function(b){ if (b !== a && (b.x == null || a.x > b.x)) pts[a.p.id]++; }); });
+      // Someone without a value in a line is left out of it: no points for or against.
+      vals.forEach(function(a){ if (a.x == null) return; vals.forEach(function(b){ if (b !== a && b.x != null && a.x > b.x) pts[a.p.id]++; }); });
       var sorted = vals.slice().sort(function(a, b){ return (b.x == null ? -1e9 : b.x) - (a.x == null ? -1e9 : a.x); });
       var top = sorted[0] && sorted[0].x != null ? sorted[0].x : null;
       return '<tr class="duo-k"><th colspan="3">' + d.k + '</th></tr>' + sorted.map(function(a, i){
@@ -3839,7 +3848,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var pa = 0, pb = 0;
     if (waiting) rows.forEach(function(r){ r.b = null; r.sb = ''; });
     var body = rows.map(function(r){
-      var wa = !waiting && !r.skip && r.a != null && (r.b == null || r.a > r.b), wb = !waiting && !r.skip && r.b != null && (r.a == null || r.b > r.a);
+      // A line where someone has no value yet scores for nobody.
+      var both = !waiting && !r.skip && r.a != null && r.b != null;
+      var wa = both && r.a > r.b, wb = both && r.b > r.a;
       if (wa) pa++; if (wb) pb++;
       return '<tr class="duo-k"><th colspan="2">' + r.k + '</th></tr><tr>' +
         '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + r.f(r.a) + '</span>' + (r.sa ? '<span class="t-sub">' + esc(r.sa) + '</span>' : '') + '</td>' +
