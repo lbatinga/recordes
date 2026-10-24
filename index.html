@@ -573,6 +573,7 @@ html,body{overscroll-behavior-y:contain}
 .duo-tbl th, .duo-tbl td{width:50%;text-align:center}
 .duo-tbl tbody tr:nth-child(even){background:transparent}
 .duo-tbl tr.duo-k th{background:var(--surface-2);color:var(--ink);font-size:14px;font-weight:700;text-align:left;padding-top:7px;padding-bottom:7px}
+.duo-tbl tr.duo-k th .w-pts{font-weight:500;color:var(--muted)}
 .duo-tbl .v{font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
 .duo-tbl td.win .v{color:var(--ok)}
 .duo-tbl td.win .v::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
@@ -2351,7 +2352,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Melhora nos 5 km: quanto o melhor 5 km melhorou desde o primeiro. Melhora recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 corridas ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dos últimos 90 dias a pessoa superou um melhor tempo que já existia, em qualquer distância (rua, esteira ou prova); a primeira vez numa distância não conta, e um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua, e linha em que alguém ainda não tem valor não pontua pra ninguém. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
+      p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Nota por idade e sexo (3): o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres). Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dos últimos 90 dias a pessoa superou um melhor tempo que já existia, em qualquer distância. Empate na linha não pontua, e linha em que alguém ainda não tem valor não pontua pra ninguém. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo; sem nota de um dos lados, é empate. O mês que acabou fecha com tudo que foi feito nele. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -3617,19 +3618,63 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var c = buildSummaryCore();
       val = { v: c.v, month: c.month, ag: c.ag, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
         recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
-        daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats };
+        daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m };
     } catch (e) { val = null; }
     finally { state.sessions = S; state.activeDays = A; AS_OF = null; bumpData(); }
     prevCache = { key: k + '|' + dataVer, val: val };
     return val;
   }
+  /* ---------- board (Dupla / Grupo) ----------
+     Each line has its own weight. In a line, you earn its points for every person you beat;
+     a tie earns nothing between the tied ones, and someone without a value is left out. */
+  function pctF(v){ return v == null ? '--' : fmt1(v) + '%'; }
+  function numF(v){ return v == null ? '--' : String(v); }
+  var SCORE_LINES = [
+    { id: 'rec', k: 'Melhora recente nos 5 km', w: 4, v: 4, get: function(s){ return s.rec; }, f: pctF, sub: function(s){ return recSub(s); } },
+    { id: 'ag', k: 'Nota por idade e sexo', w: 3, v: 1, get: function(s){ return s.ag; }, f: pctF,
+      sub: function(s){ return s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua'; } },
+    { id: 'trot', k: 'Correndo sem parar, últimos 90 dias', w: 3, v: 8, get: function(s){ return s.trot90; },
+      f: function(v){ return v == null ? '--' : fmtTime(v); },
+      sub: function(s){ return s.trot90 ? fmtKm(s.trot90m / 1000) + ' km sem caminhar, na rua' : 'sem corrida na rua com GPS'; } },
+    { id: 'beats', k: 'Metas batidas, últimos 90 dias', w: 2, v: 2, get: function(s){ return s.beats; }, f: numF, sub: function(){ return ''; } },
+    { id: 'act', k: 'Constância, últimas 12 semanas', w: 1, v: 8, get: function(s){ return s.act12; },
+      f: function(v){ return v == null ? '--' : v + ' de 12'; }, sub: function(){ return 'semanas com 2 corridas ou mais'; } },
+    { id: 'medals', k: 'Medalhas do mês', w: 1, v: 1, get: function(s, ref){ return s.month === ref ? s.medals : 0; }, f: numF,
+      sub: function(s, ref){ return s.month === ref ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
+    { id: 'recDays', k: 'Dias com recorde, últimos 90 dias', w: 1, v: 5, get: function(s){ return s.recDays; }, f: numF, sub: function(){ return ''; } }
+  ];
+  function ptsWord(n){ return n + (n === 1 ? ' ponto' : ' pontos'); }
+  function lineVal(L, s, ref){ if (!s || !(s.v >= L.v)) return null; var x = L.get(s, ref); return x == null ? null : x; }
+  function scoreBoard(people, ref){
+    var pts = {};
+    people.forEach(function(p){ pts[p.id] = 0; });
+    SCORE_LINES.forEach(function(L){
+      var vals = people.map(function(p){ return { id: p.id, x: lineVal(L, p.s, ref) }; });
+      vals.forEach(function(a){ if (a.x == null) return; vals.forEach(function(b){ if (b !== a && b.x != null && a.x > b.x) pts[a.id] += L.w; }); });
+    });
+    return pts;
+  }
+  // Order by points; a tie goes to the higher age and sex grade (only between people who have one),
+  // otherwise the place is shared.
+  function rankBoard(people, pts){
+    var order = people.slice().sort(function(a, b){
+      if (pts[b.id] !== pts[a.id]) return pts[b.id] - pts[a.id];
+      var ga = a.s && a.s.ag, gb = b.s && b.s.ag;
+      if (ga != null && gb != null && ga !== gb) return gb - ga;
+      return 0;
+    });
+    var pos = [];
+    order.forEach(function(p, i){
+      if (i === 0) { pos.push(1); return; }
+      var q = order[i - 1], ga = p.s && p.s.ag, gb = q.s && q.s.ag;
+      var same = pts[p.id] === pts[q.id] && !(ga != null && gb != null && ga !== gb);
+      pos.push(same ? pos[i - 1] : i + 1);
+    });
+    return order.map(function(p, i){ return { p: p, pos: pos[i] }; });
+  }
   function duoPoints(m, h){
-    var same = m.month === h.month;
-    var pairs = [[m.ag, h.ag], [m.evo, h.evo], [m.rec, h.v >= 4 ? h.rec : null], [m.streak, h.streak],
-      [m.medals, same ? h.medals : 0], [m.recDays, h.v >= 5 ? h.recDays : null], [m.beats, h.v >= 2 ? h.beats : null]];
-    var a = 0, b = 0;
-    pairs.forEach(function(x){ if (x[0] == null || x[1] == null) return; if (x[0] > x[1]) a++; else if (x[1] > x[0]) b++; });
-    return { a: a, b: b };
+    var pts = scoreBoard([{ id: 'a', s: m }, { id: 'b', s: h }], m.month);
+    return { a: pts.a, b: pts.b };
   }
   function buildSummaryCore(){
     var all = analyze(state.sessions, 'tudo').list;
@@ -3650,6 +3695,23 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     });
     var rec = cur90 && prev90 ? Math.round((prev90.t - cur90.t) / prev90.t * 1000) / 10 : null;
     var st = streakInfo(all.slice());
+    // Constância for the board: weeks with 2+ runs among the last 12 (paused weeks are skipped;
+    // the current week only counts once it has 2 runs).
+    var wks = st.weeks.slice(), act12 = 0, used = 0;
+    if (wks.length && wks[wks.length - 1].n < WEEK_TARGET) wks.pop();
+    for (var wi = wks.length - 1; wi >= 0 && used < 12; wi--) {
+      if (wks[wi].n < WEEK_TARGET && wks[wi].pause) continue;
+      used++; if (wks[wi].n >= WEEK_TARGET) act12++;
+    }
+    var wkc = {};
+    st.weeks.slice(-16).forEach(function(w){ wkc[isoOf(w.start)] = w.n; });
+    // Longest stretch running without walking in the last 90 days (street only, needs GPS).
+    var trot90 = null, trot90m = null, since90t = isoMinus(89);
+    all.forEach(function(x){
+      if (x.env !== 'rua' || x.walk || !x.d || isoOf(x.d) < since90t) return;
+      var tr = (effortDocs[x.id] || {}).trot;
+      if (tr && tr.t > 0 && (trot90 == null || tr.t > trot90)) { trot90 = tr.t; trot90m = tr.m; }
+    });
     // Days in the last 90 with at least one best time beaten (any distance, street, treadmill or race).
     // A day counts when a time that already existed was beaten (any distance, street, treadmill
     // or race). The first time at a distance doesn't count, or a beginner would score every run.
@@ -3674,7 +3736,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       Object.keys(sim).forEach(function(id){ var x = byId[id]; if (sim[id].beat && x && x.d && isoOf(x.d) >= since90) beats++; });
     });
     return {
-      v: 7, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
+      v: 8, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length,
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
@@ -3682,7 +3744,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
       ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
-      streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek,
+      streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek, act12: act12, wkc: wkc, trot90: trot90, trot90m: trot90m,
       kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
       medals: (kt + 1) + (dt + 1), beats: beats
     };
@@ -3792,35 +3854,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var people = [{ id: me && me.id, name: (me && me.firstname) || 'Você', s: mine, mine: true }].concat(group.map(function(g){
       return { id: g.id, name: g.firstname || 'Atleta', s: g.summary || {}, upd: g.updated_at };
     }));
-    var pct = function(v){ return v == null ? '--' : fmt1(v) + '%'; }, num = function(v){ return v == null ? '--' : String(v); };
-    var refMonth = mine.month;
-    var defs = [
-      { k: 'Nota por idade e sexo', v: 1, get: function(s){ return s.ag; }, f: pct, sub: function(s){ return s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua'; } },
-      { k: 'Melhora nos 5 km', v: 1, get: function(s){ return s.evo; }, f: pct, sub: function(s){ return s.first5 && s.best5 ? 'de ' + fmtTime(s.first5) : ''; } },
-      { k: 'Melhora recente nos 5 km', v: 4, get: function(s){ return s.rec; }, f: pct, sub: recSub },
-      { k: 'Constância', v: 1, get: function(s){ return s.streak; }, f: function(v){ return v == null ? '--' : v + (v === 1 ? ' semana' : ' semanas'); }, sub: function(s){ return 'recorde ' + s.bestStreak; } },
-      { k: 'Medalhas do mês', v: 1, get: function(s){ return s.month === refMonth ? s.medals : 0; }, f: num, sub: function(s){ return s.month === refMonth ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
-      { k: 'Dias com recorde nos últimos 90 dias', v: 5, get: function(s){ return s.recDays; }, f: num, sub: function(){ return ''; } },
-      { k: 'Metas batidas nos últimos 90 dias', v: 2, get: function(s){ return s.beats; }, f: num, sub: function(){ return ''; } }
-    ];
-    var pts = {};
-    people.forEach(function(p){ pts[p.id] = 0; });
-    // Each line: one point for every person you beat in it (a tie scores nothing).
-    var tables = defs.map(function(d){
-      var vals = people.map(function(p){ var ok = p.s && p.s.v >= d.v, x = ok ? d.get(p.s) : null; return { p: p, x: x == null ? null : x, ok: ok }; });
-      // Someone without a value in a line is left out of it: no points for or against.
-      vals.forEach(function(a){ if (a.x == null) return; vals.forEach(function(b){ if (b !== a && b.x != null && a.x > b.x) pts[a.p.id]++; }); });
+    var ref = mine.month;
+    var pts = scoreBoard(people, ref);
+    var tables = SCORE_LINES.map(function(L){
+      var vals = people.map(function(p){ return { p: p, x: lineVal(L, p.s, ref), ok: !!(p.s && p.s.v >= L.v) }; });
       var sorted = vals.slice().sort(function(a, b){ return (b.x == null ? -1e9 : b.x) - (a.x == null ? -1e9 : a.x); });
       var top = sorted[0] && sorted[0].x != null ? sorted[0].x : null;
-      return '<tr class="duo-k"><th colspan="3">' + d.k + '</th></tr>' + sorted.map(function(a, i){
+      return '<tr class="duo-k"><th colspan="3">' + L.k + ' <span class="w-pts">· ' + ptsWord(L.w) + '</span></th></tr>' + sorted.map(function(a){
         var win = a.x != null && a.x === top && sorted.filter(function(z){ return z.x === top; }).length === 1;
         var pos = 1 + sorted.filter(function(z){ return z.x != null && a.x != null && z.x > a.x; }).length;
+        var sub = a.ok ? L.sub(a.p.s, ref) : 'quando abrir o app';
         return '<tr><td class="g-pos">' + (a.x == null ? '' : pos + 'º') + '</td><td class="g-nm">' + esc(a.p.name) + (a.p.mine ? ' (você)' : '') +
-          (a.ok && d.sub(a.p.s) ? '<span class="t-sub">' + esc(d.sub(a.p.s)) + '</span>' : (!a.ok ? '<span class="t-sub">quando abrir o app</span>' : '')) + '</td>' +
-          '<td class="num' + (win ? ' win' : '') + '"><span class="v">' + d.f(a.x) + '</span></td></tr>';
+          (sub ? '<span class="t-sub">' + esc(sub) + '</span>' : '') + '</td>' +
+          '<td class="num' + (win ? ' win' : '') + '"><span class="v">' + L.f(a.x) + '</span></td></tr>';
       }).join('');
     }).join('');
-    var rank = people.slice().sort(function(a, b){ return pts[b.id] - pts[a.id] || ((b.s.ag || 0) - (a.s.ag || 0)); });
+    var rank = rankBoard(people, pts);
     var k = mkey(new Date()), snap = {};
     people.forEach(function(p){ snap[p.id] = pts[p.id]; });
     var gDirty = JSON.stringify(groupHist[k] || {}) !== JSON.stringify(snap);
@@ -3828,21 +3877,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     // Final score of the month that just ended, once everyone has published it.
     var pm = mine.prev && mine.prev.month;
     if (pm && people.every(function(p){ return p.s && p.s.prev && p.s.prev.month === pm; })) {
-      var fin = {}; refMonth = pm;
-      people.forEach(function(p){ fin[p.id] = 0; });
-      defs.forEach(function(d){
-        var vals = people.map(function(p){ var q = p.s.prev, x = q && q.v >= d.v ? d.get(q) : null; return { id: p.id, x: x == null ? null : x }; });
-        vals.forEach(function(a){ if (a.x == null) return; vals.forEach(function(b){ if (b !== a && b.x != null && a.x > b.x) fin[a.id]++; }); });
-      });
-      refMonth = mine.month;
+      var fin = scoreBoard(people.map(function(p){ return { id: p.id, s: p.s.prev }; }), pm);
       if (JSON.stringify(groupHist[pm] || {}) !== JSON.stringify(fin)) { groupHist[pm] = fin; gDirty = true; }
     }
     if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist });
     var nameOf = {}; people.forEach(function(p){ nameOf[p.id] = p.name; });
     var board = '<article class="bib duo-score"><div class="band band-prova"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
-      '<div class="bib-body"><ol class="g-rank">' + rank.map(function(p, i){
-        return '<li><span class="g-r">' + (i + 1) + 'º</span><span class="g-n">' + esc(p.name) + '</span><span class="g-p">' + pts[p.id] + (pts[p.id] === 1 ? ' ponto' : ' pontos') + '</span></li>';
-      }).join('') + '</ol><p class="fine">Em cada linha, um ponto por pessoa que você supera. Empate de pontos: vale a maior nota por idade e sexo.</p></div><div class="bib-foot"></div></article>';
+      '<div class="bib-body"><ol class="g-rank">' + rank.map(function(r){
+        return '<li><span class="g-r">' + r.pos + 'º</span><span class="g-n">' + esc(r.p.name) + '</span><span class="g-p">' + ptsWord(pts[r.p.id]) + '</span></li>';
+      }).join('') + '</ol><p class="fine">Em cada linha, você ganha os pontos dela por pessoa que supera. Empate de pontos: vale a maior nota por idade e sexo; sem nota de um dos lados, divide a posição.</p></div><div class="bib-foot"></div></article>';
     // next race with at least two of the group
     var byDate = {};
     people.forEach(function(p){ (p.s.nextRaces || []).forEach(function(r){ (byDate[r.date] = byDate[r.date] || []).push({ p: p, r: r }); }); });
@@ -3888,32 +3931,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!mine) return '<div class="msg"><strong>Calculando</strong>Seus números ainda estão sendo calculados.</div>';
     var waiting = !his;
     if (waiting) his = {};
-    var sameMonth = his.month === mine.month;
-    var rows = [
-      { k: 'Nota por idade e sexo', a: mine.ag, b: his.ag, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
-        sa: mine.best5 ? '5 km em ' + fmtTime(mine.best5) : 'sem 5 km na rua', sb: his.best5 ? '5 km em ' + fmtTime(his.best5) : 'sem 5 km na rua' },
-      { k: 'Melhora nos 5 km', a: mine.evo, b: his.evo, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
-        sa: mine.first5 && mine.best5 ? 'de ' + fmtTime(mine.first5) : '', sb: his.first5 && his.best5 ? 'de ' + fmtTime(his.first5) : '' },
-      { k: 'Melhora recente nos 5 km', a: mine.rec, b: his.v >= 4 ? his.rec : null, skip: !(his.v >= 4), f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
-        sa: recSub(mine), sb: his.v >= 4 ? recSub(his) : 'quando abrir o app' },
-      { k: 'Constância', a: mine.streak, b: his.streak, f: function(v){ return v == null ? '--' : v + (v === 1 ? ' semana' : ' semanas'); },
-        sa: 'recorde ' + mine.bestStreak, sb: 'recorde ' + his.bestStreak },
-      { k: 'Medalhas do mês', a: mine.medals, b: sameMonth ? his.medals : 0, f: function(v){ return v == null ? '--' : String(v); },
-        sa: fmtKm(mine.kmMonth) + ' km, ' + mine.daysMonth + ' dias', sb: sameMonth ? fmtKm(his.kmMonth) + ' km, ' + his.daysMonth + ' dias' : 'mês sem dados' },
-      { k: 'Dias com recorde nos últimos 90 dias', a: mine.recDays, b: his.v >= 5 ? his.recDays : null, skip: !(his.v >= 5), f: function(v){ return v == null ? '--' : String(v); },
-        sa: '', sb: his.v >= 5 ? '' : 'quando abrir o app' },
-      { k: 'Metas batidas nos últimos 90 dias', a: mine.beats, b: his.v >= 2 ? his.beats : null, skip: !(his.v >= 2), f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
-    ];
-    var pa = 0, pb = 0;
-    if (waiting) rows.forEach(function(r){ r.b = null; r.sb = ''; });
-    var body = rows.map(function(r){
-      // A line where someone has no value yet scores for nobody.
-      var both = !waiting && !r.skip && r.a != null && r.b != null;
-      var wa = both && r.a > r.b, wb = both && r.b > r.a;
-      if (wa) pa++; if (wb) pb++;
-      return '<tr class="duo-k"><th colspan="2">' + r.k + '</th></tr><tr>' +
-        '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + r.f(r.a) + '</span>' + (r.sa ? '<span class="t-sub">' + esc(r.sa) + '</span>' : '') + '</td>' +
-        '<td' + (wb ? ' class="win"' : '') + '><span class="v">' + r.f(r.b) + '</span>' + (r.sb ? '<span class="t-sub">' + esc(r.sb) + '</span>' : '') + '</td></tr>';
+    var ref = mine.month;
+    var duo = [{ id: 'a', s: mine }, { id: 'b', s: waiting ? null : his }];
+    var P = scoreBoard(duo, ref), pa = P.a, pb = waiting ? 0 : P.b;
+    var body = SCORE_LINES.map(function(L){
+      var a = lineVal(L, mine, ref), b = waiting ? null : lineVal(L, his, ref);
+      var hisOld = !waiting && !(his.v >= L.v);
+      var wa = a != null && b != null && a > b, wb = a != null && b != null && b > a;
+      var sa = L.sub(mine, ref), sb = waiting ? '' : hisOld ? 'quando abrir o app' : L.sub(his, ref);
+      return '<tr class="duo-k"><th colspan="2">' + L.k + ' <span class="w-pts">· ' + ptsWord(L.w) + '</span></th></tr><tr>' +
+        '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + L.f(a) + '</span>' + (sa ? '<span class="t-sub">' + esc(sa) + '</span>' : '') + '</td>' +
+        '<td' + (wb ? ' class="win"' : '') + '><span class="v">' + L.f(b) + '</span>' + (sb ? '<span class="t-sub">' + esc(sb) + '</span>' : '') + '</td></tr>';
     }).join('');
     // A tie on the board is broken by the age and sex grade, the fairest level measure.
     var tie = pa === pb, byAg = tie && mine.ag != null && his.ag != null && mine.ag !== his.ag;

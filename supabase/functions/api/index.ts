@@ -298,6 +298,20 @@ async function refreshLive(aid: number): Promise<any> {
   }
   // deno-lint-ignore no-explicit-any
   const live: any = { base: sm.at, at: Date.now(), runs: runs.sort().slice(-400), thisWeek, streak: Math.max(0, streak), bestStreak: best };
+  // Board constância (v8): weeks with 2+ runs among the last 12, paused weeks skipped,
+  // current week only once it has 2.
+  if (sm.wkc && typeof sm.wkc === 'object') {
+    const cnt: Record<string, number> = { ...sm.wkc };
+    Object.keys(weekAdd).forEach((k) => { cnt[k] = (cnt[k] ?? 0) + weekAdd[k]; });
+    let wk = curWeek, used = 0, act = 0;
+    if ((cnt[wk] ?? 0) < 2) wk = addDays(wk, -7);
+    for (let i = 0; i < 40 && used < 12; i++, wk = addDays(wk, -7)) {
+      const n = cnt[wk] ?? 0;
+      if (n < 2 && pauses[wk]) continue;
+      used++; if (n >= 2) act++;
+    }
+    live.act12 = act;
+  }
   if (sm.month === month && Array.isArray(sm.kmT) && Array.isArray(sm.dT)) {
     const kt = tierIdx(km, sm.kmT), dt = tierIdx(days.size, sm.dT);
     Object.assign(live, { kmMonth: Math.round(km * 1000) / 1000, daysMonth: days.size, kmTier: kt, daysTier: dt, medals: (kt + 1) + (dt + 1) });
@@ -312,7 +326,7 @@ async function refreshLive(aid: number): Promise<any> {
 function mergeLive(summary: any, live: any) {
   if (!summary || !live || live.base !== summary.at) return { summary, live_at: null };
   const out = { ...summary };
-  ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals'].forEach((k) => {
+  ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals', 'act12'].forEach((k) => {
     if (live[k] !== undefined) out[k] = live[k];
   });
   return { summary: out, live_at: new Date(live.at).toISOString() };
