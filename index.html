@@ -638,7 +638,7 @@ html,body{overscroll-behavior-y:contain}
 <dialog id="pause-dlg" class="dlg" aria-labelledby="pause-dlg-title">
   <div class="help-head"><h2 id="pause-dlg-title">Pausar uma semana</h2></div>
   <form id="pause-form" method="dialog" novalidate>
-    <p class="hint">A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 treinos nela, conta normal. Nessa semana não chega aviso.</p>
+    <p class="hint">A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 corridas nela, conta normal. Nessa semana não chega aviso.</p>
     <fieldset class="pz-weeks"><legend>Semana</legend><div id="pause-weeks"></div></fieldset>
     <label>Motivo<input name="reason" type="text" maxlength="80" autocomplete="off" placeholder="Atestado, crise de coluna"></label>
     <p class="err" id="pause-err" hidden></p>
@@ -807,13 +807,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       ok:function(s){ return s.km >= 5; },
       better:function(a,b){ return a.pace < b.pace; },
       val:function(s){ return [fmtPace(s.pace), 'por km']; },
-      ctx:function(s){ return fmtKm(s.km) + ' km'; } },
-    { id:'eff', label:'Menor esforço por km', chip:'esforço por km',
-      empty:'Ainda sem treino de 2 km ou mais com esforço registrado.',
-      ok:function(s){ return s.km >= 2 && s.effKm != null && !(effortDocs[s.id] && effortDocs[s.id].noStreams); },
-      better:function(a,b){ return a.effKm < b.effKm; },
-      val:function(s){ return [fmt1(s.effKm), 'por km']; },
-      ctx:function(s){ return 'esforço ' + s.effort + ' em ' + fmtKm(s.km) + ' km'; } }
+      ctx:function(s){ return fmtKm(s.km) + ' km'; } }
   ];
   var REC_BY = {};
   RECS.forEach(function(r){ REC_BY[r.id] = r; });
@@ -1575,7 +1569,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
 
   var REC_SHORT = { dist:'Maior distância', time:'Mais tempo em movimento', pace2:'Melhor ritmo, 2 a 3 km',
-    pace3:'Melhor ritmo, 3 a 5 km', pace5:'Melhor ritmo, 5 km ou mais', eff:'Menor esforço por km' };
+    pace3:'Melhor ritmo, 3 a 5 km', pace5:'Melhor ritmo, 5 km ou mais' };
   function recCard(r, best){
     var s = best[r.id];
     if (!s) {
@@ -2344,17 +2338,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Melhores esforços', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
-      p('Recordes por treino', 'Conta o treino inteiro. Ritmo é separado por faixa de distância, sem sobreposição: de 2 a 3 km (até 2,99 km), de 3 a 5 km (até 4,99 km) e 5 km ou mais. Cada treino só disputa a faixa dele. Esforço por km é o esforço relativo do Strava dividido pela distância: em treinos parecidos, quanto menor, melhor o condicionamento.') +
+      p('Recordes por treino', 'Conta o treino inteiro. Ritmo é separado por faixa de distância, sem sobreposição: de 2 a 3 km (até 2,99 km), de 3 a 5 km (até 4,99 km) e 5 km ou mais. Cada treino só disputa a faixa dele.') +
       p('Evolução do ritmo', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca o treino mais rápido até aquele dia, entre os pontos do gráfico. Na aba Tudo, pontos vazados são esteira.') +
       p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira.') +
-      p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 treinos de 1 km ou 10 minutos, no mínimo (aquecimento curto não conta); o plano pede 3. Em prova, vale a distância oficial.') +
-      p('Semana pausada', 'No card de Constância, em Pausar uma semana, escolha a semana e escreva o motivo (atestado, viagem). Ela não conta pra sequência, mas também não zera; se tiver 2 treinos, conta normal. Dá pra pausar a semana atual e as 8 anteriores, e nessa semana não chega aviso. A sequência da Dupla segue a mesma regra.') +
+      p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 corridas de 1 km ou 10 minutos, no mínimo (caminhada e aquecimento curto não contam); o plano pede 3. Em prova, vale a distância oficial.') +
+      p('Semana pausada', 'No card de Constância, em Pausar uma semana, escolha a semana e escreva o motivo (atestado, viagem). Ela não conta pra sequência, mas também não zera; se tiver 2 corridas, conta normal. Dá pra pausar a semana atual e as 8 anteriores, e nessa semana não chega aviso. A sequência da Dupla segue a mesma regra.') +
       p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia, o primeiro peso novo do dia; se o valor não mudou, o app entende que você não se pesou. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
       p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Evolução: quanto o melhor 5 km melhorou desde o primeiro. Evolução recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 treinos ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dias dos últimos 3 meses a pessoa superou algum melhor tempo, em qualquer distância (rua, esteira ou prova); um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 3 meses (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Os números do outro são os da última vez que ele abriu o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
+      p('Dupla', 'Compara só o que é justo entre pessoas diferentes. Nota por idade e sexo: o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres); quanto maior, melhor. Melhora nos 5 km: quanto o melhor 5 km melhorou desde o primeiro. Melhora recente: o melhor 5 km dos últimos 90 dias comparado com o melhor dos 90 dias anteriores; mostra quem está melhorando agora. Constância: semanas seguidas com 2 corridas ou mais. Medalhas: a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde: em quantos dos últimos 90 dias a pessoa superou algum melhor tempo, em qualquer distância (rua, esteira ou prova); um dia vale 1, com 1 ou com 10 recordes. Metas batidas: quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias (a meta pede 5 a 7% de melhora sobre a base). Cada linha vale um ponto; empate não pontua. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Os números do outro são os da última vez que ele abriu o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha um ponto por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
   }
 
@@ -3428,7 +3422,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     pauseField('reason').value = '';
     var err = $('#pause-err');
     err.hidden = !!opts.length;
-    err.textContent = opts.length ? '' : 'Nas últimas semanas, as que ficaram com menos de 2 treinos já estão pausadas.';
+    err.textContent = opts.length ? '' : 'Nas últimas semanas, as que ficaram com menos de 2 corridas já estão pausadas.';
     $('#pause-save').disabled = !opts.length;
     var dlg = $('#pause-dlg');
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
@@ -3743,12 +3737,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var pct = function(v){ return v == null ? '--' : fmt1(v) + '%'; }, num = function(v){ return v == null ? '--' : String(v); };
     var defs = [
       { k: 'Nota por idade e sexo', v: 1, get: function(s){ return s.ag; }, f: pct, sub: function(s){ return s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua'; } },
-      { k: 'Evolução nos 5 km', v: 1, get: function(s){ return s.evo; }, f: pct, sub: function(s){ return s.first5 && s.best5 ? 'de ' + fmtTime(s.first5) : ''; } },
-      { k: 'Evolução recente nos 5 km', v: 4, get: function(s){ return s.rec; }, f: pct, sub: recSub },
+      { k: 'Melhora nos 5 km', v: 1, get: function(s){ return s.evo; }, f: pct, sub: function(s){ return s.first5 && s.best5 ? 'de ' + fmtTime(s.first5) : ''; } },
+      { k: 'Melhora recente nos 5 km', v: 4, get: function(s){ return s.rec; }, f: pct, sub: recSub },
       { k: 'Constância', v: 1, get: function(s){ return s.streak; }, f: function(v){ return v == null ? '--' : v + (v === 1 ? ' semana' : ' semanas'); }, sub: function(s){ return 'recorde ' + s.bestStreak; } },
       { k: 'Medalhas do mês', v: 1, get: function(s){ return s.month === mine.month ? s.medals : 0; }, f: num, sub: function(s){ return s.month === mine.month ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
-      { k: 'Dias com recorde em 3 meses', v: 5, get: function(s){ return s.recDays; }, f: num, sub: function(){ return ''; } },
-      { k: 'Metas batidas em 3 meses', v: 2, get: function(s){ return s.beats; }, f: num, sub: function(){ return ''; } }
+      { k: 'Dias com recorde nos últimos 90 dias', v: 5, get: function(s){ return s.recDays; }, f: num, sub: function(){ return ''; } },
+      { k: 'Metas batidas nos últimos 90 dias', v: 2, get: function(s){ return s.beats; }, f: num, sub: function(){ return ''; } }
     ];
     var pts = {};
     people.forEach(function(p){ pts[p.id] = 0; });
@@ -3824,17 +3818,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var rows = [
       { k: 'Nota por idade e sexo', a: mine.ag, b: his.ag, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
         sa: mine.best5 ? '5 km em ' + fmtTime(mine.best5) : 'sem 5 km na rua', sb: his.best5 ? '5 km em ' + fmtTime(his.best5) : 'sem 5 km na rua' },
-      { k: 'Evolução nos 5 km', a: mine.evo, b: his.evo, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
+      { k: 'Melhora nos 5 km', a: mine.evo, b: his.evo, f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
         sa: mine.first5 && mine.best5 ? 'de ' + fmtTime(mine.first5) : '', sb: his.first5 && his.best5 ? 'de ' + fmtTime(his.first5) : '' },
-      { k: 'Evolução recente nos 5 km', a: mine.rec, b: his.v >= 4 ? his.rec : null, skip: !(his.v >= 4), f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
+      { k: 'Melhora recente nos 5 km', a: mine.rec, b: his.v >= 4 ? his.rec : null, skip: !(his.v >= 4), f: function(v){ return v == null ? '--' : fmt1(v) + '%'; },
         sa: recSub(mine), sb: his.v >= 4 ? recSub(his) : 'quando abrir o app' },
       { k: 'Constância', a: mine.streak, b: his.streak, f: function(v){ return v == null ? '--' : v + (v === 1 ? ' semana' : ' semanas'); },
         sa: 'recorde ' + mine.bestStreak, sb: 'recorde ' + his.bestStreak },
       { k: 'Medalhas do mês', a: mine.medals, b: sameMonth ? his.medals : 0, f: function(v){ return v == null ? '--' : String(v); },
         sa: fmtKm(mine.kmMonth) + ' km, ' + mine.daysMonth + ' dias', sb: sameMonth ? fmtKm(his.kmMonth) + ' km, ' + his.daysMonth + ' dias' : 'mês sem dados' },
-      { k: 'Dias com recorde em 3 meses', a: mine.recDays, b: his.v >= 5 ? his.recDays : null, skip: !(his.v >= 5), f: function(v){ return v == null ? '--' : String(v); },
+      { k: 'Dias com recorde nos últimos 90 dias', a: mine.recDays, b: his.v >= 5 ? his.recDays : null, skip: !(his.v >= 5), f: function(v){ return v == null ? '--' : String(v); },
         sa: '', sb: his.v >= 5 ? '' : 'quando abrir o app' },
-      { k: 'Metas batidas em 3 meses', a: mine.beats, b: his.v >= 2 ? his.beats : null, skip: !(his.v >= 2), f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
+      { k: 'Metas batidas nos últimos 90 dias', a: mine.beats, b: his.v >= 2 ? his.beats : null, skip: !(his.v >= 2), f: function(v){ return v == null ? '--' : String(v); }, sa: '', sb: '' }
     ];
     var pa = 0, pb = 0;
     if (waiting) rows.forEach(function(r){ r.b = null; r.sb = ''; });
