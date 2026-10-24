@@ -108,6 +108,7 @@ h2{font-family:var(--font-num);font-weight:800;font-size:28px;line-height:1;marg
 .bib-stats.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .bib-stats .wide{grid-column:1/-1}
 .st-v{display:block;font-family:var(--font-num);font-weight:800;font-size:clamp(18px,5vw,26px);white-space:nowrap;line-height:1;font-variant-numeric:tabular-nums}
+.st-v small{font-size:.55em;font-weight:600;margin-left:2px;color:var(--muted)}
 .st-k{display:block;font-size:13px;color:var(--bib-muted);margin-top:4px}
 .rec-lines{margin:12px 0 0;padding:0;list-style:none}
 .rec-lines li{color:var(--rec-bib);font-weight:700;font-size:15px;padding-left:16px;position:relative;margin-top:2px}
@@ -918,6 +919,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         place: a.location_summary || '',
         latlng: Array.isArray(a.latlng) && a.latlng.length === 2 ? a.latlng : null,
         cadence: typeof s.avg_cadence === 'number' ? Math.round(s.avg_cadence * 2) : null,
+        hr: typeof s.avg_hr === 'number' ? s.avg_hr : null,
         broke: [],
         prs: []
       });
@@ -1123,7 +1125,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<div class="bib-body"><p class="bib-num">--<span class="u">km</span></p>' +
       '<div class="bib-stats"><div><span class="st-v">--</span><span class="st-k">Tempo</span></div>' +
       '<div><span class="st-v">--</span><span class="st-k">Ritmo por km</span></div>' +
-      '<div><span class="st-v">--</span><span class="st-k">Esforço</span></div></div></div>' +
+      '<div><span class="st-v">--</span><span class="st-k">FC média</span></div></div></div>' +
       '<div class="bib-foot"></div></section>';
   }
 
@@ -1156,7 +1158,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<div class="bib-stats">' +
           '<div><span class="st-v">' + fmtTime(s.time) + '</span><span class="st-k">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</span></div>' +
           '<div><span class="st-v">' + fmtPace(s.pace) + '</span><span class="st-k">Ritmo por km</span></div>' +
-          '<div><span class="st-v">' + (s.effort != null ? s.effort : '--') + '</span><span class="st-k">Esforço</span></div>' +
+          '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
         '</div>' +
         (lines.length ? '<ul class="rec-lines">' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
         (pl.top.length ? '<p class="bib-note">Top 5' + where + ' em ' + esc(joinPt(pl.top)) + '</p>' : '') +
@@ -1191,7 +1193,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '</div></div>';
     if (prog) {
       var pct = prog.total ? Math.round(prog.done / prog.total * 100) : 0;
-      html += '<div class="msg"><strong>Calculando seus melhores esforços</strong>' +
+      html += '<div class="msg"><strong>Calculando seus melhores tempos por distância</strong>' +
         '<span id="prog-count">' + prog.done + ' de ' + prog.total + '</span> treinos analisados. Isso só acontece uma vez por treino.' +
         '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span style="width:' + pct + '%"></span></div></div>';
     } else if (effortErr === 'rate_limited' || effortErr === 'network') {
@@ -1202,7 +1204,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var latest = a.list[a.list.length - 1];
     var ds = DISTS.filter(function(D){ return (D.u === 'both' || D.u === unitSys) && a.tables[D.k] && a.tables[D.k].length; });
     if (!ds.length) {
-      if (!prog) html += '<p class="note">Nenhum esforço calculado ainda. Eles aparecem depois que os treinos forem analisados.</p>';
+      if (!prog) html += '<p class="note">Nenhum tempo calculado ainda. Eles aparecem depois que os treinos forem analisados.</p>';
       return html;
     }
     var cur = ds.filter(function(D){ return D.k === effDist; })[0] || ds[0];
@@ -1628,7 +1630,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     s.broke.forEach(function(id){ recs.push('Recorde de ' + REC_BY[id].chip); });
     var z = histRow.i++ % 2 ? ' zb' : '';
     var dow = DOW[s.d.getDay()];
-    var detail = '<span class="t-sub">' + dow.charAt(0).toUpperCase() + dow.slice(1) + (s.effort != null ? ', esforço ' + s.effort : '') + (tags.length ? ' ' + tags.join(' ') : '') + '</span>' +
+    var detail = '<span class="t-sub">' + dow.charAt(0).toUpperCase() + dow.slice(1) + (s.hr != null ? ', FC média ' + s.hr : '') + (tags.length ? ' ' + tags.join(' ') : '') + '</span>' +
       (recs.length ? '<span class="t-rec">' + recs.join('. ') + '</span>' : '');
     return '<tr class="h-main' + z + '"><td><span class="t-lbl"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + '</span></td>' +
       '<td class="t-n">' + fmtKm(s.km) + '</td><td class="t-n">' + fmtTime(s.time) + '</td><td class="t-n">' + fmtPace(s.pace) + '</td></tr>' +
@@ -2227,7 +2229,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
             '<div class="bib-stats">' +
               '<div><span class="st-v">' + fmtTime(resT) + '</span><span class="st-k">' + (info.chip > 0 ? 'Tempo oficial nos ' : 'Tempo nos ') + fmtKmShort(distKm) + ' km</span></div>' +
               '<div><span class="st-v">' + fmtPace(resT / distKm) + '</span><span class="st-k">Ritmo por km</span></div>' +
-              '<div><span class="st-v">' + (s.effort != null ? s.effort : '--') + '</span><span class="st-k">Esforço</span></div>' +
+              '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
             '</div>' + era + splitTbl +
             '<dl class="rc-grid">' +
               '<div><dt>No relógio</dt><dd>' + fmtKm(s.watchKm != null ? s.watchKm : s.km) + ' km em ' + fmtTime(s.elapsed) + '</dd></div>' +
@@ -2335,7 +2337,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function comoFunciona(){
     var p = function(t, x){ return '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
     return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Esteira usa a distância do relógio, que bate com o painel da máquina no total do treino. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
-      p('Melhores esforços', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
+      p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, a distância segundo a segundo é estimada pelo movimento do braço, então os trechos podem variar um pouco. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
       p('Recordes por treino', 'Conta o treino inteiro. Ritmo é separado por faixa de distância, sem sobreposição: de 2 a 3 km (até 2,99 km), de 3 a 5 km (até 4,99 km) e 5 km ou mais. Cada treino só disputa a faixa dele.') +
@@ -2413,7 +2415,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     }
 
     if (view === 'recordes') {
-      html += '<h2>Melhores esforços</h2>' + effortsSection(a);
+      html += '<h2>Melhores tempos por distância</h2>' + effortsSection(a);
       html += '<h2>Recordes por treino</h2>' + recTable(a.best);
       return html;
     }
@@ -2980,10 +2982,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var rua = analyze(state.sessions, 'rua');
     analyze(state.sessions, 'esteira');
     var tudo = analyze(state.sessions, 'tudo');
-    var treinos = [['Data', 'Origem', 'Prova', 'Km', 'Tempo em movimento', 'Tempo total', 'Ritmo por km', 'Esforço', 'Cadência', 'Recordes na época']];
+    var treinos = [['Data', 'Origem', 'Prova', 'Km', 'Tempo em movimento', 'Tempo total', 'Ritmo por km', 'FC média', 'Cadência', 'Recordes na época']];
     tudo.list.forEach(function(s){
       treinos.push([fmtDate(s.d), origName(s), s.race ? raceShort(s) : '', Number(s.km.toFixed(3)), fmtTime(s.time), fmtTime(s.elapsed), fmtPace(s.pace),
-        s.effort != null ? s.effort : '', s.cadence || '', s.prs.map(function(k){ return DIST_BY[k].label; }).join(', ')]);
+        s.hr != null ? s.hr : '', s.cadence || '', s.prs.map(function(k){ return DIST_BY[k].label; }).join(', ')]);
     });
     var esf = [['Ambiente', 'Distância', 'Posição', 'Tempo', 'Ritmo por km', 'Data', 'Origem']];
     ['esteira', 'rua', 'tudo'].forEach(function(env){
@@ -3015,7 +3017,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         doc && doc.splits ? doc.splits.map(function(x){ return fmtTime(x.t); }).join(' | ') : '']);
     });
     var wb = X.utils.book_new();
-    [['Treinos', treinos], ['Melhores esforços', esf], ['Metas', metas], ['Provas', provas]].forEach(function(p){
+    [['Treinos', treinos], ['Melhores tempos', esf], ['Metas', metas], ['Provas', provas]].forEach(function(p){
       var ws = X.utils.aoa_to_sheet(p[1]);
       ws['!cols'] = p[1][0].map(function(){ return { wch: 18 }; });
       X.utils.book_append_sheet(wb, ws, p[0]);

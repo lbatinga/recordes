@@ -259,6 +259,7 @@ function mapActivity(a: any) {
       elapsed_time: a.elapsed_time ?? 0,
       relative_effort: typeof a.suffer_score === 'number' ? Math.round(a.suffer_score) : null,
       avg_cadence: typeof a.average_cadence === 'number' ? a.average_cadence : null,
+      avg_hr: typeof a.average_heartrate === 'number' ? Math.round(a.average_heartrate) : null,
     },
   };
 }
