@@ -958,6 +958,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         effKm: effort != null ? effort / km : null,
         race: Array.isArray(a.activity_tags) && a.activity_tags.indexOf('Race') !== -1,
         name: a.name || '',
+        desc: a.description || '',
         walk: type === 'Walk',
         place: a.location_summary || '',
         latlng: Array.isArray(a.latlng) && a.latlng.length === 2 ? a.latlng : null,
@@ -1814,11 +1815,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     }
     return minutes > 0 && wet / minutes >= 0.5;
   }
-  function firstTogether(asc, runs){
-    if (!Array.isArray(runs) || !runs.length) return null;
-    var bt = runs.map(function(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }).filter(function(x){ return x != null; });
+  function plainTxt(t){ return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  // Together = both have a run starting within 20 min, or the other person's first name
+  // is written in this run's description (covers runs the other one didn't record).
+  function firstTogether(asc, runs, name){
+    var bt = (Array.isArray(runs) ? runs : []).map(function(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }).filter(function(x){ return x != null; });
+    var nm = plainTxt(name).trim();
+    var re = nm.length >= 3 ? new RegExp('(^|[^a-z])' + nm.replace(/[^a-z ]/g, '') + '([^a-z]|$)') : null;
     for (var i = 0; i < asc.length; i++) {
       if (!asc[i].d || asc[i].walk) continue;
+      if (re && re.test(plainTxt(asc[i].desc))) return asc[i];
       var m = asc[i].d.getTime() / 60000;
       for (var j = 0; j < bt.length; j++) if (Math.abs(bt[j] - m) <= 20) return asc[i];
     }
@@ -2088,7 +2094,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       { label: 'Primeira antes das 6h', hit: earlyHit, where: earlyHit ? whereOf(earlyHit) + ', ' + pad(earlyHit.d.getHours()) + ':' + pad(earlyHit.d.getMinutes()) : '' }
     ];
     (group || []).forEach(function(g){
-      var hit = firstTogether(asc, (g.summary || {}).runs);
+      var hit = firstTogether(asc, (g.summary || {}).runs, g.firstname);
       momItems.push({ label: 'Primeira com ' + esc(g.firstname || 'a dupla'), hit: hit, where: hit ? whereOf(hit) : '' });
     });
 
