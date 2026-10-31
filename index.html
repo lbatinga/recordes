@@ -1478,13 +1478,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return html + hist + '</details>';
   }
 
+  /* A race on today's date stops being "upcoming" once its run is in: from then on it is a
+     past race, and its card would otherwise show the objective and goal already moved by it. */
+  function raceDone(iso){
+    return !!(state.sessions && state.sessions.some(function(s){ return s.race && s.d && isoOf(s.d) === iso; }));
+  }
+  function isUpcoming(iso){
+    var t = isoOf(new Date());
+    return iso > t || (iso === t && !raceDone(iso));
+  }
   function racesSection(){
     var today = dayOnly(new Date());
     var up = RACES.map(function(r){
       var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r.date);
       var d = new Date(+m[1], +m[2] - 1, +m[3]);
       return { r: r, d: d, days: Math.round((d - today) / 86400000) };
-    }).filter(function(x){ return x.days >= 0; });
+    }).filter(function(x){ return x.days >= 0 && isUpcoming(x.r.date); });
     var cards = up.map(function(x){
       var rk = x.r.km === 10 ? '10000' : (x.r.km === 6 ? '6000' : '5000');
       var best = currentBest(rk);
@@ -2250,7 +2259,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var done = state.sessions.filter(function(s){ return s.race; })
       .sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
     var today = dayOnly(new Date());
-    var next = RACE_INFO.filter(function(r){ var d = parseIso(r.date); return d && d >= today; });
+    var next = RACE_INFO.filter(function(r){ var d = parseIso(r.date); return d && d >= today && isUpcoming(r.date); });
     var html = '<div class="sec-tools pv-tools"><div class="seg" role="group" aria-label="Provas">' +
       '<button type="button" data-pv="passadas" aria-pressed="' + (provasView === 'passadas') + '">Passadas ' + done.length + '</button>' +
       '<button type="button" data-pv="futuras" aria-pressed="' + (provasView === 'futuras') + '">Futuras ' + next.length + '</button>' +
@@ -3751,7 +3760,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function duoNextRaces(){
     var today = isoOf(new Date());
-    return RACE_INFO.filter(function(r){ return r.date >= today; }).slice(0, 4).map(function(r){
+    return RACE_INFO.filter(function(r){ return r.date >= today && isUpcoming(r.date); }).slice(0, 4).map(function(r){
       var k = keyForKm(r.km), best = k ? currentBest(k) : null, g = k ? GOALS[k] : null;
       return { date: r.date, short: r.short || r.name, km: r.km, obj: best ? Math.round(best.t * 10) / 10 : null,
         lo: g && g.baseT != null ? g.lo : null, hi: g && g.baseT != null ? g.hi : null };
