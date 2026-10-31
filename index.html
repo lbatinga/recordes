@@ -166,6 +166,8 @@ details.mini > summary{cursor:pointer;font-weight:700;font-size:14px;color:var(-
 details.mini > summary::-webkit-details-marker{display:none}
 details.mini > summary::after{content:" +"}
 details.mini[open] > summary::after{content:" −"}
+.race-list .past-race .bib-num{font-size:clamp(44px,13vw,72px)}
+.past-race .race-more:not([open]){margin-bottom:12px}
 .icon-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
 .icon-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .icon-btn[disabled]{opacity:.4;cursor:default}
@@ -2230,7 +2232,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (ago < 0 || ago > 7) return '';
     var rua = analyze(state.sessions, 'rua');
     return '<h2>Relatório da prova</h2><p class="report-lead">' + (ago === 0 ? 'Hoje' : ago === 1 ? 'Ontem' : 'Há ' + ago + ' dias') + ', ' + esc(raceShort(r)) + '</p>' +
-      pastRaceCard(r, rua.tables);
+      pastRaceCard(r, rua.tables, true);
   }
 
   function monthCompare(){
@@ -2267,7 +2269,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '</div>';
   }
 
-  function pastRaceCard(s, ruaTables){
+  function pastRaceCard(s, ruaTables, expanded){
     var rua = { tables: ruaTables };
         var info = infoFor(s.d) || {};
         var name = info.name || s.name || 'Prova';
@@ -2294,7 +2296,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var ruaPrs = (s.prsBy && s.prsBy.rua) || s.prs || [];
         var prs = ruaPrs.length ? '<ul class="rec-lines"><li>Recorde na rua em ' + esc(joinPt(ruaPrs.map(function(k){ return DIST_BY[k].label; }))) + '</li></ul>' : '';
         var splitTbl = splitsTable(doc);
-        return '<article class="bib">' +
+        return '<article class="bib past-race">' +
           '<div class="band band-prova"><span>' + esc(name) + '</span><span class="bd">' + (info.km ? info.km + ' km' : fmtKm(s.km) + ' km') + '</span></div>' +
           '<div class="bib-body">' +
             (info.bib ? '<p class="bib-num">' + esc(info.bib) + '</p>' : '<p class="bib-num time">' + fmtOff(resT) + '</p>') +
@@ -2303,7 +2305,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
               '<div><span class="st-v">' + (info.chip > 0 ? fmtOff(resT) : fmtTime(resT)) + '</span><span class="st-k">' + (info.chip > 0 ? 'Tempo oficial nos ' : 'Tempo nos ') + fmtKmShort(distKm) + ' km</span></div>' +
               '<div><span class="st-v">' + fmtPace(resT / distKm) + '</span><span class="st-k">Ritmo por km</span></div>' +
               '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
-            '</div>' + era + splitTbl +
+            '</div>' +
+            '<details class="mini race-more" data-sec="race-' + s.id + '"' + (expanded || openSec['race-' + s.id] ? ' open' : '') + '><summary>Ver detalhes</summary>' +
+            era + splitTbl +
             '<dl class="rc-grid">' +
               '<div><dt>No relógio</dt><dd>' + fmtKm(s.watchKm != null ? s.watchKm : s.km) + ' km em ' + fmtTime(s.elapsed) + '</dd></div>' +
               (function(){ var w = wxOfSession(s); return w ? '<div><dt>Clima na largada</dt><dd>' + fmtWx(w) + '</dd></div>' : ''; })() +
@@ -2312,7 +2316,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
             (info.note ? '<p class="rc-note">' + esc(info.note) + '</p>' : '') +
           '<button type="button" class="btn share-btn" data-share="' + s.id + '">Gerar cartão pra compartilhar</button>' +
           (view === 'provas' ? '<button type="button" class="btn race-edit" data-race-edit="' + isoOf(s.d) + '" data-race-past="' + s.id + '">Editar dados da prova</button>' : '') +
-          '</div><div class="bib-foot"></div></article>';
+          '</details></div><div class="bib-foot"></div></article>';
   }
 
   function provasTab(){
