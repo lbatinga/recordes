@@ -2589,7 +2589,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nota por idade e sexo (3): o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres). Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa superou um melhor tempo que já existia, em qualquer distância. Todos os meses, desde junho de 2026, são calculados com estas regras, como estavam no último dia de cada mês. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo; sem nota de um dos lados, é empate. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
+      p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nível por idade e sexo (3): a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais. A nota compara o tempo com a referência oficial da sua idade, sexo e distância (tabela de corrida de rua da USATF, edição 2025); 100% é nível de recorde mundial. A idade nova conta a partir do mês do aniversário. Esteira não entra. A referência é conferida todo janeiro e vale o ano inteiro. Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa superou um melhor tempo que já existia, em qualquer distância. Todos os meses, desde junho de 2026, são calculados com estas regras, como estavam no último dia de cada mês. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, desempata, nesta ordem: nível por idade e sexo, linhas vencidas sozinho, km no mês e dias ativos no mês. No ano: meses vencidos, pontos somados, confronto direto e nível. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana. Caminhada gravada à parte aparece com o ícone de caminhada e não soma km nem medalha de km; com 10 minutos ou mais, conta como dia ativo.');
   }
 
@@ -3864,16 +3864,42 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   var partner = null, partnerLoaded = false, lastSummary = null, group = [];
   var GROUP_SINCE = {}; // config/partner.since: { athleteId: 'YYYY-MM-DD' } entry date in the group
-  var AG_STD = { M: 769, F: 834 }; /* 5 km road open standards: 12:49 and 13:54 */
-  function ageAt(dateIso){
+  /* Nível por idade e sexo: the official road age-grading table (USATF Masters Long Distance Running
+     Council, Alan Jones), 2025 edition, file version 2025-07-27. oc: the open standard in seconds (the
+     world record the table uses); f: the age factor x 10000, one per year of age starting at a0. */
+  var AG_T2025 = {"M":{"oc":{"5000":769,"6000":930,"8047":1264,"10000":1584,"15000":2415,"16093":2595,"21098":3451,"42195":7235},"a0":5,"f":{"5000":"6080,6664,7200,7688,8128,8520,8864,9160,9408,9608,9760,9864,9944,9995,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9999,9988,9965,9930,9883,9824,9755,9685,9615,9545,9475,9405,9335,9265,9195,9125,9055,8985,8915,8845,8775,8705,8635,8565,8495,8425,8355,8285,8215,8145,8075,8005,7935,7865,7795,7725,7655,7585,7514,7436,7353,7264,7169,7068,6960,6847,6728,6603,6472,6334,6191,6042,5887,5726,5558,5385,5206,5021,4830,4632,4429,4220,4005,3784,3556,3323,3084,2839,2588,2330,2067","6000":"5815,6405,6948,7446,7898,8304,8664,8978,9246,9469,9645,9776,9878,9948,9974,9992,10000,10000,10000,10000,10000,10000,10000,10000,10000,9999,9990,9970,9940,9899,9846,9785,9721,9655,9587,9517,9446,9375,9303,9232,9161,9089,9018,8947,8876,8804,8733,8662,8590,8519,8448,8376,8305,8234,8162,8091,8020,7948,7877,7806,7734,7663,7592,7520,7443,7362,7276,7183,7085,6979,6868,6751,6628,6498,6362,6220,6072,5918,5757,5590,5417,5238,5053,4862,4664,4460,4250,4034,3812,3583,3348,3107,2860,2607,2347,2081","8047":"5389,5987,6543,7056,7527,7956,8342,8685,8986,9244,9460,9633,9772,9873,9933,9978,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9993,9979,9955,9924,9882,9833,9779,9719,9655,9586,9512,9439,9365,9292,9218,9145,9071,8998,8925,8851,8778,8704,8631,8557,8484,8411,8337,8264,8190,8117,8043,7970,7897,7823,7750,7676,7603,7529,7453,7376,7294,7206,7111,7010,6903,6788,6668,6541,6407,6267,6120,5967,5808,5642,5469,5290,5105,4913,4714,4509,4298,4081,3856,3625,3388,3144,2894,2637,2374,2104","10000":"5073,5678,6243,6768,7253,7698,8103,8468,8793,9078,9323,9528,9693,9818,9903,9968,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9996,9985,9967,9942,9909,9869,9822,9767,9705,9636,9561,9486,9411,9336,9261,9186,9111,9036,8961,8886,8811,8736,8661,8586,8511,8436,8361,8286,8211,8136,8061,7986,7911,7836,7761,7686,7611,7536,7461,7386,7308,7223,7131,7033,6928,6816,6697,6572,6440,6301,6156,6004,5845,5680,5508,5329,5143,4951,4752,4546,4334,4115,3889,3657,3418,3172,2919,2660,2394,2121","15000":"4828,5507,6138,6719,7250,7733,8165,8548,8882,9167,9401,9587,9724,9835,9929,9985,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9998,9991,9975,9952,9919,9879,9831,9775,9710,9637,9560,9484,9408,9331,9254,9178,9102,9025,8949,8872,8795,8719,8643,8566,8489,8413,8337,8260,8183,8107,8030,7954,7877,7801,7724,7647,7571,7495,7418,7341,7262,7175,7082,6981,6875,6761,6641,6513,6379,6238,6091,5937,5775,5608,5433,5251,5063,4868,4667,4458,4243,4021,3792,3557,3315,3066,2810,2547,2278,2002","16093":"4785,5478,6120,6711,7250,7739,8176,8562,8898,9182,9415,9597,9729,9838,9933,9988,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9999,9992,9977,9953,9921,9881,9833,9776,9711,9637,9560,9484,9407,9330,9253,9176,9100,9023,8946,8869,8793,8716,8639,8562,8486,8409,8332,8255,8178,8102,8025,7948,7871,7795,7718,7641,7564,7488,7411,7334,7254,7167,7073,6972,6866,6752,6631,6503,6369,6227,6080,5925,5763,5595,5420,5238,5049,4854,4652,4443,4228,4005,3776,3540,3297,3047,2791,2527,2258,1981","21098":"4621,5364,6050,6678,7248,7762,8218,8616,8957,9241,9467,9636,9750,9850,9950,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9996,9982,9960,9928,9888,9839,9781,9714,9638,9560,9483,9405,9327,9249,9171,9094,9016,8938,8860,8782,8705,8627,8549,8471,8393,8316,8238,8160,8082,8004,7927,7849,7771,7693,7615,7538,7460,7382,7304,7223,7135,7040,6938,6830,6715,6593,6464,6328,6185,6036,5880,5717,5547,5370,5186,4996,4799,4595,4384,4167,3942,3711,3473,3228,2976,2718,2452,2180,1901","42195":"4414,5080,5702,6279,6812,7301,7745,8145,8500,8811,9078,9300,9500,9680,9820,9920,9980,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,10000,9999,9979,9934,9865,9783,9701,9619,9537,9455,9373,9291,9209,9127,9045,8963,8881,8799,8717,8635,8553,8471,8389,8307,8225,8143,8061,7979,7897,7815,7733,7651,7569,7487,7405,7323,7241,7155,7063,6963,6857,6743,6623,6495,6361,6219,6071,5915,5753,5583,5407,5223,5033,4835,4631,4419,4201,3975,3743,3503,3257,3003,2743,2475,2201,1919"}},"F":{"oc":{"5000":834,"6000":1010,"8047":1375,"10000":1726,"15000":2629,"16093":2832,"21098":3772,"42195":7796},"a0":5,"f":{"5000":"6903,7222,7527,7816,8091,8351,8596,8827,9042,9243,9433,9622,9811,9953,10000,10000,10000,10000,10000,10000,10000,10000,9997,9990,9977,9959,9936,9908,9875,9836,9793,9744,9691,9632,9568,9499,9425,9346,9262,9172,9078,8980,8883,8786,8689,8592,8495,8398,8301,8204,8107,8009,7912,7815,7718,7621,7524,7427,7330,7233,7136,7038,6941,6844,6747,6650,6553,6456,6359,6262,6165,6067,5970,5868,5758,5640,5515,5382,5242,5094,4938,4775,4604,4426,4240,4046,3845,3636,3419,3195,2964,2725,2478,2223,1961,1692","6000":"6889,7212,7519,7810,8086,8346,8590,8819,9032,9229,9414,9595,9777,9918,9979,9995,10000,10000,10000,10000,10000,10000,9998,9992,9981,9965,9943,9917,9887,9850,9810,9764,9714,9658,9597,9532,9461,9386,9306,9220,9131,9037,8942,8847,8750,8652,8555,8457,8360,8262,8164,8066,7968,7871,7773,7675,7578,7480,7383,7285,7187,7089,6991,6894,6796,6698,6601,6503,6406,6308,6210,6111,6010,5904,5790,5668,5538,5401,5257,5105,4945,4777,4602,4420,4230,4032,3826,3613,3392,3164,2928,2685,2434,2175,1909,1635","8047":"6867,7195,7507,7801,8078,8339,8581,8807,9016,9207,9383,9552,9721,9862,9945,9986,10000,10000,10000,10000,10000,10000,9999,9995,9987,9973,9955,9933,9906,9874,9837,9795,9750,9699,9644,9584,9520,9451,9377,9298,9215,9128,9038,8945,8848,8750,8652,8552,8454,8356,8257,8158,8059,7961,7862,7763,7665,7566,7467,7369,7270,7171,7072,6974,6875,6776,6678,6579,6481,6382,6283,6182,6075,5962,5841,5712,5576,5432,5281,5122,4955,4781,4599,4410,4213,4008,3796,3576,3349,3114,2871,2621,2363,2098,1825,1544","10000":"6850,7183,7498,7794,8072,8333,8574,8798,9004,9191,9360,9520,9680,9820,9920,9980,10000,10000,10000,10000,10000,10000,10000,9998,9991,9980,9964,9944,9920,9891,9857,9819,9777,9730,9679,9623,9563,9499,9429,9356,9278,9195,9109,9017,8921,8822,8723,8623,8524,8425,8325,8226,8126,8027,7928,7828,7729,7629,7530,7431,7331,7232,7132,7033,6934,6834,6735,6635,6536,6437,6337,6234,6123,6005,5879,5745,5604,5455,5299,5135,4963,4784,4597,4403,4201,3991,3774,3549,3317,3077,2829,2574,2311,2041,1763,1477","15000":"6432,6798,7144,7471,7779,8068,8337,8586,8817,9028,9219,9401,9582,9744,9866,9947,9989,10000,10000,10000,10000,10000,10000,9998,9991,9979,9963,9942,9917,9887,9853,9814,9770,9721,9669,9611,9549,9482,9411,9335,9254,9169,9080,8985,8886,8785,8683,8581,8479,8378,8276,8175,8073,7972,7870,7768,7667,7565,7463,7362,7260,7159,7057,6955,6854,6752,6650,6549,6447,6346,6244,6139,6026,5906,5777,5641,5497,5345,5186,5019,4843,4660,4469,4270,4064,3850,3627,3397,3160,2915,2661,2400,2131,1854,1569,1277","16093":"6359,6731,7083,7415,7728,8022,8295,8549,8784,8999,9194,9380,9565,9731,9856,9942,9987,10000,10000,10000,10000,10000,10000,9998,9991,9979,9963,9942,9917,9887,9852,9813,9769,9720,9667,9609,9546,9479,9407,9331,9250,9164,9075,8979,8880,8778,8676,8574,8472,8370,8268,8166,8064,7962,7860,7758,7656,7554,7452,7350,7248,7146,7043,6942,6840,6738,6636,6534,6431,6330,6227,6122,6010,5888,5760,5623,5478,5326,5166,4999,4822,4639,4447,4247,4040,3825,3602,3371,3133,2886,2631,2369,2099,1821,1535,1242","21098":"6080,6474,6847,7200,7533,7845,8137,8408,8659,8890,9100,9300,9500,9680,9820,9920,9980,10000,10000,10000,10000,10000,10000,9998,9991,9979,9962,9941,9915,9884,9849,9809,9764,9714,9660,9601,9537,9468,9395,9317,9234,9147,9055,8958,8856,8753,8649,8546,8442,8339,8235,8132,8028,7925,7821,7718,7614,7511,7407,7304,7200,7097,6993,6890,6786,6683,6579,6476,6372,6269,6165,6059,5945,5822,5692,5554,5407,5253,5091,4921,4742,4556,4362,4159,3949,3731,3504,3270,3028,2778,2519,2253,1979,1696,1406,1108","42195":"5405,5874,6311,6718,7093,7438,7751,8034,8285,8506,8695,8869,9043,9217,9391,9553,9689,9801,9888,9950,9988,10000,10000,9998,9992,9983,9970,9953,9932,9907,9879,9847,9811,9771,9727,9680,9629,9574,9515,9453,9386,9316,9242,9165,9083,8998,8909,8816,8720,8619,8515,8407,8297,8186,8076,7965,7854,7744,7633,7523,7412,7301,7191,7080,6970,6859,6748,6638,6527,6413,6290,6159,6021,5874,5720,5557,5386,5208,5021,4827,4624,4413,4195,3968,3734,3491,3240,2982,2715,2441,2158,1867,1569,1262,948,625"}}};
+  /* Each January the references are checked against the world records. An approved change enters here
+     with the month it starts ('YYYY-01') and holds for that whole year; earlier months keep theirs. A new
+     official edition enters the same way. Entry: { from, name, t, oc: { F: { '5000': 830 } } }. */
+  var AG_EDITIONS = [{ from: '2000-01', name: 'USATF 2025', t: AG_T2025 }];
+  var AG_KEYS = ['5000', '6000', '8047', '10000', '15000', '16093', '21098', '42195'];
+  function agEdition(mk){ var e = AG_EDITIONS[0]; AG_EDITIONS.forEach(function(x){ if (x.from <= mk) e = x; }); return e; }
+  function agFac(t, sex, key, age){
+    var S = t[sex];
+    if (!S || !S.f[key]) return null;
+    if (!S.fa) { S.fa = {}; Object.keys(S.f).forEach(function(k){ S.fa[k] = S.f[k].split(',').map(Number); }); }
+    if (age == null) return 1; // no birth date: no age adjustment
+    var arr = S.fa[key];
+    return arr[Math.max(0, Math.min(arr.length - 1, age - S.a0))] / 10000;
+  }
+  // The age that counts is the one the person has on the last day of that month: in the birthday month the new age already counts.
+  function agAge(dateIso){
     var b = parseIso(BIRTH), d = parseIso(dateIso);
     if (!b || !d) return null;
-    var a = d.getFullYear() - b.getFullYear();
-    if (d.getMonth() < b.getMonth() || (d.getMonth() === b.getMonth() && d.getDate() < b.getDate())) a--;
-    return a;
+    return d.getFullYear() - b.getFullYear() - (d.getMonth() < b.getMonth() ? 1 : 0);
   }
-  /* Age factor is 1.0 through 35; beyond that a gentle approximation. */
-  function ageFactor(age){ return age == null || age <= 35 ? 1 : Math.max(0.5, 1 - 0.0075 * (age - 35)); }
+  // Grade in % of the reference for that age, sex and distance (100% = world-record level). mk: the month being scored.
+  function agGrade(key, sec, dateIso, mk){
+    if (!(sec > 0) || (SEX !== 'M' && SEX !== 'F')) return null;
+    var ed = agEdition(mk), oc = (ed.oc && ed.oc[SEX] && ed.oc[SEX][key]) || (ed.t[SEX] && ed.t[SEX].oc[key]);
+    var f = agFac(ed.t, SEX, key, agAge(dateIso));
+    return oc && f ? oc / f / sec * 100 : null;
+  }
+  function agSub(s){
+    if (s && s.agK && DIST_BY[s.agK]) return DIST_BY[s.agK].label + ' em ' + fmtTime(s.agT) + (s.agD ? ', ' + fmtShort(parseIso(s.agD)) : '');
+    if (s && s.v >= 10) return 'sem 5 km ou mais na rua em 90 dias';
+    return s && s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua';
+  }
 
   // Adds "prev": the previous month's numbers as they stood on its last day, so the month that
   // just ended is scored with everything done in it (a race on the 31st opened only on the 1st).
@@ -3889,7 +3915,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var HIST_FROM = '2026-06';
   function asOfMonth(end){
     var c = buildSummaryCore();
-    return { v: c.v, month: c.month, ag: c.ag, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
+    return { v: c.v, month: c.month, ag: c.ag, agK: c.agK, agT: c.agT, agD: c.agD, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
       recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
       daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
       recDaysM: c.recDaysM, beatsM: c.beatsM };
@@ -3924,8 +3950,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function numF(v){ return v == null ? '--' : String(v); }
   var SCORE_LINES = [
     { id: 'rec', k: 'Melhora recente nos 5 km', w: 4, v: 4, get: function(s){ return s.rec; }, f: pctF, sub: function(s){ return recSub(s); } },
-    { id: 'ag', k: 'Nota por idade e sexo', w: 3, v: 1, get: function(s){ return s.ag; }, f: pctF,
-      sub: function(s){ return s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua'; } },
+    { id: 'ag', k: 'Nível por idade e sexo', w: 3, v: 1, get: function(s){ return s.ag; }, f: pctF,
+      sub: function(s){ return agSub(s); } },
     { id: 'trot', k: 'Correndo sem parar, últimos 90 dias', w: 3, v: 8, get: function(s){ return s.trot90; },
       f: function(v){ return v == null ? '--' : fmtTime(v); },
       sub: function(s){ return s.trot90 ? fmtKm(s.trot90m / 1000) + ' km sem caminhar, na rua' : 'sem corrida na rua com GPS'; } },
@@ -3948,7 +3974,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function linesFor(ref){ return ref && ref >= LINES_FROM ? SCORE_LINES_M : SCORE_LINES; }
   // Short names for the line-by-line table.
   (function(){
-    var sh = { rec: ['Melhora recente', '5 km, 120 dias'], ag: ['Nota idade e sexo', '5 km na rua'], trot: ['Correndo sem parar', 'rua, 90 dias'],
+    var sh = { rec: ['Melhora recente', '5 km, 120 dias'], ag: ['Nível idade e sexo', 'rua, 90 dias'], trot: ['Correndo sem parar', 'rua, 90 dias'],
       act: ['Constância', '12 semanas'], medals: ['Medalhas', 'no mês'] };
     SCORE_LINES.concat(SCORE_LINES_M).forEach(function(L){
       var x = sh[L.id] || (L.id === 'beats' ? ['Metas batidas', L.v >= 9 ? 'no mês' : '90 dias'] : L.id === 'recDays' ? ['Dias com recorde', L.v >= 9 ? 'no mês' : '90 dias'] : null);
@@ -4005,8 +4031,18 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var t5 = rua.tables['5000'] || [];
     var best5 = t5[0] || null, first5 = null;
     t5.forEach(function(e){ if (!e.s.walk && (!first5 || e.s.date < first5.s.date)) first5 = e; });
-    var ag = null;
-    if (best5 && AG_STD[SEX]) ag = Math.round(AG_STD[SEX] / ageFactor(ageAt(isoOf(best5.s.d))) / best5.t * 1000) / 10;
+    // Nível: the best grade of the last 90 days on the street (training or race), 5 km or more.
+    var agB = null, since90g = isoMinus(89), mkNow = mkey(nowD());
+    AG_KEYS.forEach(function(k){
+      (rua.tables[k] || []).forEach(function(e){
+        if (e.s.walk || !e.s.d) return;
+        var di = isoOf(e.s.d);
+        if (di < since90g) return;
+        var g = agGrade(k, e.t, di, mkNow);
+        if (g != null && (!agB || g > agB.g)) agB = { g: g, k: k, t: e.t, d: di };
+      });
+    });
+    var ag = agB ? Math.round(agB.g * 10) / 10 : null;
     var evo = best5 && first5 && first5 !== best5 ? Math.round((first5.t - best5.t) / first5.t * 1000) / 10 : (best5 ? 0 : null);
     // Recent improvement: inside the last 120 days (a sliding window), the first 5 km against
     // the best one. A single 5 km in the window gives 0%; none gives no value.
@@ -4066,14 +4102,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       });
     });
     return {
-      v: 9, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, beatsM: beatsM,
+      v: 10, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, beatsM: beatsM,
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
       nextRaces: duoNextRaces(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
       runsAll: all.filter(function(x){ return x.d; }).map(function(x){ return x.date.slice(0, 16); }).slice(-800),
-      ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
+      ag: ag, agK: agB ? agB.k : null, agT: agB ? Math.round(agB.t * 10) / 10 : null, agD: agB ? agB.d : null,
+      best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
       streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek, act12: act12, wkc: wkc, trot90: trot90, trot90m: trot90m,
       kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
@@ -4389,7 +4426,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     // A tie on the board is broken by the age and sex grade, the fairest level measure.
     var tie = pa === pb, byAg = tie && mine.ag != null && his.ag != null && mine.ag !== his.ag;
     var lead = !tie ? (pa > pb ? myName : hisName) + ' na frente'
-      : byAg ? (mine.ag > his.ag ? myName : hisName) + ' na frente pelo desempate (nota por idade e sexo)' : 'Empate';
+      : byAg ? (mine.ag > his.ag ? myName : hisName) + ' na frente pelo desempate (nível por idade e sexo)' : 'Empate';
     var upd = partner.updated_at ? new Date(partner.updated_at) : null;
     var live = partner.live_at ? new Date(partner.live_at) : null;
     if (live && upd && live <= upd) live = null;
