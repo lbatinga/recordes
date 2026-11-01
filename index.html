@@ -354,9 +354,22 @@ details.sec[open] .sec-i::before{content:"−"}
 .md-next.ok{color:var(--ok);font-weight:700}
 .md-card .ch-bar{margin-top:6px;height:8px}
 .md-scale{margin:6px 0 0;font-size:12px;color:var(--muted)}
-.md-tbl td{padding:8px 10px}
+.mc{padding:14px 12px 12px;text-align:center}
+.mc-k{margin:8px 0 0;font-size:13px;color:var(--muted);font-weight:600}
+.mc-t{margin:0;font-family:var(--font-num);font-weight:800;font-size:22px;line-height:1.1}
+.seg4,.seg4l{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.seg4{margin-top:10px}
+.seg4 i{display:block;height:7px;border-radius:4px;background:var(--line);overflow:hidden}
+.seg4 i b{display:block;height:100%;border-radius:4px}
+.seg4l{margin-top:4px;font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.mc-n,.mc-w{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
+.wk{width:13px;height:13px;vertical-align:-2px;margin-right:3px}
+.md-wk{margin-top:1px}
+.md-cell .t-sub{white-space:nowrap}
+.md-tbl td{padding:8px 7px}
+.md-tbl td:first-child{padding-left:12px}
 .md-month{font-weight:700;white-space:nowrap}
-.md-cell{display:flex;align-items:center;gap:8px}
+.md-cell{display:flex;align-items:center;gap:6px}
 .md-cell .medal{margin:0;flex:none}
 .md-ct{display:block;font-weight:700;font-size:14px}
 .share-btn{width:100%;margin-top:16px;border-color:var(--bib-ink);color:var(--bib-ink)}
@@ -1959,11 +1972,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function prevKey(k, n){ var y = +k.slice(0, 4), m = +k.slice(5, 7) - 1 - n; var d = new Date(y, m, 1); return mkey(d); }
 
   function monthStats(){
-    var km = {}, days = {};
+    var km = {}, days = {}, walk = {};
     state.sessions.forEach(function(s){ if (s.d) { var k = mkey(s.d); km[k] = (km[k] || 0) + s.km; } });
+    // Walks shown apart (never in km or medals). Walks up to WALK_UNTIL already count as training.
+    (lastActs || []).forEach(function(a){
+      if (!a || a.sport_type !== 'Walk') return;
+      var t = a.start_local || '';
+      if (!t || (RANGE_START && t < RANGE_START) || (WALK_UNTIL && t < WALK_UNTIL)) return;
+      var m = Number((a.summary || {}).distance) || 0;
+      if (m > 0) walk[t.slice(0, 7)] = (walk[t.slice(0, 7)] || 0) + m / 1000;
+    });
     Object.keys(state.activeDays || {}).forEach(function(day){ var k = day.slice(0, 7); days[k] = (days[k] || 0) + 1; });
-    return { km: km, days: days };
+    return { km: km, days: days, walk: walk };
   }
+  var ICON_RUN = '<svg class="wk" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>';
+  var ICON_WALK = '<svg class="wk" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>';
+  var WALK_NOTE = '<p class="fine">' + ICON_WALK + ' Caminhada aparece à parte e não conta pras medalhas.</p>';
   function tiersFrom(b, cap){
     var t = [Math.ceil(b * 0.6), Math.ceil(b * 0.8), Math.ceil(b), Math.ceil(b * 1.4)];
     for (var i = 1; i < t.length; i++) if (t[i] <= t[i - 1]) t[i] = t[i - 1] + 1;
@@ -2006,28 +2030,30 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var kt = kmTiers(st, now);
     var dt = daysTiers(st, now);
     var ktier = tierOf(kmNow, kt), dtier = tierOf(dNow, dt);
-    function progress(v, tiers, tier, unit, fmt){
-      if (tier >= tiers.length - 1) return '<p class="md-next ok">Diamante conquistado</p><div class="ch-bar"><span style="width:100%"></span></div>';
-      var nextV = tiers[tier + 1], prevV = tier >= 0 ? tiers[tier] : 0;
-      var pct = Math.max(0, Math.min(100, (v - prevV) / (nextV - prevV) * 100));
-      var falta = nextV - v;
-      var u = unit === 'dias' && falta === 1 ? 'dia' : unit;
-      return '<p class="md-next">' + (falta === 1 && unit === 'dias' ? 'Falta ' : 'Faltam ') + fmt(falta) + ' ' + u + ' pro ' + TIER_NAMES[tier + 1].toLowerCase() + '</p>' +
-        '<div class="ch-bar"><span style="width:' + pct.toFixed(1) + '%"></span></div>';
+    // Bar in 4 parts, one per level, each in its medal colour.
+    function seg(v, tiers){
+      return '<div class="seg4">' + tiers.map(function(x, i){
+        var lo = i ? tiers[i - 1] : 0, f = Math.max(0, Math.min(1, (v - lo) / (x - lo)));
+        return '<i><b style="width:' + (f * 100).toFixed(1) + '%;background:' + TIER_COLORS[i].m + '"></b></i>';
+      }).join('') + '</div><div class="seg4l">' + tiers.map(function(x){ return '<span>' + x + '</span>'; }).join('') + '</div>';
     }
+    function left(v, tiers, tier, unit){
+      if (tier >= tiers.length - 1) return '';
+      var f = tiers[tier + 1] - v;
+      var txt = unit === 'km' ? 'Faltam ' + fmtKmShort(Math.ceil(f * 10) / 10) + ' km' : (f === 1 ? 'Falta 1' : 'Faltam ' + f);
+      return '<p class="mc-n">' + txt + ' pro ' + TIER_NAMES[tier + 1].toLowerCase() + '</p>';
+    }
+    var wNow = st.walk[now] || 0;
     var html = '<h3 class="h3">Medalhas de ' + mlabel(now, true).replace(/ de \d+$/, '') + '</h3>' +
       '<div class="md-now">' +
-        '<div class="panel md-card">' + medalSVG('km', ktier, fmtKm(kmNow) + ' km', 88) +
-          '<p class="md-name">Km do mês</p>' + (ktier >= 0 ? '<p class="md-tier">' + TIER_NAMES[ktier] + '</p>' : '') +
-          '<p class="md-val">' + fmtKm(kmNow) + ' km feitos</p>' +
-          progress(kmNow, kt, ktier, 'km', function(x){ return fmtKm(x); }) +
-          '<p class="md-scale">' + kt.join(' / ') + ' km</p></div>' +
-        '<div class="panel md-card">' + medalSVG('dias', dtier, dNow + (dNow === 1 ? ' dia' : ' dias'), 88) +
-          '<p class="md-name">Dias ativos</p>' + (dtier >= 0 ? '<p class="md-tier">' + TIER_NAMES[dtier] + '</p>' : '') +
-          '<p class="md-val">' + dNow + (dNow === 1 ? ' dia ativo' : ' dias ativos') + '</p>' +
-          progress(dNow, dt, dtier, 'dias', function(x){ return String(x); }) +
-          '<p class="md-scale">' + dt.join(' / ') + ' dias</p></div>' +
-      '</div>';
+        '<div class="panel mc">' + medalSVG('km', ktier, fmt1(kmNow) + ' km', 88) +
+          '<p class="mc-k">' + ICON_RUN + 'Km do mês</p><p class="mc-t">' + (ktier >= 0 ? TIER_NAMES[ktier] : 'Sem medalha') + '</p>' +
+          seg(kmNow, kt) + left(kmNow, kt, ktier, 'km') +
+          (wNow > 0 ? '<p class="mc-w">' + ICON_WALK + fmt1(wNow) + ' km</p>' : '') + '</div>' +
+        '<div class="panel mc">' + medalSVG('dias', dtier, dNow + (dNow === 1 ? ' dia' : ' dias'), 88) +
+          '<p class="mc-k">Dias ativos</p><p class="mc-t">' + (dtier >= 0 ? TIER_NAMES[dtier] : 'Sem medalha') + '</p>' +
+          seg(dNow, dt) + left(dNow, dt, dtier, 'dias') + '</div>' +
+      '</div>' + (wNow > 0 ? WALK_NOTE : '');
     if (onlyNow) return html;
     // collection: past months with activity
     var keys = Object.keys(st.km).concat(Object.keys(st.days)).filter(function(k, i, arr){ return arr.indexOf(k) === i && k < now; }).sort().reverse();
@@ -2037,9 +2063,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           var v = st.km[k] || 0, dd = st.days[k] || 0;
           var t1 = tierOf(v, kmTiers(st, k)), t2 = tierOf(dd, daysTiers(st, k));
           return '<tr><td class="md-month"><button type="button" class="recap-btn" data-recap="' + k + '" aria-label="Cartão de ' + mlabel(k, true) + '">' + mlabel(k) + RECAP_ICON + '</button></td>' +
-            '<td><span class="md-cell">' + medalSVG('km', t1, '', 40) + '<span><span class="md-ct">' + (t1 >= 0 ? TIER_NAMES[t1] : 'Sem medalha') + '</span><span class="t-sub">' + fmtKm(v) + ' km</span></span></span></td>' +
+            '<td><span class="md-cell">' + medalSVG('km', t1, '', 40) + '<span><span class="md-ct">' + (t1 >= 0 ? TIER_NAMES[t1] : 'Sem medalha') + '</span><span class="t-sub">' + ICON_RUN + fmt1(v) + ' km</span>' + ((st.walk[k] || 0) > 0 ? '<span class="t-sub md-wk">' + ICON_WALK + fmt1(st.walk[k]) + ' km</span>' : '') + '</span></span></td>' +
             '<td><span class="md-cell">' + medalSVG('dias', t2, '', 40) + '<span><span class="md-ct">' + (t2 >= 0 ? TIER_NAMES[t2] : 'Sem medalha') + '</span><span class="t-sub">' + dd + (dd === 1 ? ' dia' : ' dias') + '</span></span></span></td></tr>';
-        }).join('') + '</tbody></table>';
+        }).join('') + '</tbody></table>' + (keys.some(function(k){ return (st.walk[k] || 0) > 0; }) ? WALK_NOTE : '');
     }
     return html;
   }
@@ -2483,7 +2509,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
       p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nota por idade e sexo (3): o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres). Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida nos últimos 90 dias. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dos últimos 90 dias a pessoa superou um melhor tempo que já existia, em qualquer distância. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo; sem nota de um dos lados, é empate. O mês que acabou fecha com tudo que foi feito nele. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
-      p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana.');
+      p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana. Caminhada gravada à parte aparece com o ícone de caminhada e não soma km nem medalha de km; com 10 minutos ou mais, conta como dia ativo.');
   }
 
   function envSeg(){
