@@ -4233,7 +4233,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (JSON.stringify(groupOrder[k] || []) !== JSON.stringify(ordK)) { groupOrder[k] = ordK; gDirty = true; }
     // Every past month is scored from everyone's numbers as they stood on its last day, counting only who
     // was already in the group that month; it is (re)written once all of them have published that month.
-    Object.keys(mine.hist || {}).forEach(function(pm){
+    // The months come from everyone's numbers, so whoever joined later also gets the months before.
+    var pastMs = {};
+    people.forEach(function(p){ Object.keys((p.s && p.s.hist) || {}).forEach(function(m){ if (m < k) pastMs[m] = 1; }); });
+    Object.keys(pastMs).sort().forEach(function(pm){
       var inPm = people.filter(function(p){ var d = GROUP_SINCE[String(p.id)]; return !d || d.slice(0, 7) <= pm; });
       if (inPm.length < 2 || !inPm.every(function(p){ return p.s && p.s.hist && p.s.hist[pm] && p.s.hist[pm].month === pm; })) return;
       var ps = inPm.map(function(p){ return { id: p.id, name: p.name, s: p.s.hist[pm] }; });

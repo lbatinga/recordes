@@ -60,6 +60,8 @@ function newToken(): string {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// A session not used for 90 days expires; a phone in use renews it every few hours, so only lost or old ones end.
+const SESSION_DAYS = 90;
 async function athleteFromSession(req: Request): Promise<number> {
   const tok = req.headers.get('x-session') ?? '';
   if (tok.length < 20) throw new HttpError(401, 'no_session');
@@ -67,7 +69,12 @@ async function athleteFromSession(req: Request): Promise<number> {
   const { data, error } = await sb.from('sessions').select('athlete_id, last_seen').eq('token_hash', h).maybeSingle();
   if (error) throw new HttpError(500, 'db_error', error.message);
   if (!data) throw new HttpError(401, 'no_session');
-  if (Date.now() - new Date(data.last_seen).getTime() > 6 * 3600 * 1000) {
+  const idle = Date.now() - new Date(data.last_seen).getTime();
+  if (idle > SESSION_DAYS * 86400 * 1000) {
+    await sb.from('sessions').delete().eq('token_hash', h);
+    throw new HttpError(401, 'no_session');
+  }
+  if (idle > 6 * 3600 * 1000) {
     await sb.from('sessions').update({ last_seen: new Date().toISOString() }).eq('token_hash', h);
   }
   return Number(data.athlete_id);
@@ -449,16 +456,16 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     if (day < 4) return json(req, { skipped: 'day' });
     const { data } = await sb.from('docs').select('athlete_id').eq('col', 'config').eq('id', 'push');
     let sent = 0, none = 0, fail = 0;
-    for (const row of data ?? []) {
+    await Promise.all((data ?? []).map(async (row) => {
       const aid = Number(row.athlete_id);
       try {
         const st = await weekStatus(aid);
         const msg = st.paused ? null : reminderText(day, st.thisWeek, st.streak);
-        if (!msg) { none++; continue; }
+        if (!msg) { none++; return; }
         const r = await sendPush(aid, { ...msg, tag: 'constancia' });
         sent += r.sent; fail += r.failed;
       } catch (_) { fail++; }
-    }
+    }));
     return json(req, { sent, none, fail });
   }
   if (path === '/cron/webhook-setup' && req.method === 'POST') {
@@ -480,29 +487,34 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
   if (path === '/cron/nudge' && req.method === 'POST') {
     // A run the app hasn't seen for a day: one push asking to open it, once per run.
     const { data } = await sb.from('docs').select('athlete_id, data').eq('col', 'config').eq('id', 'live');
-    let sent = 0;
+    let sent = 0, fail = 0;
     const limit = new Date(brNow().getTime() - 20 * 3600 * 1000).toISOString().slice(0, 16);
-    for (const row of data ?? []) {
-      const aid = Number(row.athlete_id);
-      // deno-lint-ignore no-explicit-any
-      const lv: any = row.data;
-      const sm = (await configDoc(aid, 'summary'))?.data;
-      if (!lv?.newest || !sm || lv.base !== sm.at || lv.nudged === lv.newest || lv.newest > limit) continue;
-      const d = lv.newest.slice(8, 10) + '/' + lv.newest.slice(5, 7);
-      const r = await sendPush(aid, { title: 'Treino novo no Strava', body: 'Abre o Recordes pra atualizar a Dupla com o treino de ' + d + '.', tag: 'dupla' });
-      sent += r.sent;
-      await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: { ...lv, nudged: lv.newest }, updated_at: new Date().toISOString() });
-    }
-    return json(req, { sent });
+    await Promise.all((data ?? []).map(async (row) => {
+      try {
+        const aid = Number(row.athlete_id);
+        // deno-lint-ignore no-explicit-any
+        const lv: any = row.data;
+        const sm = (await configDoc(aid, 'summary'))?.data;
+        if (!lv?.newest || !sm || lv.base !== sm.at || lv.nudged === lv.newest || lv.newest > limit) return;
+        const d = lv.newest.slice(8, 10) + '/' + lv.newest.slice(5, 7);
+        const r = await sendPush(aid, { title: 'Treino novo no Strava', body: 'Abre o Recordes pra atualizar a Dupla com o treino de ' + d + '.', tag: 'dupla' });
+        sent += r.sent;
+        await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: { ...lv, nudged: lv.newest }, updated_at: new Date().toISOString() });
+      } catch (_) { fail++; }
+    }));
+    return json(req, { sent, fail });
   }
   if (path === '/cron/live' && req.method === 'POST') {
     // Moves every live summary forward (missed webhooks, hand-made adjustments).
     const { data } = await sb.from('docs').select('athlete_id').eq('col', 'config').eq('id', 'summary');
     let ok = 0, fail = 0;
-    for (const row of data ?? []) {
+    await Promise.all((data ?? []).map(async (row) => {
       try { await refreshLive(Number(row.athlete_id)); ok++; } catch (_) { fail++; }
-    }
-    return json(req, { ok, fail });
+    }));
+    // Daily cleanup of sessions nobody used for 90 days (they no longer open anything anyway).
+    const cut = new Date(Date.now() - SESSION_DAYS * 86400 * 1000).toISOString();
+    const del = await sb.from('sessions').delete({ count: 'exact' }).lt('last_seen', cut);
+    return json(req, { ok, fail, sessionsRemoved: del.count ?? 0 });
   }
   if (path === '/cron/close' && req.method === 'POST') {
     // The month's final score waits for everyone in the group to open the app (any day of the
@@ -514,26 +526,28 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const pm = pd.toISOString().slice(0, 7);
     const MON = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     const { data } = await sb.from('docs').select('athlete_id, data').eq('col', 'config').eq('id', 'partner');
-    let sent = 0, done = 0;
-    for (const row of data ?? []) {
-      const aid = Number(row.athlete_id);
-      // deno-lint-ignore no-explicit-any
-      const p: any = row.data;
-      const ids = Array.isArray(p?.athlete_ids) ? p.athlete_ids : p?.athlete_id ? [p.athlete_id] : [];
-      if (!ids.length) continue;
-      const sm = (await configDoc(aid, 'summary'))?.data;
-      if (sm?.prev?.month === pm) { done++; continue; }
-      const r = await sendPush(aid, { title: 'Fechamento de ' + MON[pd.getUTCMonth()], body: 'Abre o Recordes pra fechar seu ' + MON[pd.getUTCMonth()] + ' e sair o resultado final do grupo.', tag: 'fechamento' });
-      sent += r.sent;
-    }
-    return json(req, { sent, done });
+    let sent = 0, done = 0, fail = 0;
+    await Promise.all((data ?? []).map(async (row) => {
+      try {
+        const aid = Number(row.athlete_id);
+        // deno-lint-ignore no-explicit-any
+        const p: any = row.data;
+        const ids = Array.isArray(p?.athlete_ids) ? p.athlete_ids : p?.athlete_id ? [p.athlete_id] : [];
+        if (!ids.length) return;
+        const sm = (await configDoc(aid, 'summary'))?.data;
+        if (sm?.prev?.month === pm) { done++; return; }
+        const r = await sendPush(aid, { title: 'Fechamento de ' + MON[pd.getUTCMonth()], body: 'Abre o Recordes pra fechar seu ' + MON[pd.getUTCMonth()] + ' e sair o resultado final do grupo.', tag: 'fechamento' });
+        sent += r.sent;
+      } catch (_) { fail++; }
+    }));
+    return json(req, { sent, done, fail });
   }
   if (path === '/cron/weights' && req.method === 'POST') {
     const { data } = await sb.from('athletes').select('athlete_id, scope').like('scope', '%profile:read_all%');
     let ok = 0, fail = 0;
-    for (const row of data ?? []) {
+    await Promise.all((data ?? []).map(async (row) => {
       try { await snapshotWeight(Number(row.athlete_id), String(row.scope ?? '')); ok++; } catch (_) { fail++; }
-    }
+    }));
     return json(req, { ok, fail });
   }
 
