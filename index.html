@@ -2589,7 +2589,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nota por idade e sexo (3): o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres). Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa superou um melhor tempo que já existia, em qualquer distância (até outubro de 2026, essas duas linhas contavam os últimos 90 dias). Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo; sem nota de um dos lados, é empate. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
+      p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nota por idade e sexo (3): o melhor 5 km na rua dividido pelo padrão de recorde mundial da sua idade e sexo (até 35 anos, 12min49s pra homens e 13min54s pra mulheres). Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa superou um melhor tempo que já existia, em qualquer distância. Todos os meses, desde junho de 2026, são calculados com estas regras, como estavam no último dia de cada mês. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, fica na frente quem tem a maior nota por idade e sexo; sem nota de um dos lados, é empate. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana. Caminhada gravada à parte aparece com o ícone de caminhada e não soma km nem medalha de km; com 10 minutos ou mais, conta como dia ativo.');
   }
 
@@ -3881,28 +3881,41 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function buildSummary(){
     var s = buildSummaryCore();
     var today = new Date();
-    s.prev = prevMonthSummary(today); // the month that ended closes whenever everyone opens, any day
+    var h = pastMonths(today);
+    s.prev = h[prevKey(mkey(today), 1)] || null; // the month that ended closes whenever everyone opens, any day
+    s.hist = h; // every month since HIST_FROM, as it stood on its last day: all months are scored by today's rules
     return s;
   }
-  function prevMonthSummary(today){
-    var k = prevKey(mkey(today), 1);
-    if (prevCache.key === k + '|' + dataVer) return prevCache.val;
-    var end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
-    var S = state.sessions, A = state.activeDays, endIso = isoOf(end), val = null;
+  var HIST_FROM = '2026-06';
+  function asOfMonth(end){
+    var c = buildSummaryCore();
+    return { v: c.v, month: c.month, ag: c.ag, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
+      recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
+      daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
+      recDaysM: c.recDaysM, beatsM: c.beatsM };
+  }
+  function pastMonths(today){
+    var cur = mkey(today);
+    if (prevCache.key === cur + '|' + dataVer) return prevCache.val;
+    var S = state.sessions, A = state.activeDays, out = {};
+    var first = S.reduce(function(m, x){ return x.d && (!m || x.d < m) ? x.d : m; }, null);
+    var from = first ? mkey(first) : cur;
+    if (from < HIST_FROM) from = HIST_FROM;
     try {
-      state.sessions = S.filter(function(x){ return x.d && x.d <= end; });
-      state.activeDays = {};
-      Object.keys(A || {}).forEach(function(d){ if (d <= endIso) state.activeDays[d] = true; });
-      AS_OF = end; bumpData();
-      var c = buildSummaryCore();
-      val = { v: c.v, month: c.month, ag: c.ag, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
-        recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
-        daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
-        recDaysM: c.recDaysM, beatsM: c.beatsM };
-    } catch (e) { val = null; }
-    finally { state.sessions = S; state.activeDays = A; AS_OF = null; bumpData(); }
-    prevCache = { key: k + '|' + dataVer, val: val };
-    return val;
+      for (var m = from; m < cur; m = prevKey(m, -1)) {
+        var y = +m.slice(0, 4), mo = +m.slice(5, 7);
+        var end = new Date(y, mo, 0, 23, 59, 59), endIso = isoOf(end);
+        try {
+          state.sessions = S.filter(function(x){ return x.d && x.d <= end; });
+          state.activeDays = {};
+          Object.keys(A || {}).forEach(function(d){ if (d <= endIso) state.activeDays[d] = true; });
+          AS_OF = end; bumpData();
+          out[m] = asOfMonth(end);
+        } catch (e) {}
+      }
+    } finally { state.sessions = S; state.activeDays = A; AS_OF = null; bumpData(); }
+    prevCache = { key: cur + '|' + dataVer, val: out };
+    return out;
   }
   /* ---------- board (Dupla / Grupo) ----------
      Each line has its own weight. In a line, you earn its points for every person you beat;
@@ -3926,7 +3939,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* From November 2026 on, Metas batidas and Dias com recorde count only the month (they measure
      what happened in it); level, evolution and constancy lines keep their windows. Earlier months
      are scored with the lines above, as they were. */
-  var LINES_FROM = '2026-11';
+  var LINES_FROM = '2000-01'; // decided on 01/11/2026: every month, past ones included, uses today's rules
   var SCORE_LINES_M = SCORE_LINES.map(function(L){
     if (L.id === 'beats') return { id: 'beats', k: 'Metas batidas no mês', w: 2, v: 9, get: function(s, ref){ return s.month === ref ? s.beatsM : 0; }, f: numF, sub: function(){ return ''; } };
     if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 9, get: function(s, ref){ return s.month === ref ? s.recDaysM : 0; }, f: numF, sub: function(){ return ''; } };
@@ -3958,20 +3971,28 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   // Order by points; a tie goes to the higher age and sex grade (only between people who have one),
   // otherwise the place is shared.
-  function rankBoard(people, pts){
-    var order = people.slice().sort(function(a, b){
-      if (pts[b.id] !== pts[a.id]) return pts[b.id] - pts[a.id];
-      var ga = a.s && a.s.ag, gb = b.s && b.s.ag;
-      if (ga != null && gb != null && ga !== gb) return gb - ga;
-      return 0;
+  // Lines someone won alone (top and ahead of at least one value).
+  function linesWon(people, ref){
+    var won = {};
+    people.forEach(function(p){ won[p.id] = 0; });
+    linesFor(ref).forEach(function(L){
+      var vals = people.map(function(p){ return { id: p.id, x: lineRank(L, p.s, ref) }; }).filter(function(v){ return v.x != null; });
+      vals.forEach(function(a){ if (vals.every(function(b){ return b === a || a.x > b.x; }) && vals.length > 1) won[a.id]++; });
     });
-    var pos = [];
-    order.forEach(function(p, i){
-      if (i === 0) { pos.push(1); return; }
-      var q = order[i - 1], ga = p.s && p.s.ag, gb = q.s && q.s.ag;
-      var same = pts[p.id] === pts[q.id] && !(ga != null && gb != null && ga !== gb);
-      pos.push(same ? pos[i - 1] : i + 1);
-    });
+    return won;
+  }
+  /* Order of the month. Tie-breaks, in order: age and sex grade, lines won alone, km in the month,
+     active days in the month. Only people equal in all of them share a place. */
+  function rankBoard(people, pts, ref){
+    ref = ref || (people[0] && people[0].s && people[0].s.month);
+    var won = linesWon(people, ref);
+    function keyOf(p){
+      var s = p.s || {}, same = s.month === ref;
+      return [pts[p.id], s.ag != null ? s.ag : -1, won[p.id], same ? (s.kmMonth || 0) : 0, same ? (s.daysMonth || 0) : 0];
+    }
+    function cmp(a, b){ var x = keyOf(a), y = keyOf(b); for (var i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] - x[i]; return 0; }
+    var order = people.slice().sort(cmp), pos = [];
+    order.forEach(function(p, i){ pos.push(i && cmp(p, order[i - 1]) === 0 ? pos[i - 1] : i + 1); });
     return order.map(function(p, i){ return { p: p, pos: pos[i] }; });
   }
   function duoPoints(m, h){
@@ -4156,7 +4177,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       for (var i = 0; i < bt.length; i++) { if (!used[i] && Math.abs(bt[i] - m) <= 20) { used[i] = true; n++; break; } } });
     return n;
   }
-  var groupHist = {};
+  var groupHist = {}, groupOrder = {}; // order: the final places of each month, ties already broken
   function grupoTab(){
     var mine = state.sessions && allAnalyzed() ? buildSummary() : null;
     if (!mine) return '<div class="msg"><strong>Calculando</strong>Seus números ainda estão sendo calculados.</div>';
@@ -4166,19 +4187,24 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var ref = mine.month;
     var lines = linesFor(ref);
     var pts = scoreBoard(people, ref);
-    var rank = rankBoard(people, pts);
+    var rank = rankBoard(people, pts, ref);
     var k = mkey(new Date()), snap = {};
     people.forEach(function(p){ snap[p.id] = pts[p.id]; });
     var gDirty = JSON.stringify(groupHist[k] || {}) !== JSON.stringify(snap);
     if (gDirty) groupHist[k] = snap;
-    // Final score of the month that just ended, once everyone who was in the group that month has published it.
-    var pm = mine.prev && mine.prev.month;
-    var inPm = pm ? people.filter(function(p){ var d = GROUP_SINCE[String(p.id)]; return !d || d.slice(0, 7) <= pm; }) : [];
-    if (pm && inPm.length > 1 && inPm.every(function(p){ return p.s && p.s.prev && p.s.prev.month === pm; })) {
-      var fin = scoreBoard(inPm.map(function(p){ return { id: p.id, s: p.s.prev }; }), pm);
+    var ordK = rank.map(function(r){ return String(r.p.id); });
+    if (JSON.stringify(groupOrder[k] || []) !== JSON.stringify(ordK)) { groupOrder[k] = ordK; gDirty = true; }
+    // Every past month is scored from everyone's numbers as they stood on its last day, counting only who
+    // was already in the group that month; it is (re)written once all of them have published that month.
+    Object.keys(mine.hist || {}).forEach(function(pm){
+      var inPm = people.filter(function(p){ var d = GROUP_SINCE[String(p.id)]; return !d || d.slice(0, 7) <= pm; });
+      if (inPm.length < 2 || !inPm.every(function(p){ return p.s && p.s.hist && p.s.hist[pm] && p.s.hist[pm].month === pm; })) return;
+      var ps = inPm.map(function(p){ return { id: p.id, name: p.name, s: p.s.hist[pm] }; });
+      var fin = scoreBoard(ps, pm), ord = rankBoard(ps, fin, pm).map(function(r){ return String(r.p.id); });
       if (JSON.stringify(groupHist[pm] || {}) !== JSON.stringify(fin)) { groupHist[pm] = fin; gDirty = true; }
-    }
-    if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist });
+      if (JSON.stringify(groupOrder[pm] || []) !== JSON.stringify(ord)) { groupOrder[pm] = ord; gDirty = true; }
+    });
+    if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist, order: groupOrder });
     var nameOf = {}; people.forEach(function(p){ nameOf[p.id] = p.name; });
 
     var board = '<article class="bib duo-score"><div class="band band-prova"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
@@ -4192,8 +4218,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     // Until this year has a finished month with a winner, the card shows last year's final.
     var hasWin = Object.keys(hist).some(function(m){
       if (m.slice(0, 4) !== year || m >= k) return false;
-      var x = hist[m], ids = Object.keys(x), t = Math.max.apply(null, ids.map(function(id){ return x[id]; }));
-      return ids.filter(function(id){ return x[id] === t; }).length === 1;
+      return monthWinner(m, hist[m]).length === 1;
     });
     if (!hasWin && Object.keys(hist).some(function(m){ return m.slice(0, 4) === String(+year - 1); })) { year = String(+year - 1); yFinal = true; }
     var yWins = {}, yPts = {}, chips = '', months = [];
@@ -4203,21 +4228,34 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (mk === k) { chips += '<button type="button" class="yr-c cur" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ', em andamento">?</button>'; months.push(mk); continue; }
       if (!x || mk > k) { chips += '<span class="yr-c"></span>'; continue; }
       months.push(mk);
-      var ids = Object.keys(x), top = Math.max.apply(null, ids.map(function(id){ return x[id]; }));
-      var wins = ids.filter(function(id){ return x[id] === top; });
-      ids.forEach(function(id){ if (yPts[id] != null) yPts[id] += x[id]; });
+      var wins = monthWinner(mk, x);
+      Object.keys(x).forEach(function(id){ if (yPts[id] != null) yPts[id] += x[id]; });
       if (wins.length === 1) {
         if (yWins[wins[0]] != null) yWins[wins[0]]++;
         chips += '<button type="button" class="yr-c w" style="--pc:' + (pcol[wins[0]] || '#8A939D') + '" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': ' + esc(nameOf[wins[0]] || 'Atleta') + '">' + esc(shortName(nameOf[wins[0]] || '?', people)) + '</button>';
       } else chips += '<button type="button" class="yr-c tie" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': empate">=</button>';
     }
-    var yOrder = people.slice().sort(function(a, b){ return (yWins[b.id] - yWins[a.id]) || (yPts[b.id] - yPts[a.id]); });
+    // Year: months won, then points in the year, then head to head (months finished ahead of the other), then age grade.
+    function ahead(a, b){
+      var n = 0;
+      months.forEach(function(mk){
+        if (mk === k || !hist[mk]) return;
+        var o = groupOrder[mk], x = hist[mk];
+        if (o && o.indexOf(String(a)) >= 0 && o.indexOf(String(b)) >= 0) { if (o.indexOf(String(a)) < o.indexOf(String(b))) n++; }
+        else if (x[a] != null && x[b] != null && x[a] > x[b]) n++;
+      });
+      return n;
+    }
+    var yOrder = people.slice().sort(function(a, b){
+      return (yWins[b.id] - yWins[a.id]) || (yPts[b.id] - yPts[a.id]) || (ahead(b.id, a.id) - ahead(a.id, b.id)) ||
+        (((b.s && b.s.ag) || 0) - ((a.s && a.s.ag) || 0));
+    });
     var lead = yOrder[0];
-    var ties = months.filter(function(mk){ var x = hist[mk]; if (!x || mk === k) return false; var ids = Object.keys(x), t = Math.max.apply(null, ids.map(function(id){ return x[id]; })); return ids.filter(function(id){ return x[id] === t; }).length > 1; });
+    var ties = months.filter(function(mk){ return mk !== k && hist[mk] && monthWinner(mk, hist[mk]).length > 1; });
     var monthDet = {};
     months.forEach(function(mk){
       var x = hist[mk]; if (!x) return;
-      var ids = Object.keys(x).sort(function(a, b){ return x[b] - x[a]; });
+      var o = groupOrder[mk], ids = Object.keys(x).sort(function(a, b){ return o && o.indexOf(a) >= 0 && o.indexOf(b) >= 0 ? o.indexOf(a) - o.indexOf(b) : x[b] - x[a]; });
       monthDet[mk] = (MON_FULL[+mk.slice(5) - 1].replace(/^./, function(c){ return c.toUpperCase(); })) + (mk === k ? ', até agora' : '') + ': ' +
         ids.map(function(id){ return (nameOf[id] || 'Atleta') + ' ' + x[id]; }).join(' · ');
     });
@@ -4280,6 +4318,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     }).join('');
     return next + board + yearCard + matrix + together +
       (prov ? '<h3 class="h3">Provas juntos</h3><table class="tbl duo-races"><tbody>' + prov + '</tbody></table>' : '');
+  }
+  // Winner(s) of a month: the stored final order decides; without it (old months), the most points.
+  function monthWinner(mk, x){
+    var o = groupOrder[mk];
+    if (o && o.length) return [String(o[0])];
+    var ids = Object.keys(x), t = Math.max.apply(null, ids.map(function(id){ return x[id]; }));
+    return ids.filter(function(id){ return x[id] === t; });
   }
   // One colour per person, the same in everyone's app (by athlete id).
   var PERSON_COLORS = ['#F08A24', '#A66CFF', '#33B679', '#3FA7F5', '#E5484D', '#D4A72C'];
@@ -4519,7 +4564,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; VERIFIED = v.verified && typeof v.verified === 'object' ? v.verified : {}; EXTRA_ACTS = Array.isArray(v.add) ? v.add : []; }
         else if (d.col === 'config' && d.id === 'partner') { GROUP_SINCE = v.since && typeof v.since === 'object' ? v.since : {}; }
         else if (d.col === 'config' && d.id === 'painel') { PAINEL = v.km && typeof v.km === 'object' ? v.km : {}; }
-        else if (d.col === 'config' && d.id === 'grouphist') { groupHist = v.months && typeof v.months === 'object' ? v.months : {}; }
+        else if (d.col === 'config' && d.id === 'grouphist') { groupHist = v.months && typeof v.months === 'object' ? v.months : {}; groupOrder = v.order && typeof v.order === 'object' ? v.order : {}; }
         else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; }
         else if (d.col === 'config' && d.id === 'pauses') { PAUSES = v.weeks && typeof v.weeks === 'object' ? v.weeks : {}; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
