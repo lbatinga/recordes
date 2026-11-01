@@ -722,7 +722,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var SEX = '', BIRTH = '';
   var WALK_MIN_M = 500;
   /* Distance measured by the watch itself when Strava recalculated it lower. */
-  var VERIFIED = { '16892557982': { m: 4000, src: 'Samsung Health' } };
+  var VERIFIED = {}; // config/overrides.verified: { id: { m, src } }
   var ALGO = 4;
   var RACE_TOL = 0.98;
 
@@ -734,6 +734,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      painel / watch, so the run stops being an estimate. */
   var PAINEL = {};
   var EST_MARGIN = 1.05; // an uncorrected treadmill value must be 5% better to rank above a measured one
+  /* A treadmill distance counts as measured with the panel entered here, or when the watch's
+     total was confirmed at the end (it then differs from the watch's own stream). */
+  function treadOk(s){ return s.painel > 0 || !!(effortDocs[s.id] && effortDocs[s.id].cal); }
   var lastActs = null;
   /* Distance fixed by hand for one activity, backed by evidence (config/overrides.km, set by
      the owner): a manual Strava entry that summed two recordings, for example. */
@@ -824,8 +827,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function fmtKm(km){ return km.toFixed(3).replace('.', ','); }
   function fmtKmShort(km){ return fmtKm(km).replace(/,0+$/, ''); }
   function fmt1(n){ return n.toFixed(1).replace('.', ','); }
+  // Times and paces are cut, never rounded up (10:26,8 shows as 10min26s, like the watch).
   function fmtTime(sec){
-    sec = Math.round(sec);
+    sec = Math.floor(sec + 1e-6);
     var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
     if (h) return h + 'h' + pad(m) + 'min' + pad(s) + 's';
     return m + 'min' + pad(s) + 's';
@@ -839,7 +843,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return (h ? h + 'h' + pad(m) : m) + 'min' + pad(s) + ',' + d + 's';
   }
   function fmtPace(p){
-    var total = Math.round(p);
+    var total = Math.floor(p + 1e-6);
     var m = Math.floor(total/60), s = total%60;
     return m + 'min' + pad(s) + 's';
   }
@@ -1104,10 +1108,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function applyOfficial(list){
     list.forEach(function(s){
       if (s.watchKm == null) { s.watchKm = s.km; s.watchTime = s.time; }
-      var info = s.race ? infoFor(s.d) : null;
+      var info = s.race ? raceInfoOf(s) : null;
       var on = !!(info && info.chip > 0 && info.km > 0);
       s.km = on ? info.km : s.watchKm;
-      s.time = on ? info.chip : s.watchTime;
+      // A race is timed from start to finish (like Strava does), not by moving time.
+      s.time = on ? info.chip : (s.race ? (s.elapsed || s.watchTime) : s.watchTime);
       s.pace = s.time / s.km;
       s.effKm = s.effort != null ? s.effort / s.km : null;
       s.official = on;
@@ -1130,8 +1135,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       s.broke = [];
       s.prs = [];
       // In "Tudo", an uncorrected treadmill run competes with a 5% handicap against measured ones.
-      s.rp = s.pace * (penal && s.env === 'esteira' && !s.painel ? EST_MARGIN : 1);
-      s.rk = s.km / (penal && s.env === 'esteira' && !s.painel ? EST_MARGIN : 1);
+      s.rp = s.pace * (penal && s.env === 'esteira' && !treadOk(s) ? EST_MARGIN : 1);
+      s.rk = s.km / (penal && s.env === 'esteira' && !treadOk(s) ? EST_MARGIN : 1);
       RECS.forEach(function(r){
         if (!r.ok(s)) return;
         var b = best[r.id];
@@ -1140,7 +1145,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       });
       var doc = effortDocs[s.id];
       var efforts = (doc && doc.efforts) || {};
-      var rInfo = s.race ? infoFor(s.d) : null;
+      var rInfo = s.race ? raceInfoOf(s) : null;
       var chipT = rInfo && rInfo.chip > 0 && rInfo.km > 0 ? rInfo.chip : 0;
       DISTS.forEach(function(D){
         var t = Number(efforts[D.k]);
@@ -1152,7 +1157,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           official = true;
         }
         if (!(t > 0)) return;
-        var est = s.env === 'esteira' && !official && !s.painel;
+        var est = s.env === 'esteira' && !official && !treadOk(s);
         var rv = penal && est ? t * EST_MARGIN : t;
         (tables[D.k] = tables[D.k] || []).push({ s: s, t: t, rv: rv, official: official });
         if (bestSoFar[D.k] == null) { bestSoFar[D.k] = rv; if (i > 0) s.prs.push(D.k); }
@@ -1254,7 +1259,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   /* Treadmill distance comes from the watch (arm swing), so a stretch inside a
      treadmill run is an estimate; the whole run (official) is not marked. */
-  function isEstimate(e){ return e && e.s && e.s.env === 'esteira' && !e.official && !e.s.painel; }
+  function isEstimate(e){ return e && e.s && e.s.env === 'esteira' && !e.official && !treadOk(e.s); }
   function effortBlock(D, top, latest){
     var b = top[0];
     var anyEst = top.some(isEstimate);
@@ -1268,7 +1273,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return '<table class="tbl eff-tbl"><thead><tr><th colspan="3"><div class="t-head"><span class="t-dist">' + D.label + '</span>' +
       '<span class="t-best">' + (isEstimate(b) ? '≈' : '') + fmtPace(b.t / (D.m / 1000)) + ' por km</span></div></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
-      (anyEst ? '<p class="fine">≈ trecho de esteira sem a distância do painel: vem do relógio, que estima pelo balanço do braço e pode errar uns 5 a 10%. Em Tudo, ele só fica na frente de um tempo medido se for mais de 5% melhor. Informe a distância do painel no treino pra tirar o ≈.</p>' : '');
+      (anyEst ? '<p class="fine">≈ trecho de esteira sem distância confirmada: vem do relógio, que estima pelo balanço do braço e pode errar uns 5 a 10%. Em Tudo, ele só fica na frente de um tempo medido se for mais de 5% melhor. Confirme a distância da esteira no relógio ao terminar, ou informe a do painel no treino, pra tirar o ≈.</p>' : '');
   }
 
   function effortsSection(a){
@@ -1455,7 +1460,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      distance, it replaces the base and the goal is recalculated from it. */
   function chipRebase(){
     if (GOAL.baseKind !== 'prova' || !GOAL.baseDate || GOAL.baseT == null) return false;
-    var info = infoFor(parseIso(GOAL.baseDate));
+    var info = infoFor(parseIso(GOAL.baseDate), GOAL.k);
     if (!info || !(info.chip > 0) || keyForKm(info.km) !== GOAL.k) return false;
     if (Math.abs(info.chip - GOAL.baseT) < 0.05) return false;
     GOAL.baseT = info.chip;
@@ -1667,7 +1672,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   var REC_SHORT = { dist:'Maior distância', trot:'Mais tempo correndo sem parar', pace2:'Melhor pace, 2 a 3 km',
     pace3:'Melhor pace, 3 a 5 km', pace5:'Melhor pace, 5 km ou mais' };
-  function recEst(r, s){ return (r.id === 'dist' || /^pace/.test(r.id)) && s.env === 'esteira' && !s.painel; }
+  function recEst(r, s){ return (r.id === 'dist' || /^pace/.test(r.id)) && s.env === 'esteira' && !treadOk(s); }
   function recVal(r, s){ var v = r.val(s); return recEst(r, s) ? ['≈' + v[0], v[1]] : v; }
   // Extra info per line: race name when it was a race; otherwise what the record doesn't already say.
   function recInfo(r, s){
@@ -1679,7 +1684,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   // Top 5 of one record line, with the same rules the record uses (5% handicap in Tudo).
   function recTop(r, list){
     var pen = tab === 'tudo';
-    function est(s){ return s.env === 'esteira' && !s.painel; }
+    function est(s){ return s.env === 'esteira' && !treadOk(s); }
     function key(s){
       if (r.id === 'trot') return -effortDocs[s.id].trot.t;
       if (r.id === 'dist') return -(s.km / (pen && est(s) ? EST_MARGIN : 1));
@@ -1747,7 +1752,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
              '<text class="axis" x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end">' + fmtShort(last.d) + '</text>';
     return '<div class="panel chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pace médio por treino, do mais antigo ao mais recente">' +
            g + '<path class="path" d="' + d + '"/>' + dots + xl + '</svg></div>' +
-           '<div class="legend">' + (tab === 'ruat' || tab === 'tudo' ? '<span class="lg-r">Rua</span>' : '') + (tab === 'prova' || tab === 'tudo' ? '<span class="lg-p">Prova</span>' : '') + (tab === 'esteira' || tab === 'tudo' ? '<span class="lg-e">Esteira</span>' : '') + '<span class="lg-x">Recorde de ritmo na época</span></div>';
+           '<div class="legend">' + (tab === 'ruat' || tab === 'tudo' ? '<span class="lg-r">Rua</span>' : '') + (tab === 'prova' || tab === 'tudo' ? '<span class="lg-p">Prova</span>' : '') + (tab === 'esteira' || tab === 'tudo' ? '<span class="lg-e">Esteira</span>' : '') + '<span class="lg-x">Recorde de pace na época</span></div>';
   }
 
   function painelLine(s){
@@ -1759,6 +1764,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function histRow(s){
     var tags = [];
     if (s.painel) tags.push('<span class="tg">Painel</span>');
+    else if (s.env === 'esteira' && !s.walk && treadOk(s)) tags.push('<span class="tg">Confirmada no relógio</span>');
     else if (s.env === 'esteira' && !s.walk) tags.push('<button type="button" class="tg tg-btn" data-painel="' + s.id + '">+ painel</button>');
     if (s.race) tags.push('<span class="tg">Prova: ' + esc(raceShort(s)) + '</span>');
     if (s.walk) tags.push('<span class="tg">Caminhada</span>');
@@ -1797,7 +1803,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   ];
 
   function coveredM(s){
-    var info = s.race ? infoFor(s.d) : null;
+    var info = s.race ? raceInfoOf(s) : null;
     return Math.max(s.meters, info && info.km ? info.km * 1000 : 0);
   }
   function whereOf(s){
@@ -1841,7 +1847,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return best;
   }
   function bestTimeAt(s, k){
-    var info = s.race ? infoFor(s.d) : null;
+    var info = s.race ? raceInfoOf(s) : null;
     var D = DIST_BY[k];
     if (info && info.chip > 0 && info.km > 0 && D && Math.abs(D.m - info.km * 1000) < 1) return info.chip;
     var doc = effortDocs[s.id];
@@ -2196,7 +2202,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var ne = 0, nr = 0, np = 0, ke = 0, kr = 0, kp = 0, tt = 0, first = null;
     list.forEach(function(s){
       if (s.env === 'esteira') { ne++; ke += s.km; } else if (s.race) { np++; kp += s.km; } else { nr++; kr += s.km; }
-      tt += s.time;
+      tt += s.watchTime != null ? s.watchTime : s.time;
       if (s.d && (!first || s.d < first)) first = s.d;
     });
     var weeks = first ? Math.floor((dayOnly(new Date()) - dayOnly(first)) / (7 * 86400000)) + 1 : 0;
@@ -2214,14 +2220,50 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
 
   function raceShort(s){
-    var info = infoFor(s.d);
+    var info = raceInfoOf(s);
     return (info && (info.short || info.name)) || 'prova';
   }
 
-  function infoFor(d){
+  // Race entered for a date; with k, the one of that distance when the day had two races.
+  function infoFor(d, k){
     if (!d) return null;
-    var iso = isoOf(d);
-    for (var i = 0; i < RACE_INFO.length; i++) { if (RACE_INFO[i].date === iso) return RACE_INFO[i]; }
+    var iso = isoOf(d), hit = null;
+    for (var i = 0; i < RACE_INFO.length; i++) {
+      var r = RACE_INFO[i];
+      if (r.date !== iso) continue;
+      if (!k || keyForKm(r.km) === k) return r;
+      if (!hit) hit = r;
+    }
+    return hit;
+  }
+  function hhmm(t){ var m = /^(\d{1,2})[:h](\d{2})/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; }
+  /* Race entered for this activity. Each race of the day takes one activity tagged Race:
+     the one that started closest to its start time, or the longest when it has no time.
+     Two races on the same day stay apart; a warm-up tagged Race by mistake takes nothing. */
+  function raceInfoOf(s){
+    if (!s || !s.race || !s.d) return null;
+    var iso = isoOf(s.d);
+    var entries = RACE_INFO.filter(function(r){ return r.date === iso; });
+    if (!entries.length) return null;
+    var day = (state.sessions || []).filter(function(x){ return x.race && x.d && isoOf(x.d) === iso; });
+    if (day.indexOf(s) < 0) day.push(s);
+    if (entries.length === 1 && day.length === 1) return entries[0];
+    var pairs = [];
+    entries.forEach(function(r){
+      var tm = hhmm(r.time);
+      day.forEach(function(x){
+        var xm = x.d.getHours() * 60 + x.d.getMinutes();
+        pairs.push({ r: r, x: x, c: tm != null ? Math.abs(xm - tm) : 100000 - (x.gpsMeters || 0) / 1000 });
+      });
+    });
+    pairs.sort(function(a, b){ return a.c - b.c; });
+    var usedR = [], usedX = [];
+    for (var i = 0; i < pairs.length; i++) {
+      var p = pairs[i];
+      if (usedR.indexOf(p.r) >= 0 || usedX.indexOf(p.x) >= 0) continue;
+      usedR.push(p.r); usedX.push(p.x);
+      if (p.x === s) return p.r;
+    }
     return null;
   }
 
@@ -2352,7 +2394,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   function pastRaceCard(s, ruaTables, expanded){
     var rua = { tables: ruaTables };
-        var info = infoFor(s.d) || {};
+        var info = raceInfoOf(s) || {};
         var name = info.name || s.name || 'Prova';
         var local = info.local || s.place || '';
         var ctx = raceContext(s, info, rua.tables);
@@ -2684,16 +2726,21 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     clearTimeout(putTimer);
     putTimer = setTimeout(flushDocs, 1200);
   }
+  var putFails = 0;
   async function flushDocs(keepalive){
     clearTimeout(putTimer);
     var items = Object.keys(putQueue).map(function(k){ return putQueue[k]; });
     putQueue = {};
     if (!items.length || !session) return;
+    var failed = false;
     for (var i = 0; i < items.length; i += 50) {
       var part = items.slice(i, i + 50);
       try { await apiFetch('/docs', { method: 'PUT', body: { items: part }, keepalive: !!keepalive }); }
-      catch (e) { part.forEach(function(it){ var k = it.col + '/' + it.id; if (!putQueue[k]) putQueue[k] = it; }); }
+      catch (e) { failed = true; part.forEach(function(it){ var k = it.col + '/' + it.id; if (!putQueue[k]) putQueue[k] = it; }); }
     }
+    // A failed save tries again by itself: 30 s, 1 min, 2 min… up to 5 min apart.
+    if (failed && session) { clearTimeout(putTimer); putTimer = setTimeout(flushDocs, Math.min(300000, 30000 * Math.pow(2, putFails++))); }
+    else if (!failed) putFails = 0;
   }
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'hidden') flushDocs(true);
@@ -2798,9 +2845,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     document.querySelectorAll('details.sec[data-sec="esforcos"] .sec-s').forEach(function(el){ el.textContent = 'Calculando ' + prog.done + ' de ' + prog.total; });
   }
 
-  function painelF(s){
-    return s.env === 'esteira' && s.painel > 0 && s.gpsMeters > 0 ? Math.round(s.painel * 1000 / s.gpsMeters * 10000) / 10000 : 1;
-  }
+  /* Treadmill: the watch's second-by-second distance often doesn't end where the run's
+     distance does (the total is fixed on the watch at the end, or the panel is entered here).
+     The stream is stretched to end exactly at that distance, so the stretches agree with it. */
+  function treadTarget(s){ return Math.round(s.painel > 0 ? s.painel * 1000 : s.gpsMeters); }
   var rateWait = false;
   async function kick(){
     if (processing || rateWait || !mcp || !state.sessions || !dbLoaded) return;
@@ -2810,7 +2858,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (!d) return true;
       if (d.noStreams) return false;
       if (s.race && !d.splits && !d.noSplits) return true;
-      if (s.env === 'esteira' && (d.pf || 1) !== painelF(s)) return true;
+      if (s.env === 'esteira' && (d.tn !== 1 || d.tgt !== treadTarget(s))) return true;
       if (s.env === 'rua' && !s.walk && d.trot == null) return true;
       if (d.v === ALGO) return false;
       return (s.gpsMeters || s.meters) >= 4828;
@@ -2827,9 +2875,18 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var st = extractStreams(parsePayload(r));
         var ex = effortDocs[s.id];
         var keepOld = ex && ex.efforts && Object.keys(ex.efforts).length;
-        var pf = painelF(s);
-        if (st && pf !== 1) st.dist = st.dist.map(function(x){ return x * pf; });
-        var nd = st ? { v: ALGO, efforts: bestEfforts(st.time, st.dist), trot: longestTrot(st.time, st.dist), pf: pf }
+        var pf = 1, tread = null;
+        if (st && s.env === 'esteira') {
+          var sm = st.dist[st.dist.length - 1] - st.dist[0], tgt = treadTarget(s);
+          if (sm > 0 && tgt > 0) {
+            pf = Math.round(tgt / sm * 10000) / 10000;
+            if (Math.abs(pf - 1) < 0.002) pf = 1;
+            // The watch's total differs from its own stream: the distance was confirmed at the end.
+            tread = { tn: 1, tgt: tgt, sm: Math.round(sm), cal: !(s.painel > 0) && s.gpsMeters > 0 && Math.abs(sm - s.gpsMeters) / s.gpsMeters > 0.02 };
+          }
+        }
+        if (st && pf !== 1) { var d0 = st.dist[0]; st.dist = st.dist.map(function(x){ return d0 + (x - d0) * pf; }); }
+        var nd = st ? Object.assign({ v: ALGO, efforts: bestEfforts(st.time, st.dist), trot: longestTrot(st.time, st.dist), pf: pf }, tread || {})
           : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 } }) : { v: ALGO, efforts: {}, noStreams: true });
         if (st && s.race) { var sp = splitsFrom(st.time, st.dist); nd.splits = sp.splits; nd.half = sp.half; }
         await saveDoc(s.id, nd);
@@ -3049,7 +3106,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   async function makeShareCard(id){
     var s = state.sessions.filter(function(x){ return String(x.id) === String(id); })[0];
     if (!s) throw new Error('nf');
-    var info = infoFor(s.d) || {};
+    var info = raceInfoOf(s) || {};
     var rua = analyze(state.sessions, 'rua');
     var ctx = raceContext(s, info, rua.tables);
     var resT = ctx && ctx.result ? ctx.result.t : s.elapsed;
@@ -3127,7 +3184,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var id = btn.getAttribute('data-share');
       var blob = await makeShareCard(id);
       var s = state.sessions.filter(function(x){ return String(x.id) === id; })[0];
-      var nm = ((infoFor(s.d) || {}).short || 'prova').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
+      var nm = ((raceInfoOf(s) || {}).short || 'prova').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-');
       await shareOrSave(blob, 'cartao-' + nm + '-' + isoOf(s.d) + '.png');
     } catch (e) {
       $('#status').textContent = 'Não consegui gerar o cartão agora.';
@@ -3177,7 +3234,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     });
     var provas = [['Data', 'Prova', 'Número de peito', 'Distância oficial', 'Tempo na distância', 'Pace', 'Km no relógio', 'Tempo total no relógio', 'Objetivo', 'Meta', 'Splits por km']];
     all.filter(function(s){ return s.race; }).forEach(function(s){
-      var info = infoFor(s.d) || {};
+      var info = raceInfoOf(s) || {};
       var ctx = raceContext(s, info, rua.tables);
       var resT = ctx && ctx.result ? ctx.result.t : s.elapsed;
       var dk = info.km || s.km;
@@ -3933,7 +3990,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function duoPastRaces(tables){
     var from = isoMinus(365);
     return state.sessions.filter(function(x){ return x.race && x.d && isoOf(x.d) >= from; }).map(function(x){
-      var info = infoFor(x.d) || {}, k = info.km ? keyForKm(info.km) : null, t = null;
+      var info = raceInfoOf(x) || {}, k = info.km ? keyForKm(info.km) : null, t = null;
       (k && tables[k] || []).forEach(function(e){ if (e.s === x && t == null) t = e.t; });
       return { date: isoOf(x.d), short: raceShort(x), km: info.km || Math.round(x.km * 100) / 100, t: Math.round((t || x.elapsed) * 1000) / 1000, off: !!info.chip };
     }).sort(function(a, b){ return a.date < b.date ? 1 : -1; });
@@ -4293,7 +4350,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
-        else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; EXTRA_ACTS = Array.isArray(v.add) ? v.add : []; }
+        else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; VERIFIED = v.verified && typeof v.verified === 'object' ? v.verified : {}; EXTRA_ACTS = Array.isArray(v.add) ? v.add : []; }
         else if (d.col === 'config' && d.id === 'painel') { PAINEL = v.km && typeof v.km === 'object' ? v.km : {}; }
         else if (d.col === 'config' && d.id === 'grouphist') { groupHist = v.months && typeof v.months === 'object' ? v.months : {}; }
         else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; }
