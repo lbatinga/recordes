@@ -579,6 +579,7 @@ html,body{overscroll-behavior-y:contain}
 .g-rank li{display:grid;grid-template-columns:44px 1fr auto;align-items:baseline;gap:8px}
 .g-rank .g-r{font-family:var(--font-num);font-weight:800;font-size:28px}
 .g-rank .g-n{font-weight:800;font-size:18px}
+.g-rank .g-u{display:block;font-weight:500;font-size:12px;color:var(--bib-muted)}
 .g-rank .g-p{font-weight:700;color:var(--bib-muted)}
 .duo-tbl.g-tbl{table-layout:auto}
 .duo-tbl.g-tbl th, .duo-tbl.g-tbl td{width:auto;text-align:left}
@@ -2183,7 +2184,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       { label: 'Primeira antes das 6h', hit: earlyHit, where: earlyHit ? whereOf(earlyHit) + ', ' + pad(earlyHit.d.getHours()) + ':' + pad(earlyHit.d.getMinutes()) : '' }
     ];
     (group || []).forEach(function(g){
-      var hit = firstTogether(asc, (g.summary || {}).runs, g.firstname);
+      // runsAll: every run (the 120-day "runs" would let an old first slide forward).
+      var gs = g.summary || {};
+      var hit = firstTogether(asc, Array.isArray(gs.runsAll) && gs.runsAll.length ? gs.runsAll : gs.runs, g.firstname);
       momItems.push({ label: 'Primeira com ' + esc(g.firstname || 'a dupla'), hit: hit, where: hit ? whereOf(hit) : '' });
     });
 
@@ -3828,7 +3831,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function buildSummary(){
     var s = buildSummaryCore();
     var today = new Date();
-    if (today.getDate() <= 10) s.prev = prevMonthSummary(today);
+    s.prev = prevMonthSummary(today); // the month that ended closes whenever everyone opens, any day
     return s;
   }
   function prevMonthSummary(today){
@@ -3972,6 +3975,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
       nextRaces: duoNextRaces(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
+      runsAll: all.filter(function(x){ return x.d; }).map(function(x){ return x.date.slice(0, 16); }).slice(-800),
       ag: ag, best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
       streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek, act12: act12, wkc: wkc, trot90: trot90, trot90m: trot90m,
@@ -3988,8 +3992,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     });
   }
   function duoPastRaces(tables){
-    var from = isoMinus(365);
-    return state.sessions.filter(function(x){ return x.race && x.d && isoOf(x.d) >= from; }).map(function(x){
+    return state.sessions.filter(function(x){ return x.race && x.d; }).map(function(x){
       var info = raceInfoOf(x) || {}, k = info.km ? keyForKm(info.km) : null, t = null;
       (k && tables[k] || []).forEach(function(e){ if (e.s === x && t == null) t = e.t; });
       return { date: isoOf(x.d), short: raceShort(x), km: info.km || Math.round(x.km * 100) / 100, t: Math.round((t || x.elapsed) * 1000) / 1000, off: !!info.chip };
@@ -4082,7 +4085,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var mine = state.sessions && allAnalyzed() ? buildSummary() : null;
     if (!mine) return '<div class="msg"><strong>Calculando</strong>Seus números ainda estão sendo calculados.</div>';
     var people = [{ id: me && me.id, name: (me && me.firstname) || 'Você', s: mine, mine: true }].concat(group.map(function(g){
-      return { id: g.id, name: g.firstname || 'Atleta', s: g.summary || {}, upd: g.updated_at };
+      return { id: g.id, name: g.firstname || 'Atleta', s: g.summary || {}, upd: g.updated_at, live: g.live_at };
     }));
     var ref = mine.month;
     var pts = scoreBoard(people, ref);
@@ -4115,7 +4118,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var nameOf = {}; people.forEach(function(p){ nameOf[p.id] = p.name; });
     var board = '<article class="bib duo-score"><div class="band band-prova"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
       '<div class="bib-body"><ol class="g-rank">' + rank.map(function(r){
-        return '<li><span class="g-r">' + r.pos + 'º</span><span class="g-n">' + esc(r.p.name) + '</span><span class="g-p">' + ptsWord(pts[r.p.id]) + '</span></li>';
+        return '<li><span class="g-r">' + r.pos + 'º</span><span class="g-n">' + esc(r.p.name) + updLine(r.p) + '</span><span class="g-p">' + ptsWord(pts[r.p.id]) + '</span></li>';
       }).join('') + '</ol><p class="fine">Em cada linha, você ganha os pontos dela por pessoa que supera. Empate de pontos: vale a maior nota por idade e sexo; sem nota de um dos lados, divide a posição.</p></div><div class="bib-foot"></div></article>';
     // next race with at least two of the group
     var byDate = {};
@@ -4147,6 +4150,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return next + board + together + '<table class="tbl duo-tbl g-tbl"><tbody>' + tables + '</tbody></table>' +
       '<h3 class="h3">Classificação por mês</h3><table class="tbl duo-months"><tbody>' + months + '</tbody></table>' +
       (prov ? '<h3 class="h3">Provas juntos</h3><table class="tbl duo-races"><tbody>' + prov + '</tbody></table>' : '');
+  }
+  // "números de 31/10 às 22:10" under each name (the newer of the app's summary and the Strava update).
+  function updLine(p){
+    if (p.mine) return '';
+    var u = p.upd ? new Date(p.upd) : null, l = p.live ? new Date(p.live) : null;
+    var t = u && l ? (l > u ? l : u) : (u || l);
+    if (!t || isNaN(t)) return '<span class="g-u">ainda sem números</span>';
+    return '<span class="g-u">números de ' + fmtDate(t).replace(/^[^,]+, /, '') + ' às ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + '</span>';
   }
   function recSub(x){
     if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + ' → ' + fmtTime(x.recNow);

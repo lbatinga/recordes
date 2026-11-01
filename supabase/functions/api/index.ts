@@ -505,10 +505,11 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     return json(req, { ok, fail });
   }
   if (path === '/cron/close' && req.method === 'POST') {
-    // Days 1-10: the month's final score waits for everyone in the group to open the app.
-    // Remind (days 1, 4, 7 and 10) whoever hasn't published last month's closing yet.
+    // The month's final score waits for everyone in the group to open the app (any day of the
+    // next month). Remind whoever hasn't published last month's closing yet: days 1, 4, 7, 10,
+    // 15, 20 and 25.
     const now = brNow(), dom = now.getUTCDate();
-    if (![1, 4, 7, 10].includes(dom)) return json(req, { skipped: 'day' });
+    if (![1, 4, 7, 10, 15, 20, 25].includes(dom)) return json(req, { skipped: 'day' });
     const pd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     const pm = pd.toISOString().slice(0, 7);
     const MON = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
