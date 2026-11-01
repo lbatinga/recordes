@@ -260,6 +260,15 @@ async function refreshLive(aid: number): Promise<any> {
   const after = Math.floor(sm.at / 1000) - 2 * 86400;
   // deno-lint-ignore no-explicit-any
   const acts: any[] = (await stravaGet(aid, '/athlete/activities?per_page=100&after=' + after)) as any[];
+  // Runs added by hand in config/overrides.add (never reached Strava) count like any other.
+  const ov = (await configDoc(aid, 'overrides'))?.data;
+  if (Array.isArray(acts) && Array.isArray(ov?.add)) {
+    // deno-lint-ignore no-explicit-any
+    ov.add.forEach((x: any) => {
+      if (!x?.start_local) return;
+      acts.push({ sport_type: x.sport_type ?? 'Run', start_date_local: x.start_local, distance: Number(x.summary?.distance) || 0, moving_time: Number(x.summary?.moving_time) || 0 });
+    });
+  }
   const known = new Set<string>((sm.runs ?? []).map((r: string) => r.slice(0, 16)));
   const today = brNow().toISOString().slice(0, 10);
   const month = today.slice(0, 7);
@@ -485,6 +494,38 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
       await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: { ...lv, nudged: lv.newest }, updated_at: new Date().toISOString() });
     }
     return json(req, { sent });
+  }
+  if (path === '/cron/live' && req.method === 'POST') {
+    // Moves every live summary forward (missed webhooks, hand-made adjustments).
+    const { data } = await sb.from('docs').select('athlete_id').eq('col', 'config').eq('id', 'summary');
+    let ok = 0, fail = 0;
+    for (const row of data ?? []) {
+      try { await refreshLive(Number(row.athlete_id)); ok++; } catch (_) { fail++; }
+    }
+    return json(req, { ok, fail });
+  }
+  if (path === '/cron/close' && req.method === 'POST') {
+    // Days 1-10: the month's final score waits for everyone in the group to open the app.
+    // Remind (days 1, 4, 7 and 10) whoever hasn't published last month's closing yet.
+    const now = brNow(), dom = now.getUTCDate();
+    if (![1, 4, 7, 10].includes(dom)) return json(req, { skipped: 'day' });
+    const pd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const pm = pd.toISOString().slice(0, 7);
+    const MON = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const { data } = await sb.from('docs').select('athlete_id, data').eq('col', 'config').eq('id', 'partner');
+    let sent = 0, done = 0;
+    for (const row of data ?? []) {
+      const aid = Number(row.athlete_id);
+      // deno-lint-ignore no-explicit-any
+      const p: any = row.data;
+      const ids = Array.isArray(p?.athlete_ids) ? p.athlete_ids : p?.athlete_id ? [p.athlete_id] : [];
+      if (!ids.length) continue;
+      const sm = (await configDoc(aid, 'summary'))?.data;
+      if (sm?.prev?.month === pm) { done++; continue; }
+      const r = await sendPush(aid, { title: 'Fechamento de ' + MON[pd.getUTCMonth()], body: 'Abre o Recordes pra fechar seu ' + MON[pd.getUTCMonth()] + ' e sair o resultado final do grupo.', tag: 'fechamento' });
+      sent += r.sent;
+    }
+    return json(req, { sent, done });
   }
   if (path === '/cron/weights' && req.method === 'POST') {
     const { data } = await sb.from('athletes').select('athlete_id, scope').like('scope', '%profile:read_all%');
