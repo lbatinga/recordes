@@ -184,6 +184,7 @@ details.rr[open] .rr-i::before{content:"−"}
 .rec-top .rt-p{color:var(--muted);font-size:13px}
 .rec-top .rt-v{font-weight:700;white-space:nowrap}
 .rec-top .rt-d{color:var(--muted);font-size:13px;white-space:nowrap}
+.rec-top .rt-r{grid-column:3 / 5;margin-top:-4px;font-size:12px;font-weight:700;color:var(--prova-txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rec-top .rt-x{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
 .race-list .past-race .bib-num{font-size:clamp(44px,13vw,72px)}
 .past-race .race-more:not([open]){margin-bottom:12px}
@@ -1657,7 +1658,6 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function recVal(r, s){ var v = r.val(s); return recEst(r, s) ? ['≈' + v[0], v[1]] : v; }
   // Extra info per line: race name when it was a race; otherwise what the record doesn't already say.
   function recInfo(r, s){
-    if (s.race) return raceShort(s);
     if (r.id === 'trot') return fmtKm(effortDocs[s.id].trot.m / 1000) + ' km';
     if (r.id === 'dist') return fmtTime(s.time);
     return fmtKm(s.km) + ' km';
@@ -1692,7 +1692,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var w = recVal(r, x);
       return '<li><span class="rt-p">' + (i + 1) + 'º</span><span class="rt-v">' + w[0] + '</span>' +
         '<span class="rt-d"><span class="o ' + origCls(x) + '"></span>' + shortDate(x) + '</span>' +
-        '<span class="rt-x">' + esc(recInfo(r, x)) + '</span></li>';
+        '<span class="rt-x">' + esc(recInfo(r, x)) + '</span>' +
+        (x.race ? '<span class="rt-r">' + esc(raceShort(x)) + '</span>' : '') + '</li>';
     }).join('');
     return '<details class="rr" name="rec-top" data-sec="rec-' + r.id + '"' + (openSec['rec-' + r.id] && openRecTop() === r.id ? ' open' : '') + '>' +
       '<summary class="rr-h">' + head + '<span class="rr-i" aria-hidden="true"></span></summary>' +
