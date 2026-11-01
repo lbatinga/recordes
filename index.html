@@ -1677,8 +1677,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return '<li><span class="rt-p">' + (i + 1) + 'º</span><span class="rt-v">' + v[0] + (v[1] ? ' <small>' + v[1] + '</small>' : '') + '</span>' +
         '<span class="rt-d"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + (r.id !== 'dist' ? ' · ' + esc(r.ctx(s)) : '') + '</span></li>';
     }).join('');
-    return '<tr class="rec-more"><td colspan="2"><details class="mini" data-sec="rec-' + r.id + '"' + (openSec['rec-' + r.id] ? ' open' : '') + '><summary>Top 5</summary><ol class="rec-top">' + rows + '</ol></details></td></tr>';
+    return '<tr class="rec-more"><td colspan="2"><details class="mini" name="rec-top" data-sec="rec-' + r.id + '"' + (openSec['rec-' + r.id] && openRecTop() === r.id ? ' open' : '') + '><summary>Top 5</summary><ol class="rec-top">' + rows + '</ol></details></td></tr>';
   }
+  // Only one Top 5 open at a time (also enforced by the shared name on <details>).
+  function openRecTop(){ var ids = ['dist', 'trot', 'pace2', 'pace3', 'pace5']; for (var i = 0; i < ids.length; i++) if (openSec['rec-' + ids[i]]) return ids[i]; return null; }
   function est0(s){ return s.env === 'esteira' && !s.painel; }
   function recTable(best, list){
     return '<table class="tbl rec-tbl"><thead><tr><th>Recorde</th><th class="num">Resultado</th></tr></thead><tbody>' +
@@ -3168,6 +3170,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!d || !d.getAttribute) return;
     var k = d.getAttribute('data-sec');
     if (!k) return;
+    if (d.open && d.name) document.querySelectorAll('details[name="' + d.name + '"][open]').forEach(function(o){ if (o !== d) o.open = false; });
     if (!!openSec[k] === d.open) return;
     openSec[k] = d.open;
     try { localStorage.setItem('recordes-open', JSON.stringify(openSec)); } catch(e) {}
