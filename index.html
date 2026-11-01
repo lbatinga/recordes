@@ -70,6 +70,8 @@ window.va = window.va || function(){ (window.vaq = window.vaq || []).push(argume
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
+/* Newer browsers wrap what's inside <details> in a box of their own that doesn't get the rule above. */
+details > *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:17px;line-height:1.45;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
@@ -372,7 +374,7 @@ details.sec[open] .sec-i::before{content:"−"}
 .md-cell{display:flex;align-items:center;gap:6px}
 .md-cell .medal{margin:0;flex:none}
 .md-ct{display:block;font-weight:700;font-size:14px}
-.share-btn{width:100%;margin-top:16px;border-color:var(--bib-ink);color:var(--bib-ink)}
+.share-btn{width:100%;margin-top:16px;border-color:var(--bib-ink);color:var(--bib-ink);white-space:normal}
 .report-lead{margin:-4px 0 10px;color:var(--muted);font-size:14px}
 .cmp-sub{margin:-6px 0 10px;color:var(--muted);font-size:14px}
 .cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:14px 12px}
@@ -568,11 +570,20 @@ html,body{overscroll-behavior-y:contain}
 .linkbtn{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--prova-txt);text-decoration:underline;cursor:pointer}
 .ch-push{margin:10px 0 0;font-size:14px;color:var(--muted)}
 .ch-push-btn{margin-top:12px;width:100%}
+@media (max-width:370px){.split-tbl td{padding:8px 8px}.sp-tag{white-space:normal}}
+.md-line{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;margin-top:18px;cursor:pointer;color:var(--ink)}
+.md-line .ml-t{display:block;font-weight:700;font-size:15px}
+.md-line .ml-s{display:block;margin-top:2px;font-size:14px;color:var(--muted);line-height:1.35}
+.md-line .ml-c{margin-left:auto;font-size:24px;line-height:1;color:var(--muted)}
+.chart .mtick{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.bib .sum-bar{margin-top:14px}
+.bib + .ch-tbl{margin-top:14px}
 .wx{display:flex;align-items:center;gap:6px}
 .wx svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .recap-btn{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}
 .recap-btn svg{width:16px;height:16px;fill:none;stroke:var(--prova-txt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.recap-msg{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.recap-msg{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+.recap-msg .btn{white-space:nowrap}
 .recap-msg strong{margin:0}
 .duo-together{margin-top:16px;padding:14px 16px}
 .duo-next{margin-bottom:16px}
@@ -1269,12 +1280,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return { first: first, top: top };
   }
 
+  // A long list of distances reads as a range: "8 recordes na rua, de meia milha a 3 milhas".
+  function lcDist(t){ return /^\d/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1); }
+  function recList(labels, where){
+    if (labels.length <= 3) return 'Recorde' + where + ' em ' + joinPt(labels);
+    return labels.length + ' recordes' + where + ', de ' + lcDist(labels[0]) + ' a ' + lcDist(labels[labels.length - 1]);
+  }
+  function topList(labels, where){
+    if (labels.length <= 3) return 'Top 5' + where + ' em ' + joinPt(labels);
+    return 'Top 5' + where + ' em ' + labels.length + ' distâncias, de ' + lcDist(labels[0]) + ' a ' + lcDist(labels[labels.length - 1]);
+  }
   function hero(s, tables){
     var pl = placingsOf(s, tables);
     var rec = s.broke.length > 0 || pl.first.length > 0;
     var lines = [];
     var where = s.env === 'esteira' ? ' na esteira' : ' na rua';
-    if (pl.first.length) lines.push('Recorde' + where + ' em ' + esc(joinPt(pl.first)));
+    if (pl.first.length) lines.push(esc(recList(pl.first, where)));
     s.broke.forEach(function(id){ lines.push('Recorde' + where + ' de ' + REC_BY[id].chip); });
     var bandCls = s.race ? 'band-prova' : (s.env === 'esteira' ? 'band-esteira' : 'band-rua');
     var bandTxt = s.race ? 'Prova, ' + esc(raceShort(s)) : 'Último treino, ' + (s.env === 'esteira' ? 'esteira' : 'rua');
@@ -1289,7 +1310,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
         '</div>' +
         (lines.length ? '<ul class="rec-lines">' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
-        (pl.top.length ? '<p class="bib-note">Top 5' + where + ' em ' + esc(joinPt(pl.top)) + '</p>' : '') +
+        (pl.top.length ? '<p class="bib-note">' + esc(topList(pl.top, where)) + '</p>' : '') +
         wxLine(s) + painelLine(s) +
       '</div><div class="bib-foot"></div></section>';
   }
@@ -1784,9 +1805,19 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return '<circle class="pt ' + (p.env === 'esteira' ? 'pt-e' : p.race ? 'pt-p' : 'pt-r') + (isRec ? ' rec' : '') + '" cx="' + x(i).toFixed(1) + '" cy="' + y(p.pace).toFixed(1) + '" r="4">' +
              '<title>' + fmtDate(p.d, otherYear(p.d)) + (showSrc() ? ', ' + srcWord(p) : '') + ': ' + fmtPace(p.pace) + ' por km</title></circle>';
     }).join('');
-    var first = pts[0], last = pts[pts.length - 1];
-    var xl = '<text class="axis" x="' + L + '" y="' + (H - 8) + '" text-anchor="start">' + fmtShort(first.d) + '</text>' +
-             '<text class="axis" x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end">' + fmtShort(last.d) + '</text>';
+    // A mark where each month starts (left out when too close to the previous one).
+    var xl = '', lastX = -99;
+    pts.forEach(function(p, i){
+      if (!p.d) return;
+      var q = i ? pts[i - 1].d : null;
+      if (q && q.getMonth() === p.d.getMonth() && q.getFullYear() === p.d.getFullYear()) return;
+      var xx = x(i);
+      if (xx - lastX < 30) return;
+      lastX = xx;
+      var lbl = MON[p.d.getMonth()] + (p.d.getMonth() === 0 ? '/' + String(p.d.getFullYear()).slice(-2) : '');
+      xl += '<line class="mtick" x1="' + xx.toFixed(1) + '" x2="' + xx.toFixed(1) + '" y1="' + T + '" y2="' + (H - B) + '"/>' +
+            '<text class="axis" x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + (i === 0 ? 'start' : 'middle') + '">' + lbl + '</text>';
+    });
     return '<div class="panel chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pace médio por treino, do mais antigo ao mais recente">' +
            g + '<path class="path" d="' + d + '"/>' + dots + xl + '</svg></div>' +
            '<div class="legend">' + (tab === 'ruat' || tab === 'tudo' ? '<span class="lg-r">Rua</span>' : '') + (tab === 'prova' || tab === 'tudo' ? '<span class="lg-p">Prova</span>' : '') + (tab === 'esteira' || tab === 'tudo' ? '<span class="lg-e">Esteira</span>' : '') + '<span class="lg-x">Recorde de pace na época</span></div>';
@@ -1807,7 +1838,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (s.walk) tags.push('<span class="tg">Caminhada</span>');
     if (s.verified) tags.push('<span class="tg">Distância do ' + esc(s.verified) + '</span>');
     var recs = [];
-    if (s.prs.length) recs.push('Recorde em ' + esc(joinPt(s.prs.map(function(k){ return DIST_BY[k].label; }))));
+    if (s.prs.length) recs.push(esc(recList(s.prs.map(function(k){ return DIST_BY[k].label; }), '')));
     s.broke.forEach(function(id){ recs.push('Recorde de ' + REC_BY[id].chip); });
     var z = histRow.i++ % 2 ? ' zb' : '';
     var dow = DOW[s.d.getDay()];
@@ -2064,6 +2095,23 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '</svg>';
   }
 
+  function medalsLine(){
+    if (!state.sessions || !state.sessions.length) return '';
+    var st = monthStats(), now = mkey(new Date());
+    var kmNow = st.km[now] || 0, dNow = st.days[now] || 0;
+    var kt = kmTiers(st, now), dt = daysTiers(st, now);
+    function part(lbl, v, tiers, unit){
+      var tier = tierOf(v, tiers), name = tier >= 0 ? TIER_NAMES[tier].toLowerCase() : '';
+      if (tier >= tiers.length - 1) return lbl + ': ' + name;
+      var f = tiers[tier + 1] - v;
+      var miss = unit === 'km' ? 'faltam ' + fmtKmShort(Math.ceil(f * 10) / 10) + ' km' : (f === 1 ? 'falta 1' : 'faltam ' + f);
+      return lbl + ': ' + (name ? name + ', ' : '') + miss + ' pro ' + TIER_NAMES[tier + 1].toLowerCase();
+    }
+    return '<button type="button" class="panel md-line" data-goview="conquistas">' +
+      '<span><span class="ml-t">Medalhas de ' + MON_FULL[new Date().getMonth()] + '</span>' +
+      '<span class="ml-s">' + part('Km', kmNow, kt, 'km') + ' · ' + part('Dias', dNow, dt, 'dias') + '</span></span>' +
+      '<span class="ml-c" aria-hidden="true">›</span></button>';
+  }
   function medalsSection(onlyNow){
     if (!state.sessions || !state.sessions.length) return '';
     var st = monthStats();
@@ -2132,25 +2180,6 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       pauseBlock() +
       pushControl() +
       '</section>';
-
-    // 2. cumulative km
-    var cum = 0, hits = [], mi = 0;
-    asc.forEach(function(s){
-      cum += s.km;
-      while (mi < KM_MARKS.length && cum >= KM_MARKS[mi]) { hits.push({ km: KM_MARKS[mi], d: s.d, s: s }); mi++; }
-    });
-    var next = KM_MARKS[mi];
-    var prev = mi ? KM_MARKS[mi - 1] : 0;
-    var pct = next ? Math.max(0, Math.min(100, (cum - prev) / (next - prev) * 100)) : 100;
-    html += '<section class="panel ch-card" aria-label="Quilômetros acumulados">' +
-      '<p class="ch-title">Km acumulados</p>' +
-      '<div class="ch-top"><span class="ch-num">' + fmtKm(cum) + '</span><span class="ch-txt">km</span></div>' +
-      (next ? '<div class="ch-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(pct) + '"><span style="width:' + pct.toFixed(1) + '%"></span></div>' +
-        '<p class="ch-note">Faltam ' + fmtKm(next - cum) + ' km pros ' + next + ' km</p>' : '') +
-      '</section>' +
-      (hits.length ? '<table class="tbl ch-tbl"><thead><tr><th>Marco de km</th><th class="num">Quando</th></tr></thead><tbody>' + hits.slice().reverse().map(function(x){
-        return '<tr><td><span class="t-lbl"><span class="o ' + origCls(x.s) + '"></span>' + x.km + ' km</span></td><td class="t-when">' + fmtDate(x.d) + '</td></tr>';
-      }).join('') + '</tbody></table>' : '');
 
     html += medalsSection();
 
@@ -2236,6 +2265,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return html;
   }
 
+  // Cumulative km and the milestones reached (25, 50, 100 km…).
+  function kmMarks(list){
+    var asc = list.slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var cum = 0, hits = [], mi = 0;
+    asc.forEach(function(s){
+      cum += s.km;
+      while (mi < KM_MARKS.length && cum >= KM_MARKS[mi]) { hits.push({ km: KM_MARKS[mi], d: s.d, s: s }); mi++; }
+    });
+    var next = KM_MARKS[mi], prev = mi ? KM_MARKS[mi - 1] : 0;
+    return { cum: cum, hits: hits, next: next, pct: next ? Math.max(0, Math.min(100, (cum - prev) / (next - prev) * 100)) : 100 };
+  }
   function summaryPanel(list){
     var ne = 0, nr = 0, np = 0, ke = 0, kr = 0, kp = 0, tt = 0, first = null;
     list.forEach(function(s){
@@ -2244,17 +2284,23 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (s.d && (!first || s.d < first)) first = s.d;
     });
     var weeks = first ? Math.floor((dayOnly(new Date()) - dayOnly(first)) / (7 * 86400000)) + 1 : 0;
+    var mk = kmMarks(list);
     return '<section class="bib" aria-label="Resumo geral">' +
       '<div class="band band-ink"><span>Resumo geral</span><span class="bd">' + (first ? 'desde ' + fmtDate(first) : '') + '</span></div>' +
       '<div class="bib-body">' +
         '<p class="bib-num">' + fmtKm(ke + kr + kp) + '<span class="u">km</span></p>' +
         '<p class="bib-sub env-split"><span><span class="o o-r"></span>' + fmtKm(kr) + ' km na rua</span><span><span class="o o-p"></span>' + fmtKm(kp) + ' km em prova</span><span><span class="o o-e"></span>' + fmtKm(ke) + ' km na esteira</span></p>' +
+        (mk.next ? '<div class="ch-bar sum-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(mk.pct) + '"><span style="width:' + mk.pct.toFixed(1) + '%"></span></div>' +
+          '<p class="bib-note">Faltam ' + fmtKm(mk.next - mk.cum) + ' km pros ' + mk.next + ' km</p>' : '') +
         '<div class="bib-stats two">' +
           '<div><span class="st-v">' + list.length + '</span><span class="st-k">Treinos: <span class="o o-r"></span>' + nr + ' <span class="o o-p"></span>' + np + ' <span class="o o-e"></span>' + ne + '</span></div>' +
           '<div><span class="st-v">' + weeks + '</span><span class="st-k">Semanas</span></div>' +
           '<div class="wide"><span class="st-v">' + fmtTime(tt) + '</span><span class="st-k">Em movimento, somando tudo</span></div>' +
         '</div>' +
-      '</div><div class="bib-foot"></div></section>';
+      '</div><div class="bib-foot"></div></section>' +
+      (mk.hits.length ? '<table class="tbl ch-tbl"><thead><tr><th>Marco de km</th><th class="num">Quando</th></tr></thead><tbody>' + mk.hits.slice().reverse().map(function(x){
+        return '<tr><td><span class="t-lbl"><span class="o ' + origCls(x.s) + '"></span>' + x.km + ' km</span></td><td class="t-when">' + fmtDate(x.d) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '');
   }
 
   function raceShort(s){
@@ -2383,14 +2429,19 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return '<table class="tbl split-tbl"><thead><tr><th colspan="3"><div class="t-head"><span>Tempo de cada km</span>' + head + '</div></th></tr></thead><tbody>' + rows + halves + '</tbody></table>';
   }
 
-  function raceReport(){
-    if (!state.sessions) return '';
-    var today = dayOnly(new Date());
+  // The race shown in "Relatório da prova": the latest one, up to 7 days ago.
+  function reportRace(){
+    if (!state.sessions) return null;
     var races = state.sessions.filter(function(x){ return x.race && x.d; }).sort(function(a, b){ return a.date < b.date ? 1 : -1; });
     var r = races[0];
+    if (!r) return null;
+    var ago = Math.round((dayOnly(new Date()) - dayOnly(r.d)) / 86400000);
+    return ago < 0 || ago > 7 ? null : r;
+  }
+  function raceReport(){
+    var r = reportRace();
     if (!r) return '';
-    var ago = Math.round((today - dayOnly(r.d)) / 86400000);
-    if (ago < 0 || ago > 7) return '';
+    var ago = Math.round((dayOnly(new Date()) - dayOnly(r.d)) / 86400000);
     var rua = analyze(state.sessions, 'rua');
     return '<h2>Relatório da prova</h2><p class="report-lead">' + (ago === 0 ? 'Hoje' : ago === 1 ? 'Ontem' : 'Há ' + ago + ' dias') + ', ' + esc(raceShort(r)) + '</p>' +
       pastRaceCard(r, rua.tables, true);
@@ -2409,7 +2460,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return o;
     }
     var a = stats(curStart, now), b = stats(prevStart, prevEnd);
-    if (!a.n && !b.n) return '';
+    if (!a.n) return ''; // nothing to compare until the month's first run
     function delta(diff, good, txt){
       if (Math.abs(diff) < 1e-9) return '<span class="cmp-d">igual</span>';
       return '<span class="cmp-d ' + (good ? 'up' : 'down') + '">' + txt + '</span>';
@@ -2447,9 +2498,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var era = '';
         if (ctx) {
           var objRow = ctx.before
-            ? '<tr><td><span class="t-lbl">Objetivo</span><span class="t-sub">' + fmtTime(ctx.before.t) + '</span></td>' +
+            ? '<tr><td><span class="t-lbl">Recorde até então</span><span class="t-sub">' + fmtTime(ctx.before.t) + '</span></td>' +
               '<td class="t-val ' + (resT < ctx.before.t ? 'good' : 'bad') + '">' + (resT < ctx.before.t ? 'superou por ' + fmtTime(ctx.before.t - resT) : 'faltaram ' + fmtTime(resT - ctx.before.t)) + '</td></tr>'
-            : '<tr><td><span class="t-lbl">Objetivo</span><span class="t-sub">Primeira vez</span></td><td class="t-val">--</td></tr>';
+            : '<tr><td><span class="t-lbl">Recorde até então</span><span class="t-sub">Primeira vez</span></td><td class="t-val">--</td></tr>';
           var metaRow = ctx.meta ? '<tr><td><span class="t-lbl">Meta</span><span class="t-sub">' + ctx.meta.txt + '</span></td>' +
             '<td class="t-val ' + (ctx.meta.kind === 'hit' ? 'good' : '') + '">' + (ctx.meta.kind === 'hit' ? 'batida' : ctx.meta.kind === 'base' ? 'base' : 'não batida') + '</td></tr>' : '';
           era = '<table class="tbl era-tbl"><thead><tr><th colspan="2">Na época</th></tr></thead><tbody>' + objRow + metaRow + '</tbody></table>';
@@ -2514,7 +2565,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var k = keyForKm(r.km);
       var best = k ? currentBest(k) : null;
       var g = k ? GOALS[k] : null;
-      var rows = '<tr><td><span class="t-lbl">Objetivo</span></td><td class="t-val">' + (best ? fmtTime(best.t) : '--') + '</td></tr>' +
+      var rows = '<tr><td><span class="t-lbl">Recorde a bater</span></td><td class="t-val">' + (best ? fmtTime(best.t) : '--') + '</td></tr>' +
         (g && g.hi != null ? '<tr><td><span class="t-lbl">Meta</span></td><td class="t-val wrap">' + fmtGoalOf(g) + '</td></tr>' : '') +
         '<tr><td><span class="t-lbl">Número de peito</span></td><td class="t-val">' + (r.bib ? esc(r.bib) : '--') + '</td></tr>' +
         (r.time ? '<tr><td><span class="t-lbl">Largada</span></td><td class="t-val">' + r.time.replace(':', 'h') + '</td></tr>' : '');
@@ -2627,11 +2678,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (view === 'inicio') {
       var last = all[all.length - 1];
       var ae = analyze(state.sessions, last.env === 'esteira' ? 'esteira' : 'rua');
-      html += '<h2>Último treino</h2>' + hero(last, ae.tables);
+      var rep = reportRace();
+      if (!rep || rep.id !== last.id) html += '<h2>Último treino</h2>' + hero(last, ae.tables);
       html += weightCard();
       html += monthCompare();
       html += recapBanner();
-      html += medalsSection(true);
+      html += medalsLine();
       var recent = all.slice().reverse().slice(0, 5);
       analyze(state.sessions, 'tudo');
       html += '<h2>Últimos treinos</h2>' + histTable(recent) +
@@ -3197,7 +3249,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       g.fillStyle = '#5E6772'; g.font = '500 36px ' + UI; g.fillText('Pace nos ' + distTxt, bx + 70, by + 740);
     }
     var hl = [];
-    if (ctx && ctx.before && resT < ctx.before.t) hl.push(['Superou o objetivo por ' + fmtTime(ctx.before.t - resT), '#12855A']);
+    if (ctx && ctx.before && resT < ctx.before.t) hl.push(['Superou o recorde por ' + fmtTime(ctx.before.t - resT), '#12855A']);
     if (ctx && ctx.meta && ctx.meta.kind === 'hit') hl.push(['Meta batida', '#12855A']);
     if (doc && doc.half && doc.half.second < doc.half.first) hl.push(['Split negativo: 2ª metade ' + fmtTime(doc.half.first - doc.half.second) + ' mais rápida', '#2B4BD8']);
     if (s.prs && s.prs.length) hl.push(['Recorde pessoal em ' + joinPt(s.prs.slice(0, 3).map(function(k){ return DIST_BY[k].label; })) + (s.prs.length > 3 ? ' e mais' : ''), '#D92D27']);
@@ -3284,7 +3336,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       metas.push([DIST_BY[k].label, fmtTime(g.baseT), g.baseDate ? fmtDate(parseIso(g.baseDate)) : '', g.lo != null ? fmtTime(g.lo) : '', g.hi != null ? fmtTime(g.hi) : '',
         bp ? fmtTime(bp.t) : '', bt ? fmtTime(bt.t) : '']);
     });
-    var provas = [['Data', 'Prova', 'Número de peito', 'Distância oficial', 'Tempo na distância', 'Pace', 'Km no relógio', 'Tempo total no relógio', 'Objetivo', 'Meta', 'Splits por km']];
+    var provas = [['Data', 'Prova', 'Número de peito', 'Distância oficial', 'Tempo na distância', 'Pace', 'Km no relógio', 'Tempo total no relógio', 'Recorde até então', 'Meta', 'Splits por km']];
     all.filter(function(s){ return s.race; }).forEach(function(s){
       var info = raceInfoOf(s) || {};
       var ctx = raceContext(s, info, rua.tables);
@@ -3655,7 +3707,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     pushState = 'off';
     render();
   }
+  function isIOS(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function isStandalone(){ return navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
   function pushControl(){
+    if (pushState === 'unsupported' && isIOS() && !isStandalone())
+      return '<p class="ch-push">No iPhone, os avisos só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o app pelo ícone.</p>';
     if (pushState === 'unsupported' || pushState === 'unknown') return '';
     if (pushState === 'denied') return '<p class="ch-push">Avisos bloqueados nas configurações do celular.</p>';
     if (pushState === 'busy') return '<p class="ch-push">Um instante…</p>';
@@ -4167,7 +4223,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var b = hn[a.date], d = parseIso(a.date), days = Math.round((d - dayOnly(new Date())) / 86400000);
     function col(nm, r){
       return '<div class="nt-col"><span class="nm">' + esc(nm) + '</span>' +
-        '<span class="t-sub">Objetivo</span><span class="v">' + (r.obj ? fmtTime(r.obj) : '--') + '</span>' +
+        '<span class="t-sub">Recorde a bater</span><span class="v">' + (r.obj ? fmtTime(r.obj) : '--') + '</span>' +
         '<span class="t-sub">Meta</span><span class="v">' + (r.hi ? fmtGoalOf(r) : '--') + '</span></div>';
     }
     return '<article class="bib duo-next"><div class="band band-prova"><span>Próxima prova juntos: ' + esc(a.short) + '</span><span class="bd">' + a.km + ' km</span></div>' +
@@ -4342,7 +4398,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var dd = parseIso(nd), days = Math.round((dd - dayOnly(new Date())) / 86400000), r0 = byDate[nd][0].r;
       next = '<article class="bib duo-next"><div class="band band-prova"><span>Próxima prova juntos: ' + esc(r0.short) + '</span><span class="bd">' + r0.km + ' km</span></div>' +
         '<div class="bib-body"><div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
-        '<p class="bib-sub">' + fmtDate(dd) + '</p><table class="tbl g-next"><thead><tr><th></th><th class="num">Objetivo</th><th class="num">Meta</th></tr></thead><tbody>' +
+        '<p class="bib-sub">' + fmtDate(dd) + '</p><table class="tbl g-next"><thead><tr><th></th><th class="num">Recorde a bater</th><th class="num">Meta</th></tr></thead><tbody>' +
         byDate[nd].map(function(x){ return '<tr><td>' + esc(x.p.name) + '</td><td class="num">' + (x.r.obj ? fmtTime(x.r.obj) : '--') + '</td><td class="num">' + (x.r.hi ? fmtGoalOf(x.r) : '--') + '</td></tr>'; }).join('') +
         '</tbody></table></div><div class="bib-foot"></div></article>';
     }
