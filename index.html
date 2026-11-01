@@ -705,6 +705,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Distance fixed by hand for one activity, backed by evidence (config/overrides.km, set by
      the owner): a manual Strava entry that summed two recordings, for example. */
   var KM_OVERRIDE = {};
+  var EXTRA_ACTS = []; // config/overrides.add: runs the athlete did but never reached Strava
   var RACES = RACE_INFO;
 
   var session = null, me = null;
@@ -2796,6 +2797,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var partial = !!p.partial;
     if (docsReady) await docsReady;
     if (my !== token || !session) return;
+    var have = {};
+    acts.forEach(function(a){ if (a) have[a.id] = true; });
+    var nx = acts.length;
+    EXTRA_ACTS.forEach(function(a){ if (a && a.id && !have[a.id]) acts.push(a); });
+    if (acts.length > nx) acts.sort(function(a, b){ var x = (a && a.start_local) || '', y = (b && b.start_local) || ''; return x < y ? 1 : x > y ? -1 : 0; });
     lastActs = acts;
     state.sessions = buildSessions(acts);
     state.activeDays = {};
@@ -4206,7 +4212,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
-        else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; }
+        else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; EXTRA_ACTS = Array.isArray(v.add) ? v.add : []; }
         else if (d.col === 'config' && d.id === 'painel') { PAINEL = v.km && typeof v.km === 'object' ? v.km : {}; }
         else if (d.col === 'config' && d.id === 'grouphist') { groupHist = v.months && typeof v.months === 'object' ? v.months : {}; }
         else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; }
