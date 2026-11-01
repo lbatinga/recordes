@@ -166,6 +166,15 @@ details.mini > summary{cursor:pointer;font-weight:700;font-size:14px;color:var(-
 details.mini > summary::-webkit-details-marker{display:none}
 details.mini > summary::after{content:" +"}
 details.mini[open] > summary::after{content:" −"}
+.rec-tbl tr.rec-more td{padding-top:0;border-top:0}
+.rec-tbl tr.rec-more details.mini{margin-top:0}
+.rec-tbl tr.rec-more summary{font-size:13px;padding:2px 0 6px}
+.rec-top{list-style:none;margin:0 0 6px;padding:0}
+.rec-top li{display:grid;grid-template-columns:2.2em auto 1fr;align-items:baseline;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.rec-top .rt-p{color:var(--muted);font-size:13px}
+.rec-top .rt-v{font-weight:700;white-space:nowrap}
+.rec-top .rt-v small{font-weight:500;color:var(--muted)}
+.rec-top .rt-d{text-align:right;color:var(--muted);font-size:13px}
 .race-list .past-race .bib-num{font-size:clamp(44px,13vw,72px)}
 .past-race .race-more:not([open]){margin-bottom:12px}
 .icon-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
@@ -1645,9 +1654,35 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<span class="t-sub"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + '</span></td>' +
       '<td class="t-val">' + v[0] + (v[1] ? '<small>' + v[1] + '</small>' : '') + '</td></tr>';
   }
-  function recTable(best){
+  // Top 5 of one record line, with the same rules the record uses (5% handicap in Tudo).
+  function recTop(r, list){
+    var pen = tab === 'tudo';
+    function est(s){ return s.env === 'esteira' && !s.painel; }
+    function key(s){
+      if (r.id === 'trot') return -effortDocs[s.id].trot.t;
+      if (r.id === 'dist') return -(s.km / (pen && est(s) ? EST_MARGIN : 1));
+      return s.pace * (pen && est(s) ? EST_MARGIN : 1);
+    }
+    return (list || []).filter(function(s){ return r.ok(s); })
+      .map(function(s){ return { s: s, k: key(s) }; })
+      .sort(function(a, b){ return a.k - b.k || (a.s.date < b.s.date ? -1 : 1); })
+      .slice(0, 5).map(function(x){ return x.s; });
+  }
+  function recMore(r, list){
+    var top = recTop(r, list);
+    if (top.length < 2) return '';
+    var rows = top.map(function(s, i){
+      var v = r.val(s);
+      if ((r.id === 'dist' || /^pace/.test(r.id)) && est0(s)) v = ['≈' + v[0], v[1]];
+      return '<li><span class="rt-p">' + (i + 1) + 'º</span><span class="rt-v">' + v[0] + (v[1] ? ' <small>' + v[1] + '</small>' : '') + '</span>' +
+        '<span class="rt-d"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + (r.id !== 'dist' ? ' · ' + esc(r.ctx(s)) : '') + '</span></li>';
+    }).join('');
+    return '<tr class="rec-more"><td colspan="2"><details class="mini" data-sec="rec-' + r.id + '"' + (openSec['rec-' + r.id] ? ' open' : '') + '><summary>Top 5</summary><ol class="rec-top">' + rows + '</ol></details></td></tr>';
+  }
+  function est0(s){ return s.env === 'esteira' && !s.painel; }
+  function recTable(best, list){
     return '<table class="tbl rec-tbl"><thead><tr><th>Recorde</th><th class="num">Resultado</th></tr></thead><tbody>' +
-      RECS.map(function(r){ return recCard(r, best); }).join('') + '</tbody></table>';
+      RECS.map(function(r){ return recCard(r, best) + (best[r.id] ? recMore(r, list) : ''); }).join('') + '</tbody></table>';
   }
 
   function chart(pts){
@@ -2494,7 +2529,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
     if (view === 'recordes') {
       html += '<h2>Melhores tempos por distância</h2>' + effortsSection(a);
-      html += '<h2>Recordes por treino</h2>' + recTable(a.best);
+      html += '<h2>Recordes por treino</h2>' + recTable(a.best, a.list);
       return html;
     }
 
