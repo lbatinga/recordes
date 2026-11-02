@@ -769,6 +769,59 @@ details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(
   .yr-cal .yr-ml > span{padding:4px 0 8px}
 }
 </style>
+<style>
+/* ===== Início, 2ª versão ===== */
+#races > h2:first-child{margin-top:18px}
+.sec-hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:30px 0 10px}
+.sec-hd h2{margin:0}
+#races:empty + #panel > .sec-hd:first-child{margin-top:18px}
+.sec-hd .linkbtn{font-size:15px;white-space:nowrap;padding:6px 0}
+
+/* record → goal, on the next race card (Início and Provas) */
+.tg-pair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px 12px;margin-top:14px;padding-top:12px;border-top:2px dashed var(--bib-line)}
+.tg-pair > div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tg-pair .st-k{margin:0;font-size:13px;font-weight:600}
+.tg-pair .st-v{font-size:clamp(24px,7.4vw,32px)}
+.tg-arrow{font-size:22px;line-height:1;color:var(--bib-muted)}
+.tg-pace{font-size:13px;color:var(--bib-muted)}
+.tg-gap{margin:12px 0 0;font-size:15px;line-height:1.4;color:var(--bib-ink)}
+.tg-gap.ok{color:var(--ok);font-weight:700}
+.nr .bib-note{margin-top:10px}
+
+/* goals list */
+.gm .gm-hd,.gm .gm-h{display:grid;grid-template-columns:minmax(0,1fr) 78px 78px 54px;align-items:center;column-gap:6px}
+.gm .gm-hd{padding:9px 12px;background:var(--surface-2);font-size:13px;font-weight:700;color:var(--muted)}
+.gm .gm-hd span:nth-child(n+2){text-align:right}
+.gm-r{border-top:1px solid var(--line)}
+.gm-r:nth-of-type(even){background:var(--zebra)}
+.gm-h{padding:11px 12px;cursor:pointer;list-style:none}
+.gm-h::-webkit-details-marker{display:none}
+.gm-h{font-size:16px}
+.gm-d{display:flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap;min-width:0}
+.gm-d::after{content:"";flex:none;width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg)}
+details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
+.gm-v{font-family:var(--font-num-s);font-weight:800;font-size:18px;line-height:1;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gm-v.gm-m{color:var(--ink)}
+.gm-ok{font-family:var(--font-ui);font-size:13px;font-weight:700;line-height:1.1;color:var(--ok);white-space:normal}
+.gm-b{margin:0;padding:2px 12px 14px;display:grid;gap:8px}
+.gm-b > div{display:grid;grid-template-columns:6.4em minmax(0,1fr);gap:10px;font-size:14px;line-height:1.45}
+.gm-b dt{color:var(--muted);font-weight:600}
+.gm-b dd{margin:0;color:var(--ink)}
+.gm + .fine{margin-top:8px}
+
+/* week and month */
+.wm{padding:2px 16px}
+.wm-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 0;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;text-align:left}
+.wm > .wm-row:first-child{border-top:0}
+.wm-l{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wm-l .t-lbl{font-size:16px}
+.wm-v{font-family:var(--font-num-s);font-weight:800;font-size:26px;line-height:1;white-space:nowrap}
+.wm-v small{font-family:var(--font-ui);font-size:13px;font-weight:600;color:var(--muted);margin-left:4px}
+.wm-link{cursor:pointer}
+.wm-link .ml-c{font-size:24px;line-height:1;color:var(--muted)}
+.wm-btn{flex:none;white-space:nowrap}
+.wm .wk-dots{flex:none}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -1426,7 +1479,6 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var bandTxt = s.race ? 'Prova, ' + esc(raceShort(s)) : 'Último treino, ' + (s.env === 'esteira' ? 'esteira' : 'rua');
     return '<section class="bib hero-card" aria-label="Último treino">' +
       '<div class="band ' + bandCls + '"><span>' + bandTxt + '</span><span class="bd">' + fmtDate(s.d) + '</span></div>' +
-      (rec ? '<span class="stamp">Novo recorde</span>' : '') +
       '<div class="bib-body">' +
         (s.race ? '<p class="bib-num time">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</p><p class="bib-sub">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</p>'
           : '<p class="bib-num">' + fmtKm(s.km) + '<span class="u">km</span></p>') +
@@ -1762,6 +1814,150 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var t = isoOf(new Date());
     return iso > t || (iso === t && !raceDone(iso));
   }
+  function cap1(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+  // Gaps under a minute read as "28s", not "0min28s".
+  function shortSec(sec){ return sec < 60 ? Math.floor(sec + 1e-6) + 's' : fmtTime(sec); }
+  /* The result that counts toward the goal of distance k: a race, plus a street run
+     (1 to 4 km always; 5 km and up after 6 weeks without a race). The treadmill never counts. */
+  function metaBest(k){
+    var br = bestBy(true, k), bt = trainingCountsFor(k) ? bestBy(false, k) : null, w = null;
+    [br, bt].forEach(function(e){ if (e && (!w || e.t < w.t)) w = e; });
+    return w;
+  }
+  /* One goal as the screen shows it: the record (best street time), the goal (the time that
+     counts as beating it) and the gap between the two. */
+  function goalState(k){
+    var g = GOALS[k], cb = currentBest(k);
+    if (!g || g.hi == null || !cb) return null;
+    var mb = metaBest(k), hit = !!(mb && mb.t <= g.hi);
+    return { g: g, best: cb, gap: cb.t - g.hi, hit: hit, trainOnly: !hit && cb.t <= g.hi };
+  }
+  function targetBlock(k, km){
+    if (!k) return '';
+    var gs = goalState(k), best = currentBest(k);
+    if (!best) return '';
+    var out = '<div class="tg-pair">' +
+      '<div><span class="st-k">Recorde a bater</span><span class="st-v">' + fmtTime(best.t) + '</span><span class="tg-pace">' + fmtPace(best.t / km) + ' por km</span></div>' +
+      (gs ? '<span class="tg-arrow" aria-hidden="true">→</span>' +
+        '<div><span class="st-k">Meta</span><span class="st-v">' + fmtTime(gs.g.hi) + '</span><span class="tg-pace">' + fmtPace(gs.g.hi / km) + ' por km</span></div>' : '') +
+      '</div>';
+    if (gs) {
+      if (gs.hit) out += '<p class="tg-gap ok">Meta batida. A meta nova aparece na próxima atualização.</p>';
+      else if (gs.trainOnly) out += '<p class="tg-gap">Você já fez o tempo da meta em treino. Pra valer, falta fazer numa prova.</p>';
+      else out += '<p class="tg-gap">Faltam <b>' + shortSec(gs.gap) + '</b> pra meta: ' + shortSec(gs.gap / km) + ' a menos por km.</p>';
+    }
+    return out;
+  }
+  function nextRaceCard(up){
+    if (!up || !up.length) return '';
+    var x = up[0], r = x.r;
+    var later = up.slice(1, 3).map(function(y){ return esc(y.r.short || y.r.name) + ' em ' + y.days + (y.days === 1 ? ' dia' : ' dias'); });
+    return '<h2>Próxima prova</h2><article class="bib nr">' +
+      '<div class="band band-prova"><span>' + esc(r.short || r.name) + '</span><span class="bd">' + r.km + ' km</span></div>' +
+      '<div class="bib-body">' +
+        '<div class="race-days"><p class="bib-num">' + (x.days === 0 ? 'Hoje' : x.days) + '</p><span class="st-k">' + (x.days === 0 ? 'é dia de prova' : x.days === 1 ? 'dia' : 'dias') + '</span></div>' +
+        '<p class="bib-sub">' + fmtDate(x.d) + (r.time ? ', largada às ' + r.time.replace(':', 'h') : '') + '</p>' +
+        targetBlock(keyForKm(r.km), r.km) +
+        (later.length ? '<p class="bib-note">Depois: ' + later.join(' · ') + '</p>' : '') +
+      '</div><div class="bib-foot"></div></article>';
+  }
+
+  /* Goals of every distance in one list: Distância, Recorde, Meta, Falta. Each row opens to
+     say where the goal comes from and what counts to beat it. */
+  function metasSection(){
+    var keys = GOAL_KEYS.filter(function(k){ return goalState(k); });
+    if (!keys.length) return allAnalyzed() ? '' : '<h2>Metas</h2><p class="note">As metas aparecem quando a análise dos treinos terminar.</p>';
+    var rows = keys.map(function(k){
+      var gs = goalState(k), D = DIST_BY[k];
+      var falta = gs.hit ? '<span class="gm-ok">batida</span>' : gs.trainOnly ? '<span class="gm-ok">em treino</span>' : shortSec(gs.gap);
+      return '<details class="gm-r" name="gm" data-sec="meta-' + k + '"' + (openSec['meta-' + k] ? ' open' : '') + '><summary class="gm-h">' +
+        '<span class="gm-d">' + D.label + '</span>' +
+        '<span class="gm-v">' + fmtTime(gs.best.t) + '</span>' +
+        '<span class="gm-v gm-m">' + fmtTime(gs.g.hi) + '</span>' +
+        '<span class="gm-v gm-f">' + falta + '</span>' +
+        '</summary>' + goalDetail(k) + '</details>';
+    }).join('');
+    return '<h2>Metas</h2><div class="rec-box gm"><div class="gm-hd"><span>Distância</span><span>Recorde</span><span>Meta</span><span>Falta</span></div>' + rows + '</div>' +
+      '<p class="fine">Toque numa distância pra ver de onde vem a meta e o que vale pra bater.</p>';
+  }
+  function goalDetail(k){
+    var g = GOALS[k], D = DIST_BY[k], km = D.m / 1000;
+    var br = bestBy(true, k), bt = bestBy(false, k);
+    var etb = analyze(state.sessions, 'esteira').tables[k], be = etb && etb.length ? etb[0] : null;
+    var baseD = parseIso(g.baseDate), dsr = daysSinceRace();
+    var vale;
+    if (isTrainDist(k)) vale = 'Prova ou treino na rua.';
+    else if (trainingCounts()) vale = 'Prova ou treino na rua' + (dsr != null ? ', porque você está há ' + Math.floor(dsr / 7) + ' semanas sem prova' : '') + '.';
+    else vale = 'Só prova. Treino na rua passa a valer depois de 6 semanas sem prova.';
+    vale += ' Esteira não vale.';
+    function one(lbl, e, note){ return lbl + ' ' + (e ? (isEstimate(e) ? '≈' : '') + fmtTime(e.t) + ' (' + fmtShort(e.s.d) + ')' + (note || '') : '—'); }
+    var bests = [one('Prova:', br), one('Rua:', bt), one('Esteira:', be, ', não vale')].join('<br>');
+    var metaTxt = g.lo === g.hi ? fmtTime(g.hi) + ' ou menos.' : 'De ' + fmtTime(g.lo) + ' a ' + fmtTime(g.hi) + '. Fazer ' + fmtTime(g.hi) + ' ou menos já conta.';
+    var paceTxt = (g.lo === g.hi ? fmtPace(g.hi / km) : fmtPace(g.lo / km) + ' a ' + fmtPace(g.hi / km)) + ' por km.';
+    var baseTxt = g.baseT ? fmtTime(g.baseT) + (g.baseKind === 'prova' ? ', na prova' : ', em treino') + (baseD ? ' de ' + fmtShort(baseD) : '') +
+      '. A meta é de 5% a 7% mais rápida que ela, e só muda quando você bate a meta.' : '--';
+    var hist = (g.history || []).slice(-3).reverse().map(function(h){
+      return fmtShort(parseIso(h.date)) + ': ' + fmtTime(h.t) + (h.kind === 'treino' ? ' em treino' : ' em prova') +
+        ' (a meta era ' + (h.lo === h.hi ? fmtTime(h.hi) : fmtTime(h.lo) + ' a ' + fmtTime(h.hi)) + ')';
+    });
+    return '<dl class="gm-b">' +
+      '<div><dt>Meta</dt><dd>' + metaTxt + '</dd></div>' +
+      (km !== 1 ? '<div><dt>Pace</dt><dd>' + paceTxt + '</dd></div>' : '') +
+      '<div><dt>Base</dt><dd>' + baseTxt + '</dd></div>' +
+      '<div><dt>O que vale</dt><dd>' + vale + '</dd></div>' +
+      '<div><dt>Seus melhores</dt><dd>' + bests + '</dd></div>' +
+      (hist.length ? '<div><dt>Já bateu</dt><dd>' + hist.join('<br>') + '</dd></div>' : '') +
+      '</dl>';
+  }
+
+  /* Week and month in one panel: the 2-run week, the month so far against the same days of
+     the month before, the month's medals and, in the first 7 days, the last month's card. */
+  function weekMonthPanel(all){
+    var asc = all.slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    var st = streakInfo(asc);
+    var dots = '';
+    for (var d = 0; d < WEEK_PLAN; d++) dots += '<span class="wk-dot' + (d < st.thisWeek ? ' on' : '') + (d >= WEEK_TARGET ? ' bonus' : '') + '"></span>';
+    var miss = WEEK_TARGET - st.thisWeek, seq = st.current + (st.current === 1 ? ' semana seguida' : ' semanas seguidas');
+    var wkSub = st.pausedNow ? 'Semana pausada: ' + esc(st.pausedNow)
+      : miss <= 0 ? 'Semana garantida' + (st.current ? '. ' + cap1(seq) : '')
+      : (miss === 1 ? 'Falta 1 treino' : 'Faltam ' + miss + ' treinos') + (st.current ? ' pra manter ' + seq : ' pra começar uma sequência');
+    var rows = '<div class="wm-row"><span class="wm-l"><span class="t-lbl">Esta semana: ' + Math.min(st.thisWeek, 99) + (st.thisWeek === 1 ? ' treino' : ' treinos') + '</span>' +
+      '<span class="t-sub">' + wkSub + '</span></span><span class="wk-dots">' + dots + '</span></div>';
+
+    var now = new Date(), day = now.getDate();
+    var curStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    var prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var prevDim = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    var prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth(), Math.min(day, prevDim), 23, 59, 59);
+    function stats(from, to){ var o = { km: 0, n: 0 }; state.sessions.forEach(function(s){ if (s.d && s.d >= from && s.d <= to) { o.km += s.km; o.n++; } }); return o; }
+    var a = stats(curStart, now), b = stats(prevStart, prevEnd);
+    var mName = MON_FULL[now.getMonth()], pName = MON_FULL[prevStart.getMonth()];
+    rows += '<div class="wm-row"><span class="wm-l"><span class="t-lbl">' + cap1(mName) + ' até agora: ' + a.n + (a.n === 1 ? ' treino' : ' treinos') + '</span>' +
+      '<span class="t-sub">' + cap1(pName) + ', de 1 a ' + Math.min(day, prevDim) + ': ' + fmtKmShort(b.km) + ' km em ' + b.n + (b.n === 1 ? ' treino' : ' treinos') + '</span></span>' +
+      '<span class="wm-v">' + fmtKmShort(a.km) + '<small>km</small></span></div>';
+
+    var ms = monthStats(), nk = mkey(now), kmNow = ms.km[nk] || 0, dNow = ms.days[nk] || 0;
+    function part(lbl, v, tiers, unit){
+      var tier = tierOf(v, tiers), name = tier >= 0 ? TIER_NAMES[tier].toLowerCase() : '';
+      if (tier >= tiers.length - 1) return lbl + ': ' + name;
+      var f = tiers[tier + 1] - v;
+      var miss2 = unit === 'km' ? 'faltam ' + fmtKmShort(Math.ceil(f * 10) / 10) + ' km' : (f === 1 ? 'falta 1' : 'faltam ' + f);
+      return lbl + ': ' + (name ? name + ', ' : '') + miss2 + ' pro ' + TIER_NAMES[tier + 1].toLowerCase();
+    }
+    rows += '<button type="button" class="wm-row wm-link" data-goview="conquistas"><span class="wm-l"><span class="t-lbl">Medalhas de ' + mName + '</span>' +
+      '<span class="t-sub">' + part('Km', kmNow, kmTiers(ms, nk), 'km') + ' · ' + part('Dias ativos', dNow, daysTiers(ms, nk), 'dias') + '</span></span>' +
+      '<span class="ml-c" aria-hidden="true">›</span></button>';
+
+    if (day <= 7) {
+      var pk = prevMonthKey();
+      if (state.sessions.some(function(x){ return x.d && mkey(x.d) === pk; })) {
+        rows += '<div class="wm-row"><span class="wm-l"><span class="t-lbl">Retrospectiva de ' + MON_FULL[+pk.slice(5, 7) - 1] + '</span>' +
+          '<span class="t-sub">Cartão com o resumo do mês</span></span><button type="button" class="btn wm-btn" data-recap="' + pk + '">Gerar cartão</button></div>';
+      }
+    }
+    return '<h2>Semana e mês</h2><div class="panel wm">' + rows + '</div>';
+  }
+
   function racesSection(){
     var today = dayOnly(new Date());
     var up = RACES.map(function(r){
@@ -1782,8 +1978,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '</div><div class="bib-foot"></div></article>';
     }).join('');
     if (view !== 'inicio') return '';
-    return (cards ? '<h2>Próximas provas</h2><div class="races' + (up.length > 2 ? ' many' : '') + '">' + cards + '</div>' : '') +
-      '<h2>Metas</h2><div class="panel goal-card">' + goalBlock() + '</div>';
+    return nextRaceCard(up);
   }
 
   function weekStart(d){
@@ -2791,9 +2986,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var k = keyForKm(r.km);
       var best = k ? currentBest(k) : null;
       var g = k ? GOALS[k] : null;
-      var rows = '<tr><td><span class="t-lbl">Recorde a bater</span></td><td class="t-val">' + (best ? fmtTime(best.t) : '--') + '</td></tr>' +
-        (g && g.hi != null ? '<tr><td><span class="t-lbl">Meta</span></td><td class="t-val wrap">' + fmtGoalOf(g) + '</td></tr>' : '') +
-        '<tr><td><span class="t-lbl">Número de peito</span></td><td class="t-val">' + (r.bib ? esc(r.bib) : '--') + '</td></tr>' +
+      var rows = '<tr><td><span class="t-lbl">Número de peito</span></td><td class="t-val">' + (r.bib ? esc(r.bib) : '--') + '</td></tr>' +
         (r.time ? '<tr><td><span class="t-lbl">Largada</span></td><td class="t-val">' + r.time.replace(':', 'h') + '</td></tr>' : '');
       var fc = raceForecast(r, days);
       return '<article class="bib">' +
@@ -2801,7 +2994,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<div class="bib-body">' +
           '<div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
           '<p class="bib-sub">' + fmtDate(d) + ', ' + esc(r.local && r.local !== 'A confirmar' ? r.local : 'local a confirmar') + '</p>' +
-          '<table class="tbl era-tbl"><tbody>' + rows + '</tbody></table>' +
+          targetBlock(k, r.km) + '<table class="tbl era-tbl"><tbody>' + rows + '</tbody></table>' +
           (fc ? '<p class="bib-note wx">' + WX_ICON + 'Previsão' + (r.time ? ' às ' + r.time.replace(':', 'h') : ' do dia') + ': ' + fc + '</p>' : '') +
           (r.note ? '<p class="rc-note">' + esc(r.note) + '</p>' : '') +
           '<button type="button" class="btn race-edit" data-race-edit="' + r.date + '">Editar</button>' +
@@ -2851,7 +3044,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   // Each screen shows only its own topics (want = titles to keep; null = all).
   var HELP_BY_VIEW = {
-    inicio: ['Metas', 'Clima', 'Peso', 'Medalhas do mês', 'Retrospectiva', 'Atualizar'],
+    inicio: ['Metas', 'Desafios', 'Medalhas do mês', 'Peso', 'Clima', 'Retrospectiva', 'Atualizar'],
     recordes: ['Esteira, Rua, Prova e Tudo', 'Melhores tempos por distância', 'Recordes por treino', 'Provas e distâncias conferidas'],
     evolucao: ['Esteira, Rua, Prova e Tudo', 'Evolução do pace', 'Volume semanal'],
     provas: ['Provas e distâncias conferidas', 'Por onde corri', 'Metas', 'Clima'],
@@ -2864,7 +3057,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço; o percurso é ajustado pra fechar com a distância total. Quando a distância não foi confirmada (no relógio ao terminar, ou pelo painel no app), o trecho aparece com ≈, porque pode errar uns 5 a 10%, e no Tudo só fica na frente de um tempo medido se for mais de 5% melhor. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio. Prova sem tempo oficial usa o tempo total, do início ao fim, como no Strava. Com duas provas no mesmo dia, cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.') +
       p('Por onde corri', 'Na tela de Provas, cada cidade vira um carimbo. A cidade sai do ponto onde a corrida começou, arredondado em cerca de 1 km e consultado no OpenStreetMap. Carimbo colorido: cidade onde você fez prova, com os treinos de lá somados; cada uma ganha uma cor na ordem da primeira prova feita lá e fica com ela, e os carimbos seguem essa ordem, como num passaporte. Tracejado: cidade onde você só treinou. Entram as corridas na rua e as provas; esteira não, porque não tem GPS. Cidades, estados e países contam os dois tipos. Se a cidade de uma prova vier errada, corrija em Editar, no campo Cidade.') +
-      p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
+      p('Metas', 'Cada distância mostra o recorde (o melhor tempo na rua, provas incluídas), a meta e quanto falta. A meta fica de 5% a 7% abaixo da base, o tempo de onde ela partiu, e conta como batida com o tempo mais lento da faixa ou menos. A base só muda quando você bate a meta. De 1 a 4 km, treino na rua também vale. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. Esteira não vale; aparece nos detalhes só como referência. Toque numa distância pra ver os detalhes.') +
       p('Recordes por treino', 'Conta o treino inteiro. Mais tempo correndo sem parar é o maior trecho trotando ou correndo, acima de 6 km/h, sem caminhar (pausas de até 10 s não quebram); só vale na rua, porque precisa do GPS. Pace é separado por faixa de distância, sem sobreposição: de 2 a 3 km (até 2,99 km), de 3 a 5 km (até 4,99 km) e 5 km ou mais. Cada treino só disputa a faixa dele.') +
       p('Primeiras vezes', 'Trote contínuo só conta corridas na rua, pelo GPS: acima de 6 km/h, sem pausas de mais de 10 s. Pace conta rua e provas. Chuva é estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local, então pode errar. Primeira com alguém do grupo: a primeira corrida que começou até 20 minutos antes ou depois da dela, ou que tem o nome da pessoa na descrição da sua corrida no Strava.') +
       p('Evolução do pace', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca o treino mais rápido até aquele dia, entre os pontos do gráfico. Na aba Tudo, pontos vazados são esteira.') +
@@ -2914,16 +3107,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (view === 'inicio') {
       var last = all[all.length - 1];
       var ae = analyze(state.sessions, last.env === 'esteira' ? 'esteira' : 'rua');
-      var rep = reportRace();
-      html += '<h2>Último treino</h2>' + hero(last, ae.tables);
+      html += '<div class="sec-hd"><h2>Último treino</h2><button type="button" class="linkbtn" data-goview="evolucao">Todos os treinos</button></div>' + hero(last, ae.tables);
+      html += weekMonthPanel(all);
       html += weightCard();
-      html += monthCompare();
-      html += recapBanner();
-      html += medalsLine();
-      var recent = all.slice().reverse().slice(0, 5);
+      html += metasSection();
       analyze(state.sessions, 'tudo');
-      html += '<h2>Últimos treinos</h2>' + histTable(recent) +
-        '<button type="button" class="btn more-btn" data-goview="evolucao">Ver todos os treinos</button>';
       return html;
     }
 
@@ -4507,7 +4695,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     function col(nm, r){
       return '<div class="nt-col"><span class="nm">' + esc(nm) + '</span>' +
         '<span class="t-sub">Recorde a bater</span><span class="v">' + (r.obj ? fmtTime(r.obj) : '--') + '</span>' +
-        '<span class="t-sub">Meta</span><span class="v">' + (r.hi ? fmtGoalOf(r) : '--') + '</span></div>';
+        '<span class="t-sub">Meta</span><span class="v">' + (r.hi ? fmtTime(r.hi) : '--') + '</span></div>';
     }
     return '<article class="bib duo-next"><div class="band band-prova"><span>Próxima prova juntos: ' + esc(a.short) + '</span><span class="bd">' + a.km + ' km</span></div>' +
       '<div class="bib-body"><div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
@@ -4682,7 +4870,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       next = '<article class="bib duo-next"><div class="band band-prova"><span>Próxima prova juntos: ' + esc(r0.short) + '</span><span class="bd">' + r0.km + ' km</span></div>' +
         '<div class="bib-body"><div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
         '<p class="bib-sub">' + fmtDate(dd) + '</p><table class="tbl g-next"><thead><tr><th></th><th class="num">Recorde a bater</th><th class="num g-meta">Meta</th></tr></thead><tbody>' +
-        byDate[nd].map(function(x){ var gm = x.r.hi ? fmtGoalOf(x.r) : '--'; return '<tr><td><span class="t-lbl">' + esc(x.p.name) + '</span><span class="t-sub g-meta-sub">Meta: ' + gm + '</span></td><td class="num t-val">' + (x.r.obj ? fmtTime(x.r.obj) : '--') + '</td><td class="num g-meta">' + gm + '</td></tr>'; }).join('') +
+        byDate[nd].map(function(x){ var gm = x.r.hi ? fmtTime(x.r.hi) : '--'; return '<tr><td><span class="t-lbl">' + esc(x.p.name) + '</span><span class="t-sub g-meta-sub">Meta: ' + gm + '</span></td><td class="num t-val">' + (x.r.obj ? fmtTime(x.r.obj) : '--') + '</td><td class="num g-meta">' + gm + '</td></tr>'; }).join('') +
         '</tbody></table></div><div class="bib-foot"></div></article>';
     }
     var together = '<div class="panel duo-together"><p class="ch-title">Treinos juntos, últimos 4 meses</p>' + group.map(function(g){
