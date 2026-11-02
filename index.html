@@ -137,7 +137,10 @@ h2{font-family:var(--font-num);font-weight:800;font-size:28px;line-height:1;marg
 .race-goal{margin:8px 0 0;font-weight:700;font-size:15px}
 
 /* screens and navigation */
-body{padding-bottom:calc(78px + env(safe-area-inset-bottom, 0px))}
+body{padding-bottom:calc(130px + env(safe-area-inset-bottom, 0px))}
+.help-fab{position:fixed;right:max(14px,calc((100vw - 780px) / 2 + 14px));bottom:calc(74px + env(safe-area-inset-bottom, 0px));z-index:19;width:46px;height:46px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer}
+.help-fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+body.login .help-fab{display:none}
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
 .bnav-in{max-width:780px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .bnav button{border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 9px;min-height:60px;font-size:12px;font-weight:700;cursor:pointer;position:relative}
@@ -795,6 +798,8 @@ details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(
     <button type="button" data-view="dupla" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><path d="M14 14.6c.8-.4 1.6-.6 2.5-.6 2.3 0 4.2 1.5 4.7 4.5"/></svg><span>Dupla</span></button>
   </div>
 </nav>
+
+<button type="button" class="help-fab" id="help-fab" aria-label="Como funciona esta tela"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg></button>
 
 <dialog id="help" aria-labelledby="help-title">
   <div class="help-head"><h2 id="help-title">Como funciona</h2><button type="button" class="refresh" id="help-close">Fechar</button></div>
@@ -2841,8 +2846,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return km;
   }
 
-  function comoFunciona(){
-    var p = function(t, x){ return '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
+  // Each screen shows only its own topics (want = titles to keep; null = all).
+  var HELP_BY_VIEW = {
+    inicio: ['Metas', 'Clima', 'Peso', 'Medalhas do mês', 'Retrospectiva', 'Atualizar'],
+    recordes: ['Esteira, Rua, Prova e Tudo', 'Melhores tempos por distância', 'Recordes por treino', 'Provas e distâncias conferidas'],
+    evolucao: ['Esteira, Rua, Prova e Tudo', 'Evolução do pace', 'Volume semanal'],
+    provas: ['Provas e distâncias conferidas', 'Por onde corri', 'Metas', 'Clima'],
+    conquistas: ['Desafios', 'Semana pausada', 'Avisos', 'Medalhas do mês', 'Primeiras vezes', 'Retrospectiva'],
+    dupla: ['Placar']
+  };
+  function comoFunciona(want){
+    var p = function(t, x){ return want && want.indexOf(t) === -1 ? '' : '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
     return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Na esteira vale a distância total do treino: a que você confirmou no relógio ao terminar, ou a do painel informada no app. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
       p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço; o percurso é ajustado pra fechar com a distância total. Quando a distância não foi confirmada (no relógio ao terminar, ou pelo painel no app), o trecho aparece com ≈, porque pode errar uns 5 a 10%, e no Tudo só fica na frente de um tempo medido se for mais de 5% melhor. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio. Prova sem tempo oficial usa o tempo total, do início ao fim, como no Strava. Com duas provas no mesmo dia, cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.') +
@@ -2855,11 +2869,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 corridas de 1 km ou 10 minutos, no mínimo (caminhada e aquecimento curto não contam); o plano pede 3. Em prova, vale a distância oficial.') +
       p('Semana pausada', 'No card de Constância, em Pausar uma semana, escolha a semana e escreva o motivo (atestado, viagem). Ela não conta pra sequência, mas também não zera; se tiver 2 corridas, conta normal. Dá pra pausar a semana atual e as 8 anteriores, e nessa semana não chega aviso. A sequência da Dupla segue a mesma regra.') +
       p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia, o primeiro peso novo do dia; se o valor não mudou, o app entende que você não se pesou. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
-      p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque no botão de atualizar.') +
+      p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque em Atualizar no menu ⋮.') +
       p('Avisos', 'Ligue em Conquistas, no card de Constância. Quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência, chega um aviso. Se a semana já está garantida, não chega nada.') +
       p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
       p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Dupla', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nível por idade e sexo (3): a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais. A nota compara o tempo com a referência oficial da sua idade, sexo e distância (tabela de corrida de rua da USATF, edição 2025); 100% é nível de recorde mundial. A idade nova conta a partir do mês do aniversário. Esteira não entra. A referência é conferida todo janeiro e vale o ano inteiro. Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa superou um melhor tempo que já existia, em qualquer distância. Todos os meses, desde junho de 2026, são calculados com estas regras, como estavam no último dia de cada mês. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, desempata, nesta ordem: nível por idade e sexo, linhas vencidas sozinho, km no mês e dias ativos no mês. No ano: meses vencidos, pontos somados, confronto direto e nível. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
+      p('Placar', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nível por idade e sexo (3): a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais. A nota compara o tempo com a referência oficial da sua idade, sexo e distância (tabela de corrida de rua da USATF, edição 2025); 100% é nível de recorde mundial. A idade nova conta a partir do mês do aniversário. Esteira não entra. A referência é conferida todo janeiro e vale o ano inteiro. Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa superou um melhor tempo que já existia, em qualquer distância. Todos os meses, desde junho de 2026, são calculados com estas regras, como estavam no último dia de cada mês. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, desempata, nesta ordem: nível por idade e sexo, linhas vencidas sozinho, km no mês e dias ativos no mês. No ano: meses vencidos, pontos somados, confronto direto e nível. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
       p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana. Caminhada gravada à parte aparece com o ícone de caminhada e não soma km nem medalha de km; com 10 minutos ou mais, conta como dia ativo.');
   }
 
@@ -3370,15 +3384,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   document.querySelectorAll('.bnav [data-view]').forEach(function(b){
     b.addEventListener('click', function(){ setView(b.getAttribute('data-view')); });
   });
-  $('#help-btn').addEventListener('click', function(){
-    $('#help-body').innerHTML = comoFunciona() + acctHtml();
+  var helpFrom = null;
+  function openHelp(ev){
+    helpFrom = ev && ev.currentTarget && ev.currentTarget.id === 'help-fab' ? $('#help-fab') : $('#menu-btn');
+    var nb = document.querySelector('.bnav [data-view="' + view + '"] span');
+    $('#help-title').textContent = 'Como funciona' + (nb ? ': ' + nb.textContent : '');
+    $('#help-body').innerHTML = comoFunciona(HELP_BY_VIEW[view] || null) + acctHtml();
+    $('#help-body').scrollTop = 0;
     var dlg = $('#help');
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
-  });
+  }
+  $('#help-btn').addEventListener('click', openHelp);
+  $('#help-fab').addEventListener('click', openHelp);
   $('#help-close').addEventListener('click', function(){
     var dlg = $('#help');
     if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
-    ($('#menu-btn') || $('#help-btn')).focus();
+    (helpFrom || $('#menu-btn') || $('#help-btn')).focus();
   });
   $('#panel').addEventListener('change', function(ev){
     if (!ev.target || ev.target.id !== 'eff-sel') return;
