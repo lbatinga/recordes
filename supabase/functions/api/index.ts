@@ -497,7 +497,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
         const sm = (await configDoc(aid, 'summary'))?.data;
         if (!lv?.newest || !sm || lv.base !== sm.at || lv.nudged === lv.newest || lv.newest > limit) return;
         const d = lv.newest.slice(8, 10) + '/' + lv.newest.slice(5, 7);
-        const r = await sendPush(aid, { title: 'Treino novo no Strava', body: 'Abre o Recordes pra atualizar a Dupla com o treino de ' + d + '.', tag: 'dupla' });
+        const r = await sendPush(aid, { title: 'Treino novo no Strava', body: 'Abre o Recordes pra contar o treino de ' + d + ' no placar.', tag: 'dupla' });
         sent += r.sent;
         await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: { ...lv, nudged: lv.newest }, updated_at: new Date().toISOString() });
       } catch (_) { fail++; }
@@ -565,7 +565,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const subs = (await readSubs(aid)).filter((x) => x.endpoint !== sub.endpoint);
     subs.push({ endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, at: new Date().toISOString() });
     await writeSubs(aid, subs.slice(-5));
-    const r = await sendPush(aid, { title: 'Avisos ligados', body: 'Quinta e sexta à noite e sábado de manhã, se faltar treino pra manter a sequência.', tag: 'teste' });
+    const r = await sendPush(aid, { title: 'Avisos ligados', body: 'Vão chegar avisos quando faltar treino na semana, quando um treino novo não entrar no placar e no fechamento do mês.', tag: 'teste' });
     return json(req, { ok: true, ...r });
   }
   if (path === '/push/unsubscribe' && req.method === 'POST') {
