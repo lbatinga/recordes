@@ -664,15 +664,100 @@ span.yr-c{cursor:default}
 .duo-tbl td.win .v::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-left:6px;vertical-align:middle}
 .duo-tbl .t-sub{display:block;font-weight:500}
 </style>
+<style>
+/* ===== Protótipo de visual ===== */
+:root{--link:#15181C;--esteira-txt:#8A6400;--rua-txt:#0B7A76}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--link:#EEF0F2;--esteira-txt:#F2B300;--rua-txt:#26B5AF}}
+:root[data-theme="dark"]{--link:#EEF0F2;--esteira-txt:#F2B300;--rua-txt:#26B5AF}
+/* The bib is paper: always light inside, in both themes (fixes light-blue links and grey units on white). */
+.bib:not(.upcoming){--ink:#15181C;--muted:#5E6772;--line:#E2E6EA;--link:#15181C;--surface:#F3F5F7;--surface-2:#E7EBEF;--zebra:rgba(21,24,28,.03);
+  --rec:#D92D27;--ok:#12855A;--prova-txt:#2B4BD8;--focus:#2B4BD8;--esteira-txt:#8A6400;--rua-txt:#0B7A76}
+
+/* header: screen name + one menu */
+h1{font-size:clamp(32px,9.5vw,42px)}
+.menu-wrap{position:relative}
+#menu-btn svg circle{fill:currentColor;stroke:none}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:214px;display:grid;gap:2px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5)}
+.menu[hidden],.menu-it[hidden]{display:none}
+.menu-it{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:8px 12px;border:0;border-radius:8px;background:transparent;color:var(--ink);font-weight:600;font-size:16px;text-align:left;cursor:pointer}
+.menu-it:hover{background:var(--surface-2)}
+.menu-it[disabled]{opacity:.45;cursor:default}
+.menu-it svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.menu-it.spin svg{animation:spin 1s linear infinite}
+#panel > :first-child{margin-top:18px}
+
+/* type: condensed face only for numbers and the screen title */
+h2{font-family:var(--font-ui);font-weight:700;font-size:19px;line-height:1.25;letter-spacing:0;margin:30px 0 10px}
+.h2-n{font-size:16px;font-weight:600}
+.sec-t{font-family:var(--font-ui);font-weight:700;font-size:17px;line-height:1.25}
+.h3,.ch-title{font-family:var(--font-ui);font-weight:700;font-size:16px}
+.un{font-size:max(11px,.5em);font-weight:700;letter-spacing:0;margin:0 .06em 0 .03em;opacity:.58}
+
+/* one color, one meaning: blue = race, red = record, green = good */
+details.mini > summary{color:var(--link)}
+details.mini > summary::after{content:"";display:inline-block;width:7px;height:7px;margin-left:9px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-3px) rotate(45deg)}
+details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(225deg)}
+.link-btn,.linkbtn{color:var(--link)}
+.sp-t.fast,.sp-tag.fast{color:var(--ok)}
+.track-fill,.progress span{background:var(--ink)}
+.msg{border-left-color:var(--ink)}
+.recap-btn svg{stroke:currentColor}
+.env-seg .env-esteira .count{color:var(--esteira-txt)}
+.env-seg .env-ruat .count{color:var(--rua-txt)}
+
+/* records: a badge that opens the list */
+.rec-det{margin-top:7px}
+.rec-det > summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:4px 11px 4px 9px;border-radius:999px;font-size:13.5px;font-weight:700;line-height:1;color:var(--rec);background:color-mix(in srgb,var(--rec) 11%,transparent)}
+.rec-det > summary::-webkit-details-marker{display:none}
+.rec-det > summary svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rec-det > summary::after{content:"";width:5px;height:5px;margin-left:2px;border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.rec-det[open] > summary::after{transform:translateY(1px) rotate(225deg)}
+.rec-txt{display:block;margin-top:7px;font-size:13.5px;line-height:1.45;color:var(--muted)}
+.hero-link{margin:12px 0 0}
+
+/* race card: the time is the hero, sized to the card (two cards side by side on a wide screen),
+   and the bib number goes with the other figures */
+.past-race,.hero-card{container-type:inline-size}
+.bib .bib-num.time,.race-list .past-race .bib-num.time{font-size:clamp(46px,14vw,64px);font-size:clamp(46px,19cqi,76px);line-height:.92;margin-top:6px;white-space:nowrap}
+.past-race .bib-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.past-race .bib-stats.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.past-race .rec-det{margin-top:12px}
+
+/* group: next race together keeps 3 columns when there is room, the goal goes under the name on a phone */
+.g-next .g-meta-sub{display:none;white-space:nowrap}
+.g-next .g-meta{white-space:nowrap}
+@media (max-width:520px){.g-next .g-meta{display:none}.g-next .g-meta-sub{display:block}}
+
+/* group month chips: 4 letters in the condensed face */
+.yr-c{font:800 12px var(--font-num);letter-spacing:.01em}
+@media (min-width:640px){.yr-c{font-size:13px}}
+@media (max-width:480px){
+  .yr-cal{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:6px}
+  .yr-cal > .yr-strip,.yr-cal > .yr-ml{display:contents}
+  .yr-cal .yr-c{height:30px;font-size:13px}
+  .yr-strip > :nth-child(-n+6){grid-row:1}
+  .yr-ml > :nth-child(-n+6){grid-row:2}
+  .yr-strip > :nth-child(n+7){grid-row:3}
+  .yr-ml > :nth-child(n+7){grid-row:4}
+  .yr-cal .yr-ml > span{padding:4px 0 8px}
+}
+</style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="hdr-title">
-      <h1>Recordes</h1>
+      <h1 id="scr-title">Recordes</h1>
       <p class="status" id="status" aria-live="polite"></p>
     </div>
-    <div class="hdr-btns"><button class="icon-btn" id="export" type="button" hidden aria-label="Exportar planilha" title="Exportar planilha"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button><button class="icon-btn" id="refresh" type="button" aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button><button class="icon-btn" id="help-btn" type="button" aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg></button></div>
+    <div class="hdr-btns"><div class="menu-wrap">
+      <button class="icon-btn" id="menu-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="hdr-menu" aria-label="Mais opções"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5.5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="18.5" r="1.6"/></svg></button>
+      <div class="menu" id="hdr-menu" role="menu" hidden>
+        <button class="menu-it" id="refresh" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>Atualizar</button>
+        <button class="menu-it" id="export" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Exportar planilha</button>
+        <button class="menu-it" id="help-btn" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg>Como funciona</button>
+      </div>
+    </div></div>
   </header>
 
   <section id="races" aria-label="Provas e metas"></section>
@@ -1233,11 +1318,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       case 'rate_limited':
         return ['O Strava pediu uma pausa', 'Muitas consultas em pouco tempo. O app continua sozinho em alguns minutos.'];
       case 'network':
-        return ['Sem conexão', 'Confira a internet e toque em Atualizar.'];
+        return ['Sem conexão', 'Confira a internet e puxe a tela pra baixo pra atualizar.'];
       case 'server_unavailable':
       case 'upstream_error':
       case 'server_error':
-        return ['O Strava não respondeu', 'Seus dados anteriores continuam na tela. Toque em Atualizar em alguns segundos.'];
+        return ['O Strava não respondeu', 'Seus dados anteriores continuam na tela. Em alguns segundos, puxe a tela pra baixo pra atualizar.'];
       case 'tool_error':
         return ['O Strava recusou a consulta', e.message || 'Tente atualizar mais tarde.'];
       case 'shape':
@@ -1290,6 +1375,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (labels.length <= 3) return 'Top 5' + where + ' em ' + joinPt(labels);
     return 'Top 5' + where + ' em ' + labels.length + ' distâncias, de ' + lcDist(labels[0]) + ' a ' + lcDist(labels[labels.length - 1]);
   }
+  var TROPHY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8 20h8M10 17h4"/></svg>';
+  function recBadge(n, txt, where){
+    if (!n) return '';
+    return '<details class="rec-det"><summary>' + TROPHY + n + (n === 1 ? ' recorde' : ' recordes') + (where || '') + '</summary><span class="rec-txt">' + txt + '</span></details>';
+  }
   function hero(s, tables){
     var pl = placingsOf(s, tables);
     var rec = s.broke.length > 0 || pl.first.length > 0;
@@ -1299,19 +1389,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     s.broke.forEach(function(id){ lines.push('Recorde' + where + ' de ' + REC_BY[id].chip); });
     var bandCls = s.race ? 'band-prova' : (s.env === 'esteira' ? 'band-esteira' : 'band-rua');
     var bandTxt = s.race ? 'Prova, ' + esc(raceShort(s)) : 'Último treino, ' + (s.env === 'esteira' ? 'esteira' : 'rua');
-    return '<section class="bib" aria-label="Último treino">' +
+    return '<section class="bib hero-card" aria-label="Último treino">' +
       '<div class="band ' + bandCls + '"><span>' + bandTxt + '</span><span class="bd">' + fmtDate(s.d) + '</span></div>' +
       (rec ? '<span class="stamp">Novo recorde</span>' : '') +
       '<div class="bib-body">' +
-        '<p class="bib-num">' + fmtKm(s.km) + '<span class="u">km</span></p>' +
+        (s.race ? '<p class="bib-num time">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</p><p class="bib-sub">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</p>'
+          : '<p class="bib-num">' + fmtKm(s.km) + '<span class="u">km</span></p>') +
         '<div class="bib-stats">' +
-          '<div><span class="st-v">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</span><span class="st-k">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</span></div>' +
+          (s.race ? '<div><span class="st-v">' + fmtKm(s.km) + '<small> km</small></span><span class="st-k">Distância</span></div>'
+            : '<div><span class="st-v">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</span><span class="st-k">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</span></div>') +
           '<div><span class="st-v">' + fmtPace(s.pace) + '</span><span class="st-k">Pace</span></div>' +
           '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
         '</div>' +
-        (lines.length ? '<ul class="rec-lines">' + lines.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</ul>' : '') +
+        recBadge(pl.first.length + s.broke.length, lines.join('. ')) +
         (pl.top.length ? '<p class="bib-note">' + esc(topList(pl.top, where)) + '</p>' : '') +
         wxLine(s) + painelLine(s) +
+        (s.race ? '<p class="hero-link"><button type="button" class="linkbtn" data-goview="provas" data-pv-go="passadas" data-open-sec="race-' + s.id + '">Ver relatório da prova</button></p>' : '') +
       '</div><div class="bib-foot"></div></section>';
   }
 
@@ -1347,7 +1440,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     } else if (effortErr === 'rate_limited' || effortErr === 'network') {
       html += '<div class="msg"><strong>Cálculo pausado</strong>' + (effortErr === 'network' ? 'Sem internet agora.' : 'O Strava limita as consultas a cada 15 minutos.') + ' O app continua sozinho daqui a pouco.</div>';
     } else if (effortErr) {
-      html += '<div class="msg"><strong>Alguns treinos ficaram de fora</strong>O Strava não entregou os dados de todos os treinos agora. Toque em Atualizar para tentar de novo.</div>';
+      html += '<div class="msg"><strong>Alguns treinos ficaram de fora</strong>O Strava não entregou os dados de todos os treinos agora. Puxe a tela pra baixo pra tentar de novo.</div>';
     }
     var latest = a.list[a.list.length - 1];
     var ds = DISTS.filter(function(D){ return (D.u === 'both' || D.u === unitSys) && a.tables[D.k] && a.tables[D.k].length; });
@@ -1654,7 +1747,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '</div><div class="bib-foot"></div></article>';
     }).join('');
     if (view !== 'inicio') return '';
-    return raceReport() + (cards ? '<h2>Próximas provas</h2><div class="races' + (up.length > 2 ? ' many' : '') + '">' + cards + '</div>' : '') +
+    return (cards ? '<h2>Próximas provas</h2><div class="races' + (up.length > 2 ? ' many' : '') + '">' + cards + '</div>' : '') +
       '<h2>Metas</h2><div class="panel goal-card">' + goalBlock() + '</div>';
   }
 
@@ -1843,7 +1936,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var z = histRow.i++ % 2 ? ' zb' : '';
     var dow = DOW[s.d.getDay()];
     var detail = '<span class="t-sub">' + dow.charAt(0).toUpperCase() + dow.slice(1) + (s.hr != null ? ', FC média ' + s.hr : '') + (tags.length ? ' ' + tags.join(' ') : '') + '</span>' +
-      (recs.length ? '<span class="t-rec">' + recs.join('. ') + '</span>' : '');
+      recBadge(s.prs.length + s.broke.length, recs.join('. '));
     return '<tr class="h-main' + z + '"><td><span class="t-lbl"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + '</span></td>' +
       '<td class="t-n">' + fmtKm(s.km) + '</td><td class="t-n">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</td><td class="t-n">' + fmtPace(s.pace) + '</td></tr>' +
       (detail ? '<tr class="h-det' + z + '"><td colspan="4">' + detail + '</td></tr>' : '');
@@ -2506,25 +2599,25 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           era = '<table class="tbl era-tbl"><thead><tr><th colspan="2">Na época</th></tr></thead><tbody>' + objRow + metaRow + '</tbody></table>';
         }
         var ruaPrs = (s.prsBy && s.prsBy.rua) || s.prs || [];
-        var prs = ruaPrs.length ? '<ul class="rec-lines"><li>Recorde na rua em ' + esc(joinPt(ruaPrs.map(function(k){ return DIST_BY[k].label; }))) + '</li></ul>' : '';
+        var prs = recBadge(ruaPrs.length, 'Recorde na rua em ' + esc(joinPt(ruaPrs.map(function(k){ return DIST_BY[k].label; }))), ' na rua');
         var splitTbl = splitsTable(doc);
         return '<article class="bib past-race">' +
           '<div class="band band-prova"><span>' + esc(name) + '</span><span class="bd">' + (info.km ? info.km + ' km' : fmtKm(s.km) + ' km') + '</span></div>' +
           '<div class="bib-body">' +
-            (info.bib ? '<p class="bib-num">' + esc(info.bib) + '</p>' : '<p class="bib-num time">' + fmtOff(resT) + '</p>') +
-            '<p class="bib-sub">' + fmtDate(s.d) + (local ? ', ' + esc(local) : '') + '</p>' +
-            '<div class="bib-stats">' +
-              '<div><span class="st-v">' + (info.chip > 0 ? fmtOff(resT) : fmtTime(resT)) + '</span><span class="st-k">' + (info.chip > 0 ? 'Tempo oficial nos ' : 'Tempo nos ') + fmtKmShort(distKm) + ' km</span></div>' +
+            '<p class="bib-num time">' + (info.chip > 0 ? fmtOff(resT) : fmtTime(resT)) + '</p>' +
+            '<p class="bib-sub">' + (info.chip > 0 ? 'Tempo oficial nos ' : 'Tempo nos ') + fmtKmShort(distKm) + ' km · ' + fmtDate(s.d) + (local ? ', ' + esc(local) : '') + '</p>' +
+            '<div class="bib-stats' + (info.bib ? '' : ' two') + '">' +
               '<div><span class="st-v">' + fmtPace(resT / distKm) + '</span><span class="st-k">Pace</span></div>' +
               '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
-            '</div>' +
+              (info.bib ? '<div><span class="st-v">' + esc(info.bib) + '</span><span class="st-k">Nº de peito</span></div>' : '') +
+            '</div>' + prs +
             '<details class="mini race-more" data-sec="race-' + s.id + '"' + (expanded || openSec['race-' + s.id] ? ' open' : '') + '><summary>Ver detalhes</summary>' +
             era + splitTbl +
             '<dl class="rc-grid">' +
               '<div><dt>No relógio</dt><dd>' + fmtKm(s.watchKm != null ? s.watchKm : s.km) + ' km em ' + fmtTime(s.elapsed) + '</dd></div>' +
               (function(){ var w = wxOfSession(s); return w ? '<div><dt>Clima na largada</dt><dd>' + fmtWx(w) + '</dd></div>' : ''; })() +
               inside.join('') +
-            '</dl>' + prs +
+            '</dl>' +
             (info.note ? '<p class="rc-note">' + esc(info.note) + '</p>' : '') +
           '<button type="button" class="btn share-btn" data-share="' + s.id + '">Gerar cartão pra compartilhar</button>' +
           (view === 'provas' ? '<button type="button" class="btn race-edit" data-race-edit="' + isoOf(s.d) + '" data-race-past="' + s.id + '">Editar dados da prova</button>' : '') +
@@ -2667,10 +2760,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return state.status === 'loading' ? html + skeleton() : html;
     }
     if (state.partial) {
-      html += '<div class="msg"><strong>Histórico incompleto</strong>Parte dos treinos não carregou. Toque em Atualizar para tentar de novo.</div>';
+      html += '<div class="msg"><strong>Histórico incompleto</strong>Parte dos treinos não carregou. Puxe a tela pra baixo pra tentar de novo.</div>';
     }
-    if (view === 'provas') return html + '<h2 class="first">Provas</h2>' + provasTab();
-    if (view === 'dupla') return html + '<h2 class="first">' + (group.length > 1 ? 'Grupo' : 'Dupla') + '</h2>' + duplaTab();
+    if (view === 'provas') return html + provasTab();
+    if (view === 'dupla') return html + duplaTab();
 
     var all = analyze(state.sessions, 'tudo').list;
     if (!all.length) return html + '<div class="msg"><strong>Nenhum treino ainda</strong>Treinos de corrida aparecem aqui assim que chegam ao Strava.</div>';
@@ -2679,7 +2772,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var last = all[all.length - 1];
       var ae = analyze(state.sessions, last.env === 'esteira' ? 'esteira' : 'rua');
       var rep = reportRace();
-      if (!rep || rep.id !== last.id) html += '<h2>Último treino</h2>' + hero(last, ae.tables);
+      html += '<h2>Último treino</h2>' + hero(last, ae.tables);
       html += weightCard();
       html += monthCompare();
       html += recapBanner();
@@ -2692,7 +2785,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     }
 
     if (view === 'conquistas') {
-      return html + '<h2 class="first">Conquistas</h2>' + summaryPanel(all) + challengesSection(all);
+      return html + summaryPanel(all) + challengesSection(all);
     }
 
     var a = analyze(state.sessions, tab);
@@ -2739,9 +2832,41 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
   }
 
+  /* Units inside the big condensed numbers (47min22,9s) drawn smaller and lighter, so the digits
+     read first. Only text in the condensed number font is touched; charts, inputs and selects never. */
+  var UNIT_RE = /(\d)(h|min|s)(?![a-zà-úç])/g;
+  function unitize(root){
+    if (!root) return;
+    var tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, todo = [], disp = new Map();
+    while ((n = tw.nextNode())) { UNIT_RE.lastIndex = 0; if (UNIT_RE.test(n.nodeValue)) todo.push(n); }
+    todo.forEach(function(t){
+      var el = t.parentElement;
+      if (!el || el.closest('svg, select, option, textarea, input, .un')) return;
+      var ok = disp.get(el);
+      if (ok === undefined) { ok = getComputedStyle(el).fontFamily.indexOf('Big Shoulders') !== -1; disp.set(el, ok); }
+      if (!ok) return;
+      var s = t.nodeValue, last = 0, m, frag = document.createDocumentFragment();
+      // Only standalone numbers: in a phrase ("Faltam 2min21s para a meta") the units stay as they are.
+      if (/[A-Za-zÀ-ú]{2,}/.test(s.replace(/\d(?:h|min|s)/g, '0'))) return;
+      UNIT_RE.lastIndex = 0;
+      while ((m = UNIT_RE.exec(s))) {
+        var cut = m.index + 1;
+        frag.appendChild(document.createTextNode(s.slice(last, cut)));
+        var sp = document.createElement('span'); sp.className = 'un'; sp.textContent = m[2];
+        frag.appendChild(sp);
+        last = cut + m[2].length;
+      }
+      frag.appendChild(document.createTextNode(s.slice(last)));
+      t.parentNode.replaceChild(frag, t);
+    });
+  }
+
   function render(){
     var isLogin = state.status === 'login';
     document.body.classList.toggle('login', isLogin);
+    var h1t = $('#scr-title');
+    if (h1t) h1t.textContent = isLogin ? 'Recordes' : ({ inicio: 'Início', recordes: 'Recordes', evolucao: 'Evolução', provas: 'Provas', conquistas: 'Conquistas',
+      dupla: (group && group.length > 1) ? 'Grupo' : 'Dupla' }[view] || 'Recordes');
     if (isLogin) {
       $('#status').textContent = '';
       $('#races').innerHTML = '';
@@ -2771,6 +2896,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var ae = document.activeElement;
     var focusedUnit = ae && ae.getAttribute ? (ae.getAttribute('data-unit') || ae.getAttribute('data-vol')) : null;
     panel.innerHTML = body();
+    unitize($('#races')); unitize(panel);
     if (focusedUnit) { var fb = panel.querySelector('[data-unit="' + focusedUnit + '"], [data-vol="' + focusedUnit + '"]'); if (fb) fb.focus(); }
     var vs = $('#vol-scroll'); if (vs) vs.scrollLeft = vs.scrollWidth;
     document.querySelectorAll('.goal-seg').forEach(function(sc){
@@ -3125,7 +3251,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   $('#help-close').addEventListener('click', function(){
     var dlg = $('#help');
     if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
-    $('#help-btn').focus();
+    ($('#menu-btn') || $('#help-btn')).focus();
   });
   $('#panel').addEventListener('change', function(ev){
     if (!ev.target || ev.target.id !== 'eff-sel') return;
@@ -3155,7 +3281,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return;
     }
     var gv = ev.target.closest && ev.target.closest('[data-goview]');
-    if (gv) { setView(gv.getAttribute('data-goview')); return; }
+    if (gv) {
+      var pvg = gv.getAttribute('data-pv-go'), osk = gv.getAttribute('data-open-sec');
+      if (pvg) { provasView = pvg; try { localStorage.setItem('recordes-provas', pvg); } catch(e) {} }
+      if (osk) { openSec[osk] = true; try { localStorage.setItem('recordes-open', JSON.stringify(openSec)); } catch(e) {} }
+      setView(gv.getAttribute('data-goview'));
+      return;
+    }
     var pvb = ev.target.closest && ev.target.closest('[data-pv]');
     if (pvb) {
       var pv = pvb.getAttribute('data-pv');
@@ -4303,7 +4435,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist, order: groupOrder });
     var nameOf = {}; people.forEach(function(p){ nameOf[p.id] = p.name; });
 
-    var board = '<article class="bib duo-score"><div class="band band-prova"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
+    var board = '<article class="bib duo-score"><div class="band band-ink"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
       '<div class="bib-body"><ol class="g-rank">' + rank.map(function(r){
         return '<li><span class="g-r">' + r.pos + 'º</span><span class="g-n">' + esc(r.p.name) + updLine(r.p) + '</span><span class="g-p">' + ptsWord(pts[r.p.id]) + '</span></li>';
       }).join('') + '</ol></div><div class="bib-foot"></div></article>';
@@ -4359,8 +4491,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (lead && yWins[lead.id] > 0) {
       yearCard = '<article class="bib yr"><div class="band band-ink"><span>' + year + '</span><span class="bd">' + (yFinal ? 'final' : 'até agora') + '</span></div><div class="bib-body">' +
         '<div class="yr-top"><span class="cr" aria-hidden="true">🏆</span><b>' + esc(lead.name) + '</b><span class="yr-n">' + yWins[lead.id] + (yWins[lead.id] === 1 ? ' mês vencido' : ' meses vencidos') + '</span></div>' +
-        '<div class="yr-strip">' + chips + '</div>' +
-        '<div class="yr-ml">' + MON.map(function(m){ return '<span>' + m + '</span>'; }).join('') + '</div>' +
+        '<div class="yr-cal"><div class="yr-strip">' + chips + '</div>' +
+        '<div class="yr-ml">' + MON.map(function(m){ return '<span>' + m + '</span>'; }).join('') + '</div></div>' +
         '<ol class="yr-rank">' + yOrder.map(function(p){
           var since = GROUP_SINCE[String(p.id)], w = yWins[p.id];
           return '<li style="--pc:' + pcol[p.id] + '"><i></i><span>' + esc(p.name) + '</span><span class="n">' + w + (w === 1 ? ' mês' : ' meses') +
@@ -4398,8 +4530,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var dd = parseIso(nd), days = Math.round((dd - dayOnly(new Date())) / 86400000), r0 = byDate[nd][0].r;
       next = '<article class="bib duo-next"><div class="band band-prova"><span>Próxima prova juntos: ' + esc(r0.short) + '</span><span class="bd">' + r0.km + ' km</span></div>' +
         '<div class="bib-body"><div class="race-days"><p class="bib-num">' + (days === 0 ? 'Hoje' : days) + '</p><span class="st-k">' + (days === 0 ? 'é dia de prova' : days === 1 ? 'dia' : 'dias') + '</span></div>' +
-        '<p class="bib-sub">' + fmtDate(dd) + '</p><table class="tbl g-next"><thead><tr><th></th><th class="num">Recorde a bater</th><th class="num">Meta</th></tr></thead><tbody>' +
-        byDate[nd].map(function(x){ return '<tr><td>' + esc(x.p.name) + '</td><td class="num">' + (x.r.obj ? fmtTime(x.r.obj) : '--') + '</td><td class="num">' + (x.r.hi ? fmtGoalOf(x.r) : '--') + '</td></tr>'; }).join('') +
+        '<p class="bib-sub">' + fmtDate(dd) + '</p><table class="tbl g-next"><thead><tr><th></th><th class="num">Recorde a bater</th><th class="num g-meta">Meta</th></tr></thead><tbody>' +
+        byDate[nd].map(function(x){ var gm = x.r.hi ? fmtGoalOf(x.r) : '--'; return '<tr><td><span class="t-lbl">' + esc(x.p.name) + '</span><span class="t-sub g-meta-sub">Meta: ' + gm + '</span></td><td class="num t-val">' + (x.r.obj ? fmtTime(x.r.obj) : '--') + '</td><td class="num g-meta">' + gm + '</td></tr>'; }).join('') +
         '</tbody></table></div><div class="bib-foot"></div></article>';
     }
     var together = '<div class="panel duo-together"><p class="ch-title">Treinos juntos, últimos 4 meses</p>' + group.map(function(g){
@@ -4423,20 +4555,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return ids.filter(function(id){ return x[id] === t; });
   }
   // One colour per person, the same in everyone's app (by athlete id).
-  var PERSON_COLORS = ['#F08A24', '#A66CFF', '#33B679', '#3FA7F5', '#E5484D', '#D4A72C'];
+  var PERSON_COLORS = ['#F08A24', '#A66CFF', '#5B7083', '#9A6B45', '#B5179E', '#E0569B'];
   function personColors(people){
     var ids = people.map(function(p){ return Number(p.id); }).sort(function(a, b){ return a - b; }), out = {};
     ids.forEach(function(id, i){ out[id] = PERSON_COLORS[i % PERSON_COLORS.length]; });
     return out;
   }
-  // Shortest start of the name (2 or 3 letters) that tells the group apart: Lucas "Luc", Luiz "Lui", Lidiane "Li".
+  // Name on the month chips: the whole name up to 5 letters (Lucas, Luiz), else its first 4 (Lidiane "Lidi"),
+  // with more letters only when two people would look alike.
   function shortName(name, people){
     var nm = String(name || '?');
-    for (var n = 2; n <= 3; n++) {
+    if (nm.length <= 5) return nm;
+    for (var n = 4; n <= 6; n++) {
       var pre = nm.slice(0, n).toLowerCase();
       if (people.filter(function(p){ return String(p.name || '').slice(0, n).toLowerCase() === pre; }).length <= 1) return nm.slice(0, n);
     }
-    return nm.slice(0, 3);
+    return nm.slice(0, 4);
   }
   // Group months, plus the months the founders played as a duo before the group (duohist: a = me, b = the partner).
   function monthsWithDuo(people){
@@ -4697,6 +4831,23 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
 
   start();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('menu-btn'), menu = document.getElementById('hdr-menu');
+  if (!btn || !menu) return;
+  function close(){ menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var open = menu.hidden;
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { var f = menu.querySelector('.menu-it:not([hidden]):not([disabled])'); if (f) f.focus(); }
+  });
+  menu.addEventListener('click', function(e){ if (e.target.closest('.menu-it')) close(); });
+  document.addEventListener('click', function(e){ if (!menu.hidden && !e.target.closest('.menu-wrap')) close(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !menu.hidden) { close(); btn.focus(); } });
 })();
 </script>
 </body>
