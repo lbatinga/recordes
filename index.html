@@ -498,6 +498,24 @@ details.sec[open] .sec-i::before{content:"−"}
 
 /* messages, notes */
 .note{color:var(--muted);font-size:15px;margin:0 0 12px}
+.lug{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 14px 16px;margin:0 0 18px;--st0:var(--prova-txt)}
+.lug-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;margin:0 0 6px}
+.lug-t{font-weight:700;font-size:17px}
+.lug-c{color:var(--muted);font-size:15px}
+.lug-c b{color:var(--ink);font-family:var(--font-num);font-weight:800;font-size:20px;margin-right:2px}
+.lug-sub{display:flex;align-items:baseline;gap:8px;margin:14px 0 8px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lug-sub b{color:var(--ink);font-family:var(--font-num);font-size:18px;letter-spacing:0}
+.lug-stamps{display:flex;flex-wrap:wrap;gap:14px 10px;padding:4px 2px}
+.pstamp{--c:var(--st0);width:118px;height:118px;flex:0 0 auto;border-radius:50%;border:3px solid var(--c);color:var(--c);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:inset 0 0 0 4px var(--surface),inset 0 0 0 6px var(--c);line-height:1.05}
+.ps-top{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.ps-city{font-family:var(--font-num);font-weight:900;font-size:25px;text-transform:uppercase;margin:3px 0 2px;max-width:96px;overflow-wrap:anywhere}
+.ps-city.long{font-size:19px}
+.ps-uf{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.ps-plus{font-size:11px;font-weight:600;margin-top:3px;opacity:.9}
+.tstamp{width:96px;height:96px;flex:0 0 auto;border-radius:50%;border:2px dashed var(--muted);color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.05}
+.tstamp .ps-city{font-size:19px;max-width:80px}
+.tstamp .ps-top,.tstamp .ps-uf{font-size:10px}
+.lug .r0{transform:rotate(-8deg)}.lug .r1{transform:rotate(6deg)}.lug .r2{transform:rotate(-4deg)}.lug .r3{transform:rotate(9deg)}.lug .r4{transform:rotate(-6deg)}.lug .r5{transform:rotate(5deg)}
 .fine{font-size:14px;color:var(--muted);margin:8px 0 0;max-width:64ch}
 .msg{padding:12px 14px;border-radius:8px;border:1px solid var(--line);border-left:4px solid var(--prova);background:var(--surface);margin:0 0 14px}
 .msg strong{display:block;margin-bottom:2px}
@@ -796,7 +814,9 @@ details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(
       <label>Número de peito<input name="bib" type="text" inputmode="numeric" autocomplete="off"></label>
       <label>Tempo oficial<input name="chip" type="text" inputmode="decimal" autocomplete="off" placeholder="52:18"></label>
     </div>
+    <label>Cidade<input name="cidade" type="text" autocomplete="off" placeholder="Automática, pelo GPS"></label>
     <label>Observação<input name="note" type="text" autocomplete="off"></label>
+    <p class="hint">Cidade: só preencha se a do GPS vier errada, como Recife, PE ou Lisboa, Portugal.</p>
     <p class="hint" id="chip-hint">Tempo oficial: o líquido, do resultado da prova. Quando preenchido, vale no lugar do tempo do Strava nos recordes e nas metas.</p>
     <p class="err" id="race-err" hidden></p>
     <div class="acts">
@@ -854,6 +874,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var WALK_UNTIL = '';
   var SEX = '', BIRTH = '';
   var WALK_MIN_M = 500;
+  /* Where each street run started: cell rounded to 0.01° (about 1 km) -> { c: city, uf, p: country }.
+     Looked up on OpenStreetMap from the phone and cached on the device. */
+  var PLACES = {};
+  try { PLACES = JSON.parse(localStorage.getItem('rc-places') || '{}') || {}; } catch(e) { PLACES = {}; }
   /* Distance measured by the watch itself when Strava recalculated it lower. */
   var VERIFIED = {}; // config/overrides.verified: { id: { m, src } }
   var ALGO = 4;
@@ -2624,6 +2648,99 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           '</details></div><div class="bib-foot"></div></article>';
   }
 
+  /* ---------- Por onde corri: one stamp per city (races in color, training-only dashed) ---------- */
+  var UFS = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
+  function cellOf(ll){ return ll[0].toFixed(2) + ',' + ll[1].toFixed(2); }
+  // "Recife, PE" (Brazil) or "Lisboa, Portugal" (abroad); null when it doesn't follow either shape.
+  function parseCidade(t){
+    var parts = String(t || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+    if (parts.length !== 2) return null;
+    var up = parts[1].toUpperCase();
+    if (UFS.indexOf(up) !== -1) return { c: parts[0], uf: up, p: 'Brasil' };
+    if (/^brasil$/i.test(parts[1]) || up.length < 3) return null;
+    return { c: parts[0], uf: '', p: parts[1] };
+  }
+  function placeOf(s){
+    if (s.race) { var info = raceInfoOf(s); var fix = info && parseCidade(info.cidade); if (fix) return fix; }
+    if (!s.latlng) return null;
+    return PLACES[cellOf(s.latlng)] || null;
+  }
+  function placesBlock(){
+    var by = {}, keys = [];
+    (state.sessions || []).forEach(function(s){
+      if (s.env !== 'rua') return;
+      var p = placeOf(s);
+      if (!p || !p.c) return;
+      var key = plainTxt(p.c) + '|' + (p.uf || '') + '|' + plainTxt(p.p);
+      if (!by[key]) { by[key] = { c: p.c, uf: p.uf || '', p: p.p || '', races: 0, runs: 0, first: s.date }; keys.push(key); }
+      var g = by[key];
+      if (s.race) g.races++; else g.runs++;
+      if (s.date < g.first) g.first = s.date;
+    });
+    if (!keys.length) return '';
+    var list = keys.map(function(k){ return by[k]; });
+    var ufs = {}, countries = {};
+    list.forEach(function(g){ if (g.uf) ufs[plainTxt(g.p) + '|' + plainTxt(g.uf)] = 1; if (g.p) countries[plainTxt(g.p)] = 1; });
+    var nC = list.length, nU = Object.keys(ufs).length, nP = Object.keys(countries).length;
+    var byFirst = function(a, b){ return a.first < b.first ? -1 : a.first > b.first ? 1 : 0; };
+    var raced = list.filter(function(g){ return g.races > 0; }).sort(function(a, b){ return b.races - a.races || byFirst(a, b); });
+    var only = list.filter(function(g){ return !g.races; }).sort(function(a, b){ return b.runs - a.runs || byFirst(a, b); });
+    var nn = function(n, one, many){ return n + ' ' + (n === 1 ? one : many); };
+    var where = function(g){ return !g.p || /^brasil$/i.test(g.p) ? (g.uf ? g.uf + ' · Brasil' : 'Brasil') : g.p; };
+    var city = function(g){ return '<span class="ps-city' + (g.c.length > 9 ? ' long' : '') + '">' + esc(g.c) + '</span>'; };
+    var html = '<section class="lug" aria-label="Por onde corri"><div class="lug-h"><span class="lug-t">Por onde corri</span>' +
+      '<span class="lug-c"><b>' + nC + '</b> ' + (nC === 1 ? 'cidade' : 'cidades') + ' · <b>' + nU + '</b> ' + (nU === 1 ? 'estado' : 'estados') +
+      ' · <b>' + nP + '</b> ' + (nP === 1 ? 'país' : 'países') + '</span></div>';
+    if (raced.length) {
+      html += '<div class="lug-sub">Em prova <b>' + raced.length + '</b></div><div class="lug-stamps">' + raced.map(function(g, i){
+        return '<div class="pstamp r' + (i % 6) + '">' +
+          '<span class="ps-top">' + nn(g.races, 'prova', 'provas') + '</span>' + city(g) +
+          '<span class="ps-uf">' + esc(where(g)) + '</span>' +
+          (g.runs ? '<span class="ps-plus">+ ' + nn(g.runs, 'treino', 'treinos') + '</span>' : '') + '</div>';
+      }).join('') + '</div>';
+    }
+    if (only.length) {
+      html += '<div class="lug-sub">Só em treino <b>' + only.length + '</b></div><div class="lug-stamps">' + only.map(function(g, i){
+        return '<div class="tstamp r' + ((i + 3) % 6) + '">' +
+          '<span class="ps-top">' + nn(g.runs, 'treino', 'treinos') + '</span>' + city(g) + '<span class="ps-uf">' + esc(where(g)) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    return html + '</section>';
+  }
+  // Start points not known yet are looked up straight from the phone on OpenStreetMap (Nominatim):
+  // one request per second, as its usage policy asks, and each spot only once per device.
+  var placesBusy = false, placesAsked = 0;
+  function placeFromOsm(j){
+    var a = (j && j.address) || {};
+    var cc = String(a.country_code || '').toUpperCase();
+    var iso = String(a['ISO3166-2-lvl4'] || '');
+    // Open sea comes back with no address: kept as an empty place, so it isn't asked again.
+    return { c: String(a.city || a.town || a.village || a.municipality || a.county || ''),
+      uf: cc === 'BR' && /^BR-[A-Z]{2}$/.test(iso) ? iso.slice(3) : String(a.state || ''),
+      p: String(a.country || ''), cc: cc };
+  }
+  async function ensurePlaces(){
+    if (placesBusy || !state.sessions) return;
+    var need = {};
+    state.sessions.forEach(function(s){ if (s.env === 'rua' && s.latlng) { var k = cellOf(s.latlng); if (!PLACES[k]) need[k] = 1; } });
+    var cells = Object.keys(need);
+    if (!cells.length) return;
+    placesBusy = true;
+    for (var i = 0; i < cells.length && placesAsked < 20; i++) {
+      if (i) await new Promise(function(res){ setTimeout(res, 1100); });
+      placesAsked++;
+      var ll = cells[i].split(',');
+      try {
+        var r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&addressdetails=1&accept-language=pt-BR&lat=' + ll[0] + '&lon=' + ll[1]);
+        if (!r.ok) break; // busy or refused: tries again next time the app opens
+        PLACES[cells[i]] = placeFromOsm(await r.json());
+      } catch (e) { break; }
+      try { localStorage.setItem('rc-places', JSON.stringify(PLACES)); } catch(e) {}
+      if (view === 'provas' && provasView === 'passadas') render();
+    }
+    placesBusy = false;
+  }
+
   function provasTab(){
     var rua = analyze(state.sessions, 'rua');
     analyze(state.sessions, 'esteira');
@@ -2643,6 +2760,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var totalKm = 0;
       done.forEach(function(s){ totalKm += s.km; });
       html += '<p class="note">' + done.length + (done.length === 1 ? ' prova, ' : ' provas, ') + fmtKm(totalKm) + ' km em prova.</p>';
+      html += placesBlock();
       html += '<div class="race-list">' + done.map(function(s){ return pastRaceCard(s, rua.tables); }).join('') + '</div>';
       return html;
     }
@@ -2721,6 +2839,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Na esteira vale a distância total do treino: a que você confirmou no relógio ao terminar, ou a do painel informada no app. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
       p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço; o percurso é ajustado pra fechar com a distância total. Quando a distância não foi confirmada (no relógio ao terminar, ou pelo painel no app), o trecho aparece com ≈, porque pode errar uns 5 a 10%, e no Tudo só fica na frente de um tempo medido se for mais de 5% melhor. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio. Prova sem tempo oficial usa o tempo total, do início ao fim, como no Strava. Com duas provas no mesmo dia, cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.') +
+      p('Por onde corri', 'Na tela de Provas, cada cidade vira um carimbo. A cidade sai do ponto onde a corrida começou, arredondado em cerca de 1 km e consultado no OpenStreetMap. Carimbo colorido: cidade onde você fez prova, com os treinos de lá somados. Tracejado: cidade onde você só treinou. Entram as corridas na rua e as provas; esteira não, porque não tem GPS. Cidades, estados e países contam os dois tipos. Se a cidade de uma prova vier errada, corrija em Editar, no campo Cidade.') +
       p('Metas', 'O painel de metas conta só rua. Base é de onde você partiu e fica fixa até a meta ser batida; a meta fica de 5 a 7% abaixo dela. De 1 a 4 km, treino na rua também bate a meta. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. A linha da esteira é só referência.') +
       p('Recordes por treino', 'Conta o treino inteiro. Mais tempo correndo sem parar é o maior trecho trotando ou correndo, acima de 6 km/h, sem caminhar (pausas de até 10 s não quebram); só vale na rua, porque precisa do GPS. Pace é separado por faixa de distância, sem sobreposição: de 2 a 3 km (até 2,99 km), de 3 a 5 km (até 4,99 km) e 5 km ou mais. Cada treino só disputa a faixa dele.') +
       p('Primeiras vezes', 'Trote contínuo só conta corridas na rua, pelo GPS: acima de 6 km/h, sem pausas de mais de 10 s. Pace conta rua e provas. Chuva é estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local, então pode errar. Primeira com alguém do grupo: a primeira corrida que começou até 20 minutos antes ou depois da dela, ou que tem o nome da pessoa na descrição da sua corrida no Strava.') +
@@ -3178,6 +3297,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     clearTimeout(refreshTimer);
     render();
     kick();
+    ensurePlaces();
   }
 
   var RETRACT = { needs_reauth:1, no_session:1 };
@@ -4667,6 +4787,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     raceField('local').value = r && r.local !== 'A confirmar' ? r.local : '';
     raceField('bib').value = r ? r.bib || '' : '';
     raceField('note').value = r ? r.note || '' : '';
+    raceField('cidade').value = r ? r.cidade || '' : '';
     raceField('time').value = r ? r.time || '' : '';
     raceField('chip').value = r && r.chip > 0 ? fmtChip(r.chip) : '';
     $('#race-dlg-title').textContent = r ? 'Editar prova' : 'Nova prova';
@@ -4693,10 +4814,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var chipRaw = String(raceField('chip').value).trim();
     var chip = chipRaw ? parseChip(chipRaw) : 0;
     if (chipRaw && !chip) return raceErr('Tempo oficial no formato 52:18 ou 1:02:03 (pode ter décimos, como 52:18,128).');
+    var cidade = raceField('cidade').value.trim().replace(/\s+/g, ' ');
+    if (cidade && !parseCidade(cidade)) return raceErr('Cidade com o estado, como Recife, PE, ou com o país, como Lisboa, Portugal.');
     var old = raceEdit && raceEdit.orig ? RACE_INFO.filter(function(x){ return x.date === raceEdit.orig; })[0] : null;
     var item = { date: date, name: name, short: old && old.name === name ? old.short : name, km: Math.round(km * 1000) / 1000,
       local: raceField('local').value.trim() || 'A confirmar', bib: raceField('bib').value.trim(), note: raceField('note').value.trim(),
       time: /^\d{2}:\d{2}$/.test(raceField('time').value) ? raceField('time').value : '', chip: chip || 0 };
+    if (cidade) item.cidade = cidade;
     var list = RACE_INFO.filter(function(x){ return !old || x !== old; }).concat([item]);
     setRaces(list);
     saveRaces();
@@ -4772,6 +4896,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       RACE_INFO.push({ date: r.date, bib: r.bib ? String(r.bib) : '', short: r.short || r.name || 'Prova', name: r.name || r.short || 'Prova',
         km: Number(r.km), local: r.local || '', note: r.note || '', time: /^\d{2}:\d{2}$/.test(r.time || '') ? r.time : '',
         chip: Number(r.chip) > 0 ? Number(r.chip) : 0 });
+      if (r.cidade) RACE_INFO[RACE_INFO.length - 1].cidade = String(r.cidade);
     });
     RACE_INFO.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
   }
