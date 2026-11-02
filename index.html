@@ -955,9 +955,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      painel / watch, so the run stops being an estimate. */
   var PAINEL = {};
   var EST_MARGIN = 1.05; // an uncorrected treadmill value must be 5% better to rank above a measured one
-  /* A treadmill distance counts as measured with the panel entered here, or when the watch's
-     total was confirmed at the end (it then differs from the watch's own stream). */
-  function treadOk(s){ return s.painel > 0 || !!(effortDocs[s.id] && effortDocs[s.id].cal); }
+  /* Decided on 02/11/2026: the treadmill distance is the one Strava has (adjusted on the watch at
+     the end of the run, or not). No estimate mark, no handicap, nothing to confirm in the app.
+     Panel distances typed in before still replace the watch's. */
+  function treadOk(s){ return true; }
   var lastActs = null;
   /* Distance fixed by hand for one activity, backed by evidence (config/overrides.km, set by
      the owner): a manual Strava entry that summed two recordings, for example. */
@@ -2146,17 +2147,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
            '<div class="legend">' + (tab === 'ruat' || tab === 'tudo' ? '<span class="lg-r">Rua</span>' : '') + (tab === 'prova' || tab === 'tudo' ? '<span class="lg-p">Prova</span>' : '') + (tab === 'esteira' || tab === 'tudo' ? '<span class="lg-e">Esteira</span>' : '') + '<span class="lg-x">Recorde de pace na época</span></div>';
   }
 
-  function painelLine(s){
-    if (s.env !== 'esteira' || s.walk) return '';
-    return s.painel
-      ? '<p class="bib-note">Distância do painel: ' + fmtKm(s.painel) + ' km (relógio: ' + fmtKm(s.watchRaw) + ' km). <button type="button" class="lnk" data-painel="' + s.id + '">Alterar</button></p>'
-      : '<button type="button" class="btn share-btn" data-painel="' + s.id + '">Informar distância do painel</button>';
-  }
+  function painelLine(){ return ''; }
   function histRow(s){
     var tags = [];
-    if (s.painel) tags.push('<span class="tg">Painel</span>');
-    else if (s.env === 'esteira' && !s.walk && treadOk(s)) tags.push('<span class="tg">Confirmada no relógio</span>');
-    else if (s.env === 'esteira' && !s.walk) tags.push('<button type="button" class="tg tg-btn" data-painel="' + s.id + '">+ painel</button>');
     if (s.race) tags.push('<span class="tg">Prova: ' + esc(raceShort(s)) + '</span>');
     if (s.walk) tags.push('<span class="tg">Caminhada</span>');
     if (s.verified) tags.push('<span class="tg">Distância do ' + esc(s.verified) + '</span>');
@@ -3053,8 +3046,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   };
   function comoFunciona(want){
     var p = function(t, x){ return want && want.indexOf(t) === -1 ? '' : '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
-    return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Na esteira vale a distância total do treino: a que você confirmou no relógio ao terminar, ou a do painel informada no app. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
-      p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço; o percurso é ajustado pra fechar com a distância total. Quando a distância não foi confirmada (no relógio ao terminar, ou pelo painel no app), o trecho aparece com ≈, porque pode errar uns 5 a 10%, e no Tudo só fica na frente de um tempo medido se for mais de 5% melhor. Na rua, podem diferir alguns segundos do Strava.') +
+    return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Na esteira vale a distância que chega no Strava; se você ajustar a distância no relógio ao terminar, é a ajustada que vale. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
+      p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço, e fecham com a distância total do treino. Valem como qualquer outro tempo. Na rua, podem diferir alguns segundos do Strava.') +
       p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio. Prova sem tempo oficial usa o tempo total, do início ao fim, como no Strava. Com duas provas no mesmo dia, cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.') +
       p('Por onde corri', 'Na tela de Provas, cada cidade vira um carimbo. A cidade sai do ponto onde a corrida começou, arredondado em cerca de 1 km e consultado no OpenStreetMap. Carimbo colorido: cidade onde você fez prova, com os treinos de lá somados; cada uma ganha uma cor na ordem da primeira prova feita lá e fica com ela, e os carimbos seguem essa ordem, como num passaporte. Tracejado: cidade onde você só treinou. Entram as corridas na rua e as provas; esteira não, porque não tem GPS. Cidades, estados e países contam os dois tipos. Se a cidade de uma prova vier errada, corrija em Editar, no campo Cidade.') +
       p('Metas', 'Cada distância mostra o recorde (o melhor tempo na rua, provas incluídas), a meta e quanto falta. A meta fica de 5% a 7% abaixo da base, o tempo de onde ela partiu, e conta como batida com o tempo mais lento da faixa ou menos. A base só muda quando você bate a meta. De 1 a 4 km, treino na rua também vale. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. Esteira não vale; aparece nos detalhes só como referência. Toque numa distância pra ver os detalhes.') +
