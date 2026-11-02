@@ -4873,14 +4873,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         if (!a.ok) { anyNa = true; return '<td class="na"><span class="v">—</span></td>'; }
         return '<td' + (top ? ' class="win"' : '') + '><span class="v">' + L.f(lineVal(L, a.p.s, ref)) + '</span>' + (beat ? '<span class="p">+' + (beat * L.w) + '</span>' : '') + '</td>';
       }).join('');
-      var det = vals.map(function(a){ var t = a.ok ? L.sub(a.p.s, ref) : 'ainda não abriu o app neste mês'; return t ? '<b>' + esc(a.p.name) + ':</b> ' + esc(t) : ''; }).filter(Boolean).join('<br>');
+      var det = vals.map(function(a){ var t = a.ok ? L.sub(a.p.s, ref) : 'ainda não abriu o app desde a última atualização'; return t ? '<b>' + esc(a.p.name) + ':</b> ' + esc(t) : ''; }).filter(Boolean).join('<br>');
       return '<tr class="mx-r" data-mx="' + li + '"><td>' + esc(L.short || L.k) + '<small>' + esc(L.sm ? L.sm + ' · ' : '') + L.w + (L.w === 1 ? ' pt' : ' pts') + '</small></td>' + cells + '</tr>' +
         (det ? '<tr class="mx-d" data-mxd="' + li + '" hidden><td colspan="' + (cols.length + 1) + '">' + det + '</td></tr>' : '');
     }).join('');
     var matrix = '<h3 class="h3">Linha a linha</h3><table class="mx"><thead><tr><th>Linha</th>' + cols.map(function(p){
         return '<th style="--pc:' + pcol[p.id] + '"><span></span>' + esc(p.name) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody>' +
       '<tfoot><tr><td>Total</td>' + cols.map(function(p){ return '<td>' + pts[p.id] + '</td>'; }).join('') + '</tr></tfoot></table>' +
-      (anyNa ? '<p class="fine">— ainda não abriu o app neste mês. Toque numa linha pra ver os detalhes.</p>' : '<p class="fine">Toque numa linha pra ver os detalhes.</p>');
+      (anyNa ? '<p class="fine">— ainda não abriu o app desde a última atualização. Toque numa linha pra ver os detalhes.</p>' : '<p class="fine">Toque numa linha pra ver os detalhes.</p>');
 
     // ---- next race together, runs together, races together (as before)
     var byDate = {};
