@@ -333,16 +333,26 @@ async function refreshLive(aid: number): Promise<any> {
     Object.assign(live, { kmMonth: Math.round(km * 1000) / 1000, daysMonth: days.size, kmTier: kt, daysTier: dt, medals: (kt + 1) + (dt + 1) });
   }
   const prev = (await configDoc(aid, 'live'))?.data;
+  // The time shown as "números de" only moves when the numbers do: equal to the summary, it is the
+  // time the app published it; equal to the last check, it keeps that check's time.
+  // deno-lint-ignore no-explicit-any
+  const norm = (k: string, v: unknown) => JSON.stringify(k === 'runs' ? [...((v as string[]) ?? [])].sort().slice(-400)
+    : k === 'kmMonth' ? Math.round(Number(v) * 1000) : v ?? null);
+  // deno-lint-ignore no-explicit-any
+  const same = (a: any) => a && LIVE_KEYS.every((k) => live[k] === undefined || norm(k, a[k]) === norm(k, live[k]));
+  if (same(sm)) live.at = sm.at;
+  else if (prev && prev.base === sm.at && same(prev)) live.at = prev.at;
   live.newest = newest || (prev && prev.base === sm.at ? prev.newest ?? '' : '');
   live.nudged = prev && prev.base === sm.at ? prev.nudged ?? '' : '';
   await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: live, updated_at: new Date().toISOString() });
   return live;
 }
+const LIVE_KEYS = ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals', 'act12'];
 // deno-lint-ignore no-explicit-any
 function mergeLive(summary: any, live: any) {
   if (!summary || !live || live.base !== summary.at) return { summary, live_at: null };
   const out = { ...summary };
-  ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals', 'act12'].forEach((k) => {
+  LIVE_KEYS.forEach((k) => {
     if (live[k] !== undefined) out[k] = live[k];
   });
   return { summary: out, live_at: new Date(live.at).toISOString() };
