@@ -2330,18 +2330,51 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     }
     return minutes > 0 && wet / minutes >= 0.5;
   }
+  /* Runs together (decided 04/11/2026): starting within 20 minutes is not enough, since people
+     can run at the same time in different gyms. Each published run carries a tag:
+     "YYYY-MM-DDTHH:MM|lat,lng" (street, start rounded to about 1 km) or "...|i" (no GPS), plus
+     "|n=name,name" for group members named in its Strava description. Two runs are together when
+     they start within 20 minutes and either both have GPS and started within about 1.5 km, or one
+     of them names the other person. Untagged runs (an older app) keep the old time-only rule. */
+  function runTag(x){
+    var t = x.date.slice(0, 16);
+    t += x.latlng && x.env !== 'esteira' ? '|' + Number(x.latlng[0]).toFixed(2) + ',' + Number(x.latlng[1]).toFixed(2) : '|i';
+    var d = plainTxt(x.desc), nm = [];
+    (group || []).forEach(function(g){
+      var f = plainTxt(g.firstname).trim().replace(/[^a-z ]/g, '');
+      if (f.length >= 3 && new RegExp('(^|[^a-z])' + f + '([^a-z]|$)').test(d) && nm.indexOf(f) === -1) nm.push(f);
+    });
+    return nm.length ? t + '|n=' + nm.join(',') : t;
+  }
+  function runInfo(t){
+    var p = String(t || '').split('|'), d = parseLocal(p[0]);
+    var o = { m: d ? d.getTime() / 60000 : null, legacy: p.length === 1, cell: null, names: [] };
+    p.slice(1).forEach(function(x){
+      if (x.indexOf('n=') === 0) o.names = x.slice(2).split(',');
+      else if (x !== 'i') { var c = x.split(','); if (c.length === 2) o.cell = [Number(c[0]), Number(c[1])]; }
+    });
+    return o;
+  }
+  function plainName(n){ return plainTxt(n).trim().replace(/[^a-z ]/g, ''); }
+  function runsTogether(a, b, aName, bName){
+    if (a.m == null || b.m == null || Math.abs(a.m - b.m) > 20) return false;
+    if (a.legacy || b.legacy) return true;
+    if (a.cell && b.cell && Math.abs(a.cell[0] - b.cell[0]) <= 0.015 && Math.abs(a.cell[1] - b.cell[1]) <= 0.015) return true;
+    return a.names.indexOf(plainName(bName)) > -1 || b.names.indexOf(plainName(aName)) > -1;
+  }
   function plainTxt(t){ return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
   // Together = both have a run starting within 20 min, or the other person's first name
   // is written in this run's description (covers runs the other one didn't record).
   function firstTogether(asc, runs, name){
-    var bt = (Array.isArray(runs) ? runs : []).map(function(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }).filter(function(x){ return x != null; });
-    var nm = plainTxt(name).trim();
-    var re = nm.length >= 3 ? new RegExp('(^|[^a-z])' + nm.replace(/[^a-z ]/g, '') + '([^a-z]|$)') : null;
+    var bt = (Array.isArray(runs) ? runs : []).map(runInfo).filter(function(x){ return x.m != null; });
+    var nm = plainName(name);
+    var re = nm.length >= 3 ? new RegExp('(^|[^a-z])' + nm + '([^a-z]|$)') : null;
+    var myName = (me && me.firstname) || '';
     for (var i = 0; i < asc.length; i++) {
       if (!asc[i].d || asc[i].walk) continue;
       if (re && re.test(plainTxt(asc[i].desc))) return asc[i];
-      var m = asc[i].d.getTime() / 60000;
-      for (var j = 0; j < bt.length; j++) if (Math.abs(bt[j] - m) <= 20) return asc[i];
+      var a = runInfo(runTag(asc[i]));
+      for (var j = 0; j < bt.length; j++) if (runsTogether(a, bt[j], myName, name)) return asc[i];
     }
     return null;
   }
@@ -3211,7 +3244,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<strong>Trote contínuo:</strong> só corridas na rua (GPS), acima de 6 km/h, sem pausas de mais de 10 s.',
         '<strong>Pace:</strong> conta rua e provas.',
         '<strong>Chuva:</strong> estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local. Pode errar.',
-        '<strong>Primeira com alguém do grupo:</strong> a primeira corrida que começou até 20 minutos antes ou depois da dela, ou que tem o nome da pessoa na descrição da sua corrida no Strava.'
+        '<strong>Primeira com alguém do grupo:</strong> a primeira corrida que começou até 20 minutos antes ou depois da dela, no mesmo lugar (as duas na rua, largando a até cerca de 1,5 km uma da outra), ou que tem o nome da pessoa na descrição de uma das duas corridas no Strava.'
       ] }] },
       medalhas: { t: 'Medalhas do mês', r: 'Bronze, prata, ouro e diamante, comparando o mês com a sua média recente.', g: [
         { h: 'Km do mês', li: [
@@ -3259,7 +3292,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<strong>Quando a pessoa abre o app:</strong> as outras linhas.'
       ] }] },
       juntos: { t: 'Treinos juntos', r: 'Só curiosidade: não entra no placar.', g: [{ li: [
-        'Conta as corridas que começaram com até 20 minutos de diferença, no mesmo dia, nos últimos 4 meses.'
+        'Conta as corridas dos últimos 4 meses que começaram com até 20 minutos de diferença e no mesmo lugar.', '<strong>Na rua:</strong> as duas com GPS, largando a até cerca de 1,5 km uma da outra.', '<strong>Na esteira:</strong> como não tem GPS, só conta com o nome da outra pessoa na descrição de uma das corridas no Strava.'
       ] }] },
       mudancas: { t: 'Mudanças nas regras', r: 'Meses que já fecharam continuam como estavam.', g: [{ li: [
         '<strong>Dias com recorde, desde novembro de 2026:</strong> rua e esteira passaram a ter recordes separados. Até outubro, valia só o melhor de todos, com rua e esteira juntas.'
@@ -4615,18 +4648,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   /* ---------- runs together (duo) ---------- */
 
-  function togetherBlock(a, b){
+  function togetherBlock(a, b, aName, bName){
     if (!Array.isArray(a) || !Array.isArray(b) || !b.length) return '';
-    function mins(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }
-    var bt = b.map(mins).filter(function(x){ return x != null; });
-    var used = {}, hits = [];
-    a.forEach(function(t){
-      var m = mins(t);
-      if (m == null) return;
-      for (var i = 0; i < bt.length; i++) {
-        if (!used[i] && Math.abs(bt[i] - m) <= 20) { used[i] = true; hits.push(t); break; }
-      }
-    });
+    var hits = togetherHits(a, b, aName, bName);
     var ws = weekStart(new Date()).getTime();
     var week = hits.filter(function(t){ return weekStart(parseLocal(t)).getTime() === ws; }).length;
     var last = hits.length ? hits.slice().sort().pop() : null;
@@ -4997,8 +5021,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
       nextRaces: duoNextRaces(), raceGoals: duoRaceGoals(), pastRaces: duoPastRaces(rua.tables),
-      runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
-      runsAll: all.filter(function(x){ return x.d; }).map(function(x){ return x.date.slice(0, 16); }).slice(-800),
+      runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(runTag),
+      runsAll: all.filter(function(x){ return x.d; }).map(runTag).slice(-800),
       ag: ag, agK: agB ? agB.k : null, agT: agB ? Math.round(agB.t * 10) / 10 : null, agD: agB ? agB.d : null,
       best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
@@ -5122,14 +5146,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       }).join('') + '</tbody></table>';
   }
   /* ---------- group (3 or more people) ---------- */
-  function togetherCount(a, b){
-    if (!Array.isArray(a) || !Array.isArray(b)) return 0;
-    function mins(t){ var d = parseLocal(t); return d ? d.getTime() / 60000 : null; }
-    var bt = b.map(mins).filter(function(x){ return x != null; }), used = {}, n = 0;
-    a.forEach(function(t){ var m = mins(t); if (m == null) return;
-      for (var i = 0; i < bt.length; i++) { if (!used[i] && Math.abs(bt[i] - m) <= 20) { used[i] = true; n++; break; } } });
-    return n;
+  function togetherHits(a, b, aName, bName){
+    if (!Array.isArray(a) || !Array.isArray(b)) return [];
+    var bt = b.map(runInfo), used = {}, hits = [];
+    a.forEach(function(t){ var x = runInfo(t); if (x.m == null) return;
+      for (var i = 0; i < bt.length; i++) { if (!used[i] && runsTogether(x, bt[i], aName, bName)) { used[i] = true; hits.push(t.slice(0, 16)); break; } } });
+    return hits;
   }
+  function togetherCount(a, b, aName, bName){ return togetherHits(a, b, aName, bName).length; }
   var groupHist = {}, groupOrder = {}; // order: the final places of each month, ties already broken
   function grupoTab(){
     var mine = state.sessions && allAnalyzed() ? buildSummary() : null;
@@ -5263,7 +5287,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '</tbody></table></div><div class="bib-foot"></div></article>';
     }
     var together = '<div class="panel duo-together"><p class="ch-title">Treinos juntos, últimos 4 meses</p>' + group.map(function(g){
-      return '<div class="g-tog"><span>' + esc(g.firstname || 'Atleta') + '</span><span class="v">' + togetherCount(mine.runs, (g.summary || {}).runs) + '</span></div>';
+      return '<div class="g-tog"><span>' + esc(g.firstname || 'Atleta') + '</span><span class="v">' + togetherCount(mine.runs, (g.summary || {}).runs, (me && me.firstname) || '', g.firstname || '') + '</span></div>';
     }).join('') + '</div>';
     var pr = {};
     people.forEach(function(p){ (p.s.pastRaces || []).forEach(function(r){ (pr[r.date] = pr[r.date] || []).push({ p: p, r: r }); }); });
@@ -5353,7 +5377,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (live && upd && live <= upd) live = null;
     var table = '<table class="tbl duo-tbl"><thead><tr><th>' + esc(myName) + '</th><th>' + esc(hisName) + '</th></tr></thead><tbody>' + body + '</tbody></table>';
     if (waiting) return '<div class="msg"><strong>Esperando ' + esc(hisName) + '</strong>O placar começa quando ' + esc(hisName) + ' abrir o app. Por enquanto, seus números:</div>' + table;
-    var together = togetherBlock(mine.runs, his.runs);
+    var together = togetherBlock(mine.runs, his.runs, myName, hisName);
     return nextTogetherCard(mine, his, myName, hisName) +
       '<article class="bib duo-score"><div class="band band-prova"><span>Placar</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
       '<div class="bib-body"><div class="duo-names">' +

@@ -295,7 +295,12 @@ async function refreshLive(aid: number): Promise<any> {
     const isRun = RUN_TYPES.includes(t) && a.distance > 0;
     if (day.slice(0, 7) === month && (isRun || (a.moving_time ?? 0) >= 600)) days.add(day);
     if (!isRun || known.has(start)) return;
-    known.add(start); runs.push(start);
+    known.add(start);
+    // Same tag the app publishes (see runTag in the app): street start rounded to ~1 km, or "i"
+    // with no GPS. The description isn't in this list, so names come only when the app opens.
+    const ll = Array.isArray(a.start_latlng) && a.start_latlng.length === 2 ? a.start_latlng : null;
+    const indoor = a.trainer === true || t === 'VirtualRun' || /esteira/i.test(String(a.name ?? '')) || !ll;
+    runs.push(start + (indoor ? '|i' : '|' + Number(ll[0]).toFixed(2) + ',' + Number(ll[1]).toFixed(2)));
     if (start > newest) newest = start;
     if (day.slice(0, 7) === month && sm.month === month) km += a.distance / 1000;
     if (a.distance >= 1000 || (a.moving_time ?? 0) >= 600) {
