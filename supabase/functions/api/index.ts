@@ -14,6 +14,8 @@ const COLS = ['efforts', 'config'];
 const PROTECTED_CONFIG = ['partner', 'weights', 'push', 'live'];
 const FN_URL = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
 const APP_URL = 'https://recordes-pi.vercel.app/';
+// Accounts that can open the Conferência screen (read-only view of their own group).
+const ADMIN_IDS = [3938024];
 
 function serviceKey(): string {
   try {
@@ -661,6 +663,46 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
         races: rc ? upcoming(rc.data) : null };
     });
     return json(req, { partner: group[0] ?? null, group });
+  }
+  if (path === '/admin' && req.method === 'GET') {
+    // Conferência: read-only view for the app's owner of what is saved for each person in their
+    // group. Leaves out weight, activities, locations and the reasons for paused weeks.
+    if (!ADMIN_IDS.includes(aid)) throw new HttpError(403, 'forbidden');
+    // deno-lint-ignore no-explicit-any
+    const idsOf = (v: any): number[] => (Array.isArray(v?.athlete_ids) ? v.athlete_ids : v?.athlete_id ? [v.athlete_id] : [])
+      .map(Number).filter((x: number) => x > 0);
+    const mine = await configDoc(aid, 'partner');
+    const ids = [aid, ...idsOf(mine?.data).filter((x) => x !== aid)].slice(0, 10);
+    const [aths, docs] = await Promise.all([
+      sb.from('athletes').select('athlete_id, firstname').in('athlete_id', ids),
+      sb.from('docs').select('athlete_id, id, data, updated_at').in('athlete_id', ids).eq('col', 'config')
+        .in('id', ['summary', 'live', 'races', 'metas', 'pauses', 'push']),
+    ]);
+    // deno-lint-ignore no-explicit-any
+    const doc = (pid: number, id: string): any => (docs.data ?? []).find((r) => Number(r.athlete_id) === pid && r.id === id)?.data ?? null;
+    const people = ids.map((pid) => {
+      const m = mergeLive(doc(pid, 'summary'), doc(pid, 'live'));
+      const sm = m.summary ? { ...m.summary } : null;
+      if (sm) { delete sm.runs; delete sm.runsAll; delete sm.actDays; }
+      // deno-lint-ignore no-explicit-any
+      const goals: Record<string, any> = {};
+      // deno-lint-ignore no-explicit-any
+      Object.entries(doc(pid, 'metas')?.goals ?? {}).forEach(([k, g]: [string, any]) => {
+        goals[k] = { hi: g?.hi ?? null, lo: g?.lo ?? null, baseT: g?.baseT ?? null, baseDate: g?.baseDate ?? null, baseKind: g?.baseKind ?? null };
+      });
+      // deno-lint-ignore no-explicit-any
+      const races = (doc(pid, 'races')?.races ?? []).map((r: any) => ({
+        date: r?.date, name: r?.name, short: r?.short, km: r?.km, time: r?.time ?? '', local: r?.local ?? '', bib: r?.bib ?? '', chip: r?.chip ?? 0,
+      }));
+      return {
+        id: pid,
+        firstname: (aths.data ?? []).find((r) => Number(r.athlete_id) === pid)?.firstname ?? null,
+        summary: sm, live_at: m.live_at, races, goals,
+        pauses: Object.keys(doc(pid, 'pauses')?.weeks ?? {}),
+        push: Array.isArray(doc(pid, 'push')?.subs) ? doc(pid, 'push').subs.length : 0,
+      };
+    });
+    return json(req, { people });
   }
   if (path === '/logout' && req.method === 'POST') {
     const tok = req.headers.get('x-session') ?? '';

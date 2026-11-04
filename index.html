@@ -224,6 +224,16 @@ details.hq[open] .sec-i::before{content:"\2212"}
 .hq-li li{margin:6px 0}
 .hq-li li::marker{color:var(--muted)}
 .hq-li strong{color:var(--ink)}
+.adm-tag{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 4px}
+.adm-box{margin:4px 0 0;padding:10px 12px 10px 30px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.adm-ok{padding-left:12px;font-size:14px}
+.adm-card{margin-top:16px;padding:12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.adm-h{margin:0 0 2px;font-weight:700;font-size:17px}
+.adm-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)}
+.adm-l{color:var(--muted);min-width:0}
+.adm-sub{display:block;font-size:12px;margin-top:2px}
+.adm-r{text-align:right;white-space:nowrap;color:var(--ink)}
+.adm-note{font-size:13px;color:var(--muted);margin:6px 0 0}
 @media (prefers-reduced-motion:no-preference){
   .vfade{animation:vfade .22s ease-out both}
 }
@@ -862,6 +872,7 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
         <button class="menu-it" id="refresh" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>Atualizar</button>
         <button class="menu-it" id="export" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Exportar planilha</button>
         <button class="menu-it" id="help-btn" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg>Como funciona</button>
+        <button class="menu-it" id="admin-btn" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>Conferência</button>
       </div>
     </div></div>
   </header>
@@ -955,6 +966,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
 
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
+  // App version published in the summary, so the Conferência screen can tell who still runs an older one.
+  var APP_VER = '2026-11-04';
+  // Only these accounts see the Conferência item; the server checks it again on every request.
+  var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
   var APP_URL = location.origin + location.pathname.replace(/index\.html$/, '');
   var SERVER = 'Strava';
@@ -3375,6 +3390,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
 
   function render(){
+    var ab = document.getElementById('admin-btn');
+    if (ab) ab.hidden = !(me && ADMIN_IDS.indexOf(Number(me.id)) > -1);
     var isLogin = state.status === 'login';
     document.body.classList.toggle('login', isLogin);
     var h1t = $('#scr-title');
@@ -3770,6 +3787,89 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
   }
   $('#help-btn').addEventListener('click', openHelp);
+
+  /* ---------- Conferência (owner only): what is saved for each person in the group ---------- */
+  function admWhen(ms){
+    var d = new Date(ms);
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + ', ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function admDay(iso){ var d = parseIso(iso); return d ? pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) : iso; }
+  function admRow(l, r, sub){
+    return '<div class="adm-kv"><span class="adm-l">' + l + (sub ? '<span class="adm-sub">' + sub + '</span>' : '') + '</span><span class="adm-r">' + r + '</span></div>';
+  }
+  function adminHtml(people){
+    var today = isoOf(new Date()), ref = mkey(nowD()), lines = linesFor(ref);
+    var lim30 = isoOf(new Date(Date.now() - 30 * 86400000));
+    var alerts = [], noTime = {}, oldApp = [];
+    people.forEach(function(p){
+      var s = p.summary, nm = esc(p.firstname || 'Atleta');
+      if (!s || !s.at) { alerts.push('<strong>' + nm + ':</strong> ainda não publicou os números (nunca abriu o app até o fim)'); return; }
+      var days = Math.floor((Date.now() - s.at) / 86400000);
+      if (days > 5) alerts.push('<strong>' + nm + ':</strong> não abre o app desde ' + admWhen(s.at).split(',')[0]);
+      if (s.app !== APP_VER) oldApp.push(nm);
+      var past = {}; (s.pastRaces || []).forEach(function(r){ past[r.date] = true; });
+      var atIso = isoOf(new Date(s.at));
+      (p.races || []).forEach(function(r){
+        var lbl = esc(r.short || r.name) + ' (' + admDay(r.date) + ')';
+        if (r.date >= today && !r.time) (noTime[lbl] = noTime[lbl] || []).push(nm);
+        if (r.date < today && r.date >= lim30 && !(Number(r.chip) > 0)) alerts.push('<strong>' + nm + ':</strong> ' + lbl + ' sem tempo oficial');
+        if (r.date < today && atIso > r.date && !past[r.date]) alerts.push('<strong>' + nm + ':</strong> ' + lbl + ' não aparece como prova. A atividade foi marcada como Prova no Strava?');
+      });
+    });
+    Object.keys(noTime).forEach(function(k){ alerts.unshift('<strong>' + k + ':</strong> sem horário de largada (' + joinPt(noTime[k]) + ')'); });
+    if (oldApp.length) alerts.push('<strong>' + joinPt(oldApp) + ':</strong> app em versão antiga (atualiza quando ' + (oldApp.length > 1 ? 'abrirem' : 'abrir') + ')');
+
+    var html = '<p class="hq-intro">Só você vê esta tela. Mostra o que está salvo de cada um, sem peso, treinos ou mapa.</p>' +
+      '<p class="adm-tag">Pra conferir</p>' +
+      (alerts.length ? '<ul class="adm-box hq-li">' + alerts.map(function(a){ return '<li>' + a + '</li>'; }).join('') + '</ul>'
+        : '<p class="adm-box adm-ok">Nada pra conferir agora.</p>');
+
+    html += people.map(function(p){
+      var s = p.summary, nm = esc(p.firstname || 'Atleta');
+      var head = '<h3 class="adm-h">' + nm + '</h3><p class="hq-r">' + (s && s.at
+        ? 'Última abertura: ' + admWhen(s.at) + ' · ' + (s.app === APP_VER ? 'versão atual' : 'versão antiga')
+        : 'Ainda sem números publicados') + '</p>';
+      var placar = '<p class="adm-tag">Placar de ' + MON_FULL[+ref.slice(5, 7) - 1] + '</p>' + lines.map(function(L){
+        var v = lineVal(L, s, ref);
+        return admRow(esc(L.k), v == null ? '--' : L.f(v));
+      }).join('') + (p.live_at ? '<p class="adm-note">Constância e medalhas atualizadas pelo Strava em ' + admWhen(new Date(p.live_at).getTime()) + '.</p>' : '');
+      var races = (p.races || []).slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+      var provas = '<p class="adm-tag">Provas</p>' + (races.length ? races.map(function(r){
+        var l = esc(r.short || r.name) + ' · ' + admDay(r.date) + ' · ' + fmtKmShort(Number(r.km)) + ' km';
+        var sub = [r.local ? esc(r.local) : 'sem local', r.bib ? 'peito ' + esc(r.bib) : 'sem número de peito'].join(' · ');
+        var right = r.date >= today ? 'largada ' + (r.time ? r.time.replace(':', 'h') : '--')
+          : (Number(r.chip) > 0 ? 'oficial ' + fmtTime(Number(r.chip)) : 'sem tempo oficial');
+        return admRow(l, right, sub);
+      }).join('') : '<p class="adm-note">Nenhuma prova cadastrada.</p>');
+      var goals = p.goals || {}, rg = (s && s.raceGoals) || {};
+      var gk = GOAL_KEYS.filter(function(k){ return goals[k] && goals[k].baseT != null; });
+      var metas = '<p class="adm-tag">Metas</p>' + (gk.length ? gk.map(function(k){
+        var g = goals[k], rec = rg[k] && rg[k].obj ? fmtTime(rg[k].obj) : '--';
+        return admRow(DIST_BY[k].label, 'até ' + fmtTime(g.hi), 'base ' + fmtTime(g.baseT) + (g.baseDate ? ' (' + admDay(g.baseDate) + ')' : '') + ' · recorde&nbsp;' + rec);
+      }).join('') : '<p class="adm-note">Nenhuma meta ainda.</p>');
+      var pw = (p.pauses || []).slice().sort();
+      var outros = '<p class="adm-tag">Outros</p>' +
+        admRow('Semanas pausadas', pw.length ? pw.map(admDay).join(', ') : 'nenhuma') +
+        admRow('Avisos', p.push > 0 ? 'ligados (' + p.push + (p.push === 1 ? ' aparelho)' : ' aparelhos)') : 'desligados');
+      return '<div class="adm-card">' + head + placar + provas + metas + outros + '</div>';
+    }).join('');
+    return html;
+  }
+  async function openAdmin(){
+    helpFrom = $('#menu-btn');
+    $('#help-title').textContent = 'Conferência';
+    $('#help-body').innerHTML = '<p class="hq-intro">Carregando…</p>';
+    var dlg = $('#help');
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    try {
+      var j = await apiFetch('/admin');
+      $('#help-body').innerHTML = adminHtml((j && j.people) || []);
+    } catch (e) {
+      $('#help-body').innerHTML = '<div class="msg"><strong>Não deu pra carregar</strong>' + (e && e.code === 'forbidden' ? 'Esta tela é só pra quem administra o app.' : 'Tente de novo em instantes.') + '</div>';
+    }
+    $('#help-body').scrollTop = 0;
+  }
+  $('#admin-btn').addEventListener('click', openAdmin);
   $('#help-fab').addEventListener('click', openHelp);
   $('#help-close').addEventListener('click', function(){
     var dlg = $('#help');
@@ -4855,7 +4955,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       });
     });
     return {
-      v: 11, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, recDaysE: Object.keys(recDayE).length, beatsM: beatsM,
+      v: 11, app: APP_VER, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, recDaysE: Object.keys(recDayE).length, beatsM: beatsM,
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
