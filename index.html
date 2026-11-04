@@ -4859,7 +4859,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
-      nextRaces: duoNextRaces(), pastRaces: duoPastRaces(rua.tables),
+      nextRaces: duoNextRaces(), raceGoals: duoRaceGoals(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(function(x){ return x.date.slice(0, 16); }),
       runsAll: all.filter(function(x){ return x.d; }).map(function(x){ return x.date.slice(0, 16); }).slice(-800),
       ag: ag, agK: agB ? agB.k : null, agT: agB ? Math.round(agB.t * 10) / 10 : null, agD: agB ? agB.d : null,
@@ -4877,6 +4877,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return { date: r.date, short: r.short || r.name, km: r.km, obj: best ? Math.round(best.t * 10) / 10 : null,
         lo: g && g.baseT != null ? g.lo : null, hi: g && g.baseT != null ? g.hi : null };
     });
+  }
+  // Record to beat and goal per distance, so a race added later gets them before the next open.
+  function duoRaceGoals(){
+    var out = {};
+    GOAL_KEYS.forEach(function(k){
+      var best = currentBest(k), g = GOALS[k];
+      if (!best && !(g && g.baseT != null)) return;
+      out[k] = { obj: best ? Math.round(best.t * 10) / 10 : null, lo: g && g.baseT != null ? g.lo : null, hi: g && g.baseT != null ? g.hi : null };
+    });
+    return out;
   }
   function duoPastRaces(tables){
     return state.sessions.filter(function(x){ return x.race && x.d; }).map(function(x){
@@ -4898,11 +4908,27 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return apiFetch('/partner').then(function(j){
       // One linked person = Dupla; two or more = Grupo (the Dupla tab turns into the group view).
       group = j && Array.isArray(j.group) ? j.group : (j && j.partner ? [j.partner] : []);
+      group.forEach(liveRaces);
       partner = group.length ? group[0] : null;
       partnerLoaded = true;
       syncDuoNav();
       if (view === 'dupla') render();
     }).catch(function(){});
+  }
+  /* Upcoming races come straight from the server (config/races), so a race added for someone
+     shows up before they open the app. Record to beat and goal still come from their last summary:
+     the same race, else that distance's goal (raceGoals), else another race of the same km. */
+  function liveRaces(g){
+    if (!g || !g.summary || !Array.isArray(g.races)) return;
+    var sm = g.summary, old = sm.nextRaces || [], byDate = {}, goals = sm.raceGoals || {};
+    old.forEach(function(r){ byDate[r.date] = r; });
+    var next = g.races.map(function(r){
+      var k = keyForKm(r.km);
+      var src = byDate[r.date] || (k && goals[k]) || old.filter(function(x){ return x.km === r.km; })[0] || {};
+      return { date: r.date, short: r.short, km: r.km, obj: src.obj != null ? src.obj : null,
+        lo: src.lo != null ? src.lo : null, hi: src.hi != null ? src.hi : null };
+    });
+    g.summary = Object.assign({}, sm, { nextRaces: next });
   }
   function syncDuoNav(){
     var b = document.querySelector('.bnav [data-view="dupla"]');

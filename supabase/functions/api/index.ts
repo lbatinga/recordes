@@ -638,13 +638,27 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
       sb.from('athletes').select('athlete_id, firstname').in('athlete_id', want),
     ]);
     const lives = await sb.from('docs').select('athlete_id, data').in('athlete_id', want).eq('col', 'config').eq('id', 'live');
+    // Upcoming races straight from config/races, so a race added for someone shows up for the
+    // group right away, without waiting for that person to open the app and publish a summary.
+    const racesQ = await sb.from('docs').select('athlete_id, data').in('athlete_id', want).eq('col', 'config').eq('id', 'races');
+    const today = todayBR();
+    // deno-lint-ignore no-explicit-any
+    const upcoming = (v: any) => (Array.isArray(v?.races) ? v.races : [])
+      // deno-lint-ignore no-explicit-any
+      .filter((r: any) => r && typeof r.date === 'string' && r.date >= today && Number(r.km) > 0)
+      // deno-lint-ignore no-explicit-any
+      .map((r: any) => ({ date: r.date, short: String(r.short || r.name || 'Prova'), km: Number(r.km) }))
+      // deno-lint-ignore no-explicit-any
+      .sort((a: any, b: any) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(0, 4);
     const mutual = want.filter((pid) => (theirs.data ?? []).some((r) => Number(r.athlete_id) === pid && idsOf(r.data).includes(aid)));
     const group = mutual.map((pid) => {
       const sm = (sums.data ?? []).find((r) => Number(r.athlete_id) === pid);
       const at = (aths.data ?? []).find((r) => Number(r.athlete_id) === pid);
       const lv = (lives.data ?? []).find((r) => Number(r.athlete_id) === pid);
       const m = mergeLive(sm?.data ?? null, lv?.data ?? null);
-      return { id: pid, firstname: at?.firstname ?? null, summary: m.summary, updated_at: sm?.updated_at ?? null, live_at: m.live_at };
+      const rc = (racesQ.data ?? []).find((r) => Number(r.athlete_id) === pid);
+      return { id: pid, firstname: at?.firstname ?? null, summary: m.summary, updated_at: sm?.updated_at ?? null, live_at: m.live_at,
+        races: rc ? upcoming(rc.data) : null };
     });
     return json(req, { partner: group[0] ?? null, group });
   }
