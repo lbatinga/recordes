@@ -206,6 +206,24 @@ details.rr[open] .rr-i::before{content:"−"}
 .help-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;background:var(--bg);border-bottom:1px solid var(--line)}
 .help-head h2{margin:0}
 #help-body{padding:4px 18px 20px;overflow:auto}
+.hq-intro{font-size:14px;color:var(--muted);margin:12px 0 4px}
+.hq{border-top:1px solid var(--line)}
+.hq-list .hq:first-child{border-top:0}
+.hq > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:13px 0;min-height:52px}
+.hq > summary::-webkit-details-marker{display:none}
+.hq-flat{display:flex;padding:13px 0}
+.hq-h{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.hq-t{font-weight:700;font-size:16px;line-height:1.25}
+.hq-r{color:var(--muted);font-size:14px;line-height:1.35}
+.hq .sec-i{width:26px;height:26px;font-size:17px;border-width:1.2px}
+details.hq:not([open]) .sec-i::before{content:"+"}
+details.hq[open] .sec-i::before{content:"\2212"}
+.hq-b{padding:0 0 14px}
+.hq-sub{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+.hq-li{margin:4px 0 0;padding-left:20px;font-size:14px;line-height:1.45;max-width:64ch}
+.hq-li li{margin:6px 0}
+.hq-li li::marker{color:var(--muted)}
+.hq-li strong{color:var(--ink)}
 @media (prefers-reduced-motion:no-preference){
   .vfade{animation:vfade .22s ease-out both}
 }
@@ -3044,35 +3062,197 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return km;
   }
 
-  // Each screen shows only its own topics (want = titles to keep; null = all).
+  // Each screen shows only its own topics, in this order.
   var HELP_BY_VIEW = {
-    inicio: ['Metas', 'Desafios', 'Medalhas do mês', 'Peso', 'Clima', 'Retrospectiva', 'Avisos', 'Atualizar'],
-    recordes: ['Esteira, Rua, Prova e Tudo', 'Melhores tempos por distância', 'Recordes por treino', 'Provas e distâncias conferidas'],
-    evolucao: ['Esteira, Rua, Prova e Tudo', 'Evolução do pace', 'Volume semanal'],
-    provas: ['Provas e distâncias conferidas', 'Por onde corri', 'Metas', 'Clima'],
-    conquistas: ['Desafios', 'Semana pausada', 'Avisos', 'Medalhas do mês', 'Primeiras vezes', 'Retrospectiva'],
-    dupla: ['Placar']
+    inicio: ['metas', 'medalhas', 'desafios', 'peso', 'clima', 'retro', 'avisos', 'atualizar'],
+    recordes: ['filtro', 'tempos', 'portreino', 'provas'],
+    evolucao: ['filtro', 'pace', 'volume'],
+    provas: ['provas', 'metas', 'lugares', 'clima'],
+    conquistas: ['desafios', 'pausa', 'medalhas', 'primeiras', 'retro', 'avisos'],
+    dupla: ['placar', 'linhas', 'nivel', 'desempate', 'fechamento', 'atualiza', 'juntos', 'mudancas']
   };
+  /* Help topics: t = title, r = one-line summary (always visible), g = groups of bullets
+     (h = optional subheading, ol = numbered list). Written for someone who never saw the code. */
+  function helpTopics(){
+    var walk = WALK_UNTIL ? fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') : '';
+    return {
+      filtro: { t: 'Esteira, Rua, Prova e Tudo', r: 'Escolhe quais treinos aparecem na tela.', g: [{ li: [
+        '<strong>Esteira:</strong> corridas sem GPS (esteira, corrida lançada à mão ou no modo interno do relógio). Vale a distância que chega no Strava; se você ajustar no relógio ao terminar, vale a ajustada.',
+        '<strong>Rua:</strong> treinos na rua, medidos pelo GPS.',
+        '<strong>Prova:</strong> só as provas.',
+        '<strong>Tudo:</strong> junta todos, mostrando de onde veio cada treino.'
+      ].concat(walk ? ['Caminhadas feitas antes de ' + walk + ', com 500 m ou mais, contam como treino de rua.'] : []) }] },
+      tempos: { t: 'Melhores tempos por distância', r: 'O trecho mais rápido de cada distância, dentro de um treino.', g: [{ li: [
+        'As paradas contam no tempo, como no Strava.',
+        'Cada treino aparece no máximo uma vez em cada distância.',
+        'Distâncias maiores aparecem quando você passar delas.',
+        'Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço, e fecham com a distância total do treino. Valem como qualquer outro tempo.',
+        'Na rua, pode dar alguns segundos de diferença do Strava.'
+      ] }] },
+      portreino: { t: 'Recordes por treino', r: 'Aqui conta o treino inteiro, não só um trecho.', g: [{ li: [
+        '<strong>Mais tempo correndo sem parar:</strong> o maior trecho acima de 6 km/h sem caminhar. Pausas de até 10 s não quebram. Só vale na rua, porque precisa do GPS.',
+        '<strong>Pace:</strong> separado por faixa de distância: de 2 a 2,99 km, de 3 a 4,99 km e 5 km ou mais. Cada treino só disputa a faixa dele.'
+      ] }] },
+      provas: { t: 'Provas', r: 'Como a prova entra no app e qual tempo vale.', g: [
+        { h: 'Pra prova aparecer', li: [
+          'Marque a atividade como Prova no Strava.',
+          'Número de peito, local e tempo oficial ficam na tela Provas, em Editar.'
+        ] },
+        { h: 'Qual tempo vale', li: [
+          '<strong>Com tempo oficial (líquido) preenchido:</strong> ele vale na distância da prova, nos recordes e nas metas. Os trechos menores continuam vindo do relógio.',
+          '<strong>Sem tempo oficial:</strong> vale o tempo total, do início ao fim, como no Strava.',
+          'Se o relógio marcar até 2% a menos que a distância oficial, a prova conta na distância oficial, com o tempo total.'
+        ] },
+        { h: 'Casos especiais', li: [
+          'Prova sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira.',
+          'Duas provas no mesmo dia: cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.'
+        ] }
+      ] },
+      lugares: { t: 'Por onde corri', r: 'Cada cidade onde você correu vira um carimbo, como num passaporte.', g: [{ li: [
+        '<strong>Carimbo colorido:</strong> cidade onde você fez prova, com os treinos de lá somados. A cor e a posição seguem a ordem da primeira prova em cada cidade.',
+        '<strong>Carimbo tracejado:</strong> cidade onde você só treinou.',
+        'Entram corridas na rua e provas. Esteira não entra, porque não tem GPS.',
+        'Os totais de cidades, estados e países contam os dois tipos.',
+        'A cidade sai do ponto onde a corrida começou (com margem de cerca de 1 km), consultado no OpenStreetMap.',
+        'Cidade errada numa prova? Corrija em Editar, no campo Cidade.'
+      ] }] },
+      metas: { t: 'Metas', r: 'Cada distância tem uma meta de 5% a 7% abaixo de um tempo-base.', g: [
+        { h: 'Os três números', li: [
+          '<strong>Recorde:</strong> seu melhor tempo na rua, provas incluídas.',
+          '<strong>Base:</strong> o tempo de onde a meta partiu. Só muda quando você bate a meta.',
+          '<strong>Meta:</strong> uma faixa de 5% a 7% abaixo da base. Conta como batida com o tempo mais lento da faixa ou menos.'
+        ] },
+        { h: 'O que vale pra bater', li: [
+          '<strong>1 a 4 km:</strong> prova ou treino na rua.',
+          '<strong>5 km ou mais:</strong> só prova. Depois de 6 semanas sem prova, treino na rua também vale.',
+          'Esteira não vale. Aparece nos detalhes só como referência.'
+        ] },
+        { li: ['Toque numa distância pra ver os detalhes.'] }
+      ] },
+      pace: { t: 'Evolução do pace', r: 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente.', g: [{ li: [
+        'Quanto mais alto o ponto, mais rápido.',
+        'Ponto vermelho: o treino mais rápido até aquele dia.',
+        'Na aba Tudo, pontos vazados são esteira.'
+      ] }] },
+      volume: { t: 'Volume semanal', r: 'Quilômetros por semana, de domingo a sábado.', g: [{ li: [
+        'As cores separam rua, prova e esteira.',
+        'Caminhadas avulsas não entram.',
+        'Fique de olho: subida grande de uma semana pra outra é sinal de alerta pro joelho e a panturrilha.',
+        'Com muitas semanas, arraste o gráfico pro lado pra ver as mais antigas.'
+      ] }] },
+      desafios: { t: 'Desafios', r: 'Contam esteira e rua' + (walk ? ', além das caminhadas antigas' : '') + '.', g: [{ li: [
+        '<strong>Sequência:</strong> semanas seguidas com pelo menos 2 corridas. O plano pede 3.',
+        'Cada corrida precisa ter no mínimo 1 km ou 10 minutos. Caminhada e aquecimento curto não contam.',
+        'Em prova, vale a distância oficial.'
+      ] }] },
+      pausa: { t: 'Semana pausada', r: 'Pra uma semana de atestado ou viagem não quebrar a sequência.', g: [{ li: [
+        '<strong>Onde:</strong> Conquistas, card Constância, em Pausar uma semana. Escolha a semana e escreva o motivo.',
+        'A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 corridas, conta normal.',
+        'Dá pra pausar a semana atual e as 8 anteriores.',
+        'Na semana pausada não chega aviso.',
+        'Vale do mesmo jeito no Grupo.'
+      ] }] },
+      peso: { t: 'Peso', r: 'Vem do peso que está no seu perfil do Strava.', g: [{ li: [
+        'É lido duas vezes por dia, mesmo com o app fechado.',
+        'Fica um registro por dia, o primeiro peso novo do dia. Se o valor não mudou, o app entende que você não se pesou.',
+        'A média dos últimos 7 dias é comparada com a dos 7 anteriores.',
+        'O peso não aparece pro grupo.'
+      ] }] },
+      atualizar: { t: 'Atualizar', r: 'Puxe a tela pra baixo no topo, ou toque em Atualizar no menu ⋮.' },
+      avisos: { t: 'Avisos', r: 'Lembretes no celular pra não perder a sequência nem o fechamento do mês.', g: [
+        { h: 'Quando chegam', li: [
+          '<strong>Quinta e sexta às 18h, sábado às 8h:</strong> se faltar treino pra manter a sequência da semana.',
+          '<strong>Às 20h:</strong> quando um treino novo no Strava ainda não entrou no placar porque você não abriu o app.',
+          '<strong>Dias 1, 4, 7, 10, 15, 20 e 25 às 9h:</strong> se você ainda não abriu o app pra fechar o mês que passou.'
+        ] },
+        { h: 'Ligar e desligar', li: [
+          'Ao abrir, o app pergunta se você quer avisos. Em Agora não, ele pergunta de novo depois de 7 dias.',
+          'Dá pra ligar ou desligar quando quiser em Conquistas, no card Constância.',
+          'No iPhone, os avisos só funcionam com o app na tela de início.'
+        ] }
+      ] },
+      clima: { t: 'Clima', r: 'Temperatura, umidade e sensação térmica na hora em que a corrida começou.', g: [{ li: [
+        'Aparece nos treinos na rua e nas provas. Os dados vêm do Open-Meteo.',
+        'Provas a menos de 16 dias mostram a previsão. Com o horário de largada preenchido, é a previsão da hora certa.'
+      ] }] },
+      retro: { t: 'Retrospectiva', r: 'Um cartão com o resumo do mês, pra guardar ou compartilhar.', g: [{ li: [
+        'Em Conquistas, na Coleção, toque no mês pra gerar o cartão.',
+        'Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.'
+      ] }] },
+      primeiras: { t: 'Primeiras vezes', r: 'O que conta pra cada marco.', g: [{ li: [
+        '<strong>Trote contínuo:</strong> só corridas na rua (GPS), acima de 6 km/h, sem pausas de mais de 10 s.',
+        '<strong>Pace:</strong> conta rua e provas.',
+        '<strong>Chuva:</strong> estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local. Pode errar.',
+        '<strong>Primeira com alguém do grupo:</strong> a primeira corrida que começou até 20 minutos antes ou depois da dela, ou que tem o nome da pessoa na descrição da sua corrida no Strava.'
+      ] }] },
+      medalhas: { t: 'Medalhas do mês', r: 'Bronze, prata, ouro e diamante, comparando o mês com a sua média recente.', g: [
+        { h: 'Km do mês', li: [
+          '<strong>Ouro:</strong> a média de km dos 3 meses anteriores (mínimo 10 km).',
+          '<strong>Bronze:</strong> 60% do ouro. <strong>Prata:</strong> 80%. <strong>Diamante:</strong> 40% acima do ouro.',
+          'Caminhada gravada à parte não soma km nem medalha de km. Ela aparece com o ícone de caminhada.'
+        ] },
+        { h: 'Dias ativos', li: [
+          'Conta qualquer atividade de 10 minutos ou mais no Strava, uma por dia (caminhada também).',
+          'Mesmas faixas, usando a média de dias dos 3 meses anteriores (mínimo 8 dias).',
+          'O diamante nunca pede mais que o mês inteiro menos um dia de descanso por semana.'
+        ] }
+      ] },
+      placar: { t: 'Como funciona o placar', r: 'Cada linha vale pontos. Em cada linha, você leva os pontos dela por pessoa que superar.', g: [{ li: [
+        'A classificação do mês soma os pontos de todas as linhas.',
+        'Empate numa linha: ninguém ganha ponto dos empatados.',
+        'Quem não tem valor numa linha conta como último nela.',
+        'Com 3 pessoas ou mais, a aba se chama Grupo.'
+      ] }] },
+      linhas: { t: 'Linhas e pontos', r: '7 linhas, de 4 a 1 ponto.', g: [{ li: [
+        '<strong>Melhora recente nos 5 km (4 pontos):</strong> nos últimos 120 dias, o primeiro 5 km comparado com o melhor. Com um 5 km só, fica 0%.',
+        '<strong>Nível por idade e sexo (3):</strong> a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais.',
+        '<strong>Correndo sem parar (3):</strong> o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua.',
+        '<strong>Metas batidas (2):</strong> quantas vezes alguma meta de 1 a 6 km foi batida no mês.',
+        '<strong>Constância (1):</strong> quantas das últimas 12 semanas tiveram 2 corridas ou mais. Semana pausada fica de fora.',
+        '<strong>Medalhas (1):</strong> a soma das medalhas do mês: bronze 1, prata 2, ouro 3, diamante 4.',
+        '<strong>Dias com recorde (1):</strong> em quantos dias do mês a pessoa bateu um recorde que já existia, em qualquer distância. Rua (com as provas) e esteira têm recordes separados.'
+      ] }] },
+      nivel: { t: 'Nível por idade e sexo', r: 'Uma nota em % que compara seu tempo com o da sua idade e sexo. 100% é nível de recorde mundial.', g: [{ li: [
+        'A referência é a tabela oficial de corrida de rua da USATF (edição 2025). Ela é conferida todo janeiro e vale o ano inteiro.',
+        'A idade nova conta a partir do mês do aniversário.',
+        'Esteira não entra.'
+      ] }] },
+      desempate: { t: 'Empate no placar', r: 'Se os pontos empatarem, o desempate segue uma ordem.', g: [
+        { h: 'No mês', ol: 1, li: ['Nível por idade e sexo', 'Linhas vencidas sozinho', 'Km no mês', 'Dias ativos no mês'] },
+        { h: 'No ano', ol: 1, li: ['Meses vencidos', 'Pontos somados', 'Confronto direto', 'Nível por idade e sexo'] }
+      ] },
+      fechamento: { t: 'Fechamento do mês', r: 'O mês fecha com tudo o que foi feito nele.', g: [{ li: [
+        'O resultado final sai quando todos abrirem o app no mês seguinte.',
+        'O placar conta desde junho de 2026, e cada mês usa os números como estavam no último dia dele.',
+        'Quem entra no grupo disputa a partir do mês em que entrou. Os meses anteriores não mudam.'
+      ] }] },
+      atualiza: { t: 'Quando o placar atualiza', r: 'Uma parte atualiza sozinha; o resto depende de cada um abrir o app.', g: [{ li: [
+        '<strong>Na hora em que a pessoa salva um treino no Strava:</strong> constância, medalhas e treinos juntos.',
+        '<strong>Quando a pessoa abre o app:</strong> as outras linhas.'
+      ] }] },
+      juntos: { t: 'Treinos juntos', r: 'Só curiosidade: não entra no placar.', g: [{ li: [
+        'Conta as corridas que começaram com até 20 minutos de diferença, no mesmo dia, nos últimos 4 meses.'
+      ] }] },
+      mudancas: { t: 'Mudanças nas regras', r: 'Meses que já fecharam continuam como estavam.', g: [{ li: [
+        '<strong>Dias com recorde, desde novembro de 2026:</strong> rua e esteira passaram a ter recordes separados. Até outubro, valia só o melhor de todos, com rua e esteira juntas.'
+      ] }] }
+    };
+  }
   function comoFunciona(want){
-    var p = function(t, x){ return want && want.indexOf(t) === -1 ? '' : '<h3 class="h3">' + t + '</h3><p class="fine">' + x + '</p>'; };
-    return p('Esteira, Rua, Prova e Tudo', 'O filtro aparece nas telas de Recordes e Evolução. Rua mostra só os treinos de rua, e Prova, só as provas. Na esteira vale a distância que chega no Strava; se você ajustar a distância no relógio ao terminar, é a ajustada que vale. Rua usa o GPS. Tudo junta as duas, com a origem de cada treino indicada.' + (WALK_UNTIL ? ' As caminhadas feitas antes de ' + fmtDate(parseIso(WALK_UNTIL)).replace(/^[^,]+, /, '') + ', com 500 m ou mais, contam como treino de rua.' : '')) +
-      p('Melhores tempos por distância', 'Cada tempo é o trecho mais rápido daquela distância dentro de um treino, com as paradas contando, como no Strava. Um treino entra no máximo uma vez por distância, e distâncias maiores aparecem quando você passar delas. Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço, e fecham com a distância total do treino. Valem como qualquer outro tempo. Na rua, podem diferir alguns segundos do Strava.') +
-      p('Provas e distâncias conferidas', 'Corrida sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Marque a atividade como Prova no Strava. Se o relógio registrar até 2% a menos que a distância oficial, vale o tempo total da prova. Os dados de cada prova, como número de peito e local, ficam na tela de Provas, em Editar. Com o tempo oficial (líquido) preenchido, ele vale no lugar do tempo do Strava na distância da prova, nos recordes e nas metas; os trechos menores continuam vindo do relógio. Prova sem tempo oficial usa o tempo total, do início ao fim, como no Strava. Com duas provas no mesmo dia, cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.') +
-      p('Por onde corri', 'Na tela de Provas, cada cidade vira um carimbo. A cidade sai do ponto onde a corrida começou, arredondado em cerca de 1 km e consultado no OpenStreetMap. Carimbo colorido: cidade onde você fez prova, com os treinos de lá somados; cada uma ganha uma cor na ordem da primeira prova feita lá e fica com ela, e os carimbos seguem essa ordem, como num passaporte. Tracejado: cidade onde você só treinou. Entram as corridas na rua e as provas; esteira não, porque não tem GPS. Cidades, estados e países contam os dois tipos. Se a cidade de uma prova vier errada, corrija em Editar, no campo Cidade.') +
-      p('Metas', 'Cada distância mostra o recorde (o melhor tempo na rua, provas incluídas), a meta e quanto falta. A meta fica de 5% a 7% abaixo da base, o tempo de onde ela partiu, e conta como batida com o tempo mais lento da faixa ou menos. A base só muda quando você bate a meta. De 1 a 4 km, treino na rua também vale. De 5 km pra cima, só prova, ou treino na rua depois de 6 semanas sem prova. Esteira não vale; aparece nos detalhes só como referência. Toque numa distância pra ver os detalhes.') +
-      p('Recordes por treino', 'Conta o treino inteiro. Mais tempo correndo sem parar é o maior trecho trotando ou correndo, acima de 6 km/h, sem caminhar (pausas de até 10 s não quebram); só vale na rua, porque precisa do GPS. Pace é separado por faixa de distância, sem sobreposição: de 2 a 3 km (até 2,99 km), de 3 a 5 km (até 4,99 km) e 5 km ou mais. Cada treino só disputa a faixa dele.') +
-      p('Primeiras vezes', 'Trote contínuo só conta corridas na rua, pelo GPS: acima de 6 km/h, sem pausas de mais de 10 s. Pace conta rua e provas. Chuva é estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local, então pode errar. Primeira com alguém do grupo: a primeira corrida que começou até 20 minutos antes ou depois da dela, ou que tem o nome da pessoa na descrição da sua corrida no Strava.') +
-      p('Evolução do pace', 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente. Quanto mais alto, mais rápido. Vermelho marca o treino mais rápido até aquele dia, entre os pontos do gráfico. Na aba Tudo, pontos vazados são esteira.') +
-      p('Volume semanal', 'Quilômetros por semana, de domingo a sábado. Caminhadas avulsas não entram. Subidas grandes de uma semana pra outra são o sinal de alerta pro joelho e a panturrilha. As cores separam rua, prova e esteira. Com muitas semanas, arraste o gráfico pro lado pra ver as mais antigas.') +
-      p('Desafios', 'Contam esteira e rua' + (WALK_UNTIL ? ', além das caminhadas antigas' : '') + '. A sequência conta semanas com pelo menos 2 corridas de 1 km ou 10 minutos, no mínimo (caminhada e aquecimento curto não contam); o plano pede 3. Em prova, vale a distância oficial.') +
-      p('Semana pausada', 'No card de Constância, em Pausar uma semana, escolha a semana e escreva o motivo (atestado, viagem). Ela não conta pra sequência, mas também não zera; se tiver 2 corridas, conta normal. Dá pra pausar a semana atual e as 8 anteriores, e nessa semana não chega aviso. A sequência da Dupla segue a mesma regra.') +
-      p('Peso', 'Vem do peso que está no seu perfil do Strava, lido duas vezes por dia, mesmo com o app fechado. Fica um registro por dia, o primeiro peso novo do dia; se o valor não mudou, o app entende que você não se pesou. A média de 7 dias é comparada com a dos 7 dias anteriores. O peso não aparece na Dupla.') +
-      p('Atualizar', 'Puxe a tela pra baixo no topo, ou toque em Atualizar no menu ⋮.') +
-      p('Avisos', 'Ao abrir, o app pergunta se você quer receber avisos; em Agora não, ele pergunta de novo depois de 7 dias. Dá pra ligar ou desligar quando quiser em Conquistas, no card de Constância. São três: quinta e sexta às 18h e sábado às 8h, se faltar treino na semana pra manter a sequência; às 20h, quando um treino novo no Strava ainda não entrou no placar porque o app não foi aberto; e nos dias 1, 4, 7, 10, 15, 20 e 25 às 9h, pra quem ainda não abriu o app pra fechar o mês que passou. No iPhone, os avisos só funcionam com o app na tela de início.') +
-      p('Clima', 'Temperatura, umidade e sensação térmica na hora em que o treino na rua ou a prova começou, pelo Open-Meteo. Nas provas a menos de 16 dias, aparece a previsão; com o horário de largada preenchido, a previsão é da hora certa.') +
-      p('Retrospectiva', 'Em Conquistas, na Coleção, toque no mês pra gerar o cartão daquele mês. Nos primeiros dias de cada mês, o cartão do mês anterior aparece no Início.') +
-      p('Placar', 'Cada linha vale pontos diferentes, e quem vence a linha leva os pontos dela. Melhora recente nos 5 km (4): dentro dos últimos 120 dias (janela que anda um dia por vez), o primeiro 5 km comparado com o melhor; com um 5 km só, fica 0%. Nível por idade e sexo (3): a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais. A nota compara o tempo com a referência oficial da sua idade, sexo e distância (tabela de corrida de rua da USATF, edição 2025); 100% é nível de recorde mundial. A idade nova conta a partir do mês do aniversário. Esteira não entra. A referência é conferida todo janeiro e vale o ano inteiro. Correndo sem parar (3): o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua. Metas batidas (2): quantas vezes a meta de 1 a 6 km foi batida no mês. Constância (1): quantas das últimas 12 semanas tiveram 2 corridas ou mais (semana pausada fica de fora). Medalhas (1): a soma das medalhas do mês, de 1 (bronze) a 4 (diamante) em cada uma. Dias com recorde (1): em quantos dias do mês a pessoa bateu um melhor tempo que já existia, em qualquer distância. Desde novembro de 2026, rua (com as provas) e esteira têm recordes separados: um treino de esteira conta quando bate o melhor da esteira, e um de rua, o melhor da rua. Até outubro, valia só o melhor de todos, com rua e esteira juntas, e esses meses ficaram como estavam. As outras linhas valem para todos os meses, desde junho de 2026, como estavam no último dia de cada mês. Empate na linha não pontua entre os empatados. Quem não tem valor numa linha conta como último nela. Se o placar empatar, desempata, nesta ordem: nível por idade e sexo, linhas vencidas sozinho, km no mês e dias ativos no mês. No ano: meses vencidos, pontos somados, confronto direto e nível. O mês que acabou fecha com tudo que foi feito nele; o resultado final sai quando todos abrirem o app no mês seguinte. Quem entra no grupo disputa a partir do mês em que entrou; os meses anteriores não mudam. Treinos juntos conta as corridas que começaram com até 20 minutos de diferença no mesmo dia, nos últimos 4 meses, e não entra no placar. Constância, medalhas e treinos juntos do outro se atualizam sozinhos quando ele salva um treino no Strava; as outras linhas mudam quando ele abre o app. Com 3 pessoas ou mais, a aba vira Grupo: em cada linha, cada um ganha os pontos dela por pessoa que supera, e a classificação soma tudo.') +
-      p('Medalhas do mês', 'Km do mês: a média dos 3 meses anteriores, com mínimo de 10 km, é o ouro. Bronze é 60% dela, prata 80%, e diamante 40% acima. Dias ativos: qualquer atividade de 10 minutos ou mais no Strava, um por dia, com a mesma regra, usando a média de dias dos 3 meses anteriores e mínimo de 8 dias. O diamante nunca pede mais que o mês menos um dia de descanso por semana. Caminhada gravada à parte aparece com o ícone de caminhada e não soma km nem medalha de km; com 10 minutos ou mais, conta como dia ativo.');
+    var T = helpTopics();
+    var ids = want || Object.keys(T);
+    return '<p class="hq-intro">Toque num assunto pra ver os detalhes.</p><div class="hq-list">' + ids.map(function(id){
+      var x = T[id];
+      if (!x) return '';
+      var head = '<span class="hq-h"><span class="hq-t">' + x.t + '</span><span class="hq-r">' + x.r + '</span></span>';
+      if (!x.g) return '<div class="hq hq-flat">' + head + '</div>';
+      var inner = x.g.map(function(gr){
+        var tag = gr.ol ? 'ol' : 'ul';
+        return (gr.h ? '<p class="hq-sub">' + gr.h + '</p>' : '') +
+          '<' + tag + ' class="hq-li">' + gr.li.map(function(l){ return '<li>' + l + '</li>'; }).join('') + '</' + tag + '>';
+      }).join('');
+      return '<details class="hq"><summary>' + head + '<span class="sec-i" aria-hidden="true"></span></summary><div class="hq-b">' + inner + '</div></details>';
+    }).join('') + '</div>';
   }
 
   function envSeg(){
