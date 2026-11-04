@@ -234,6 +234,18 @@ details.hq[open] .sec-i::before{content:"\2212"}
 .adm-sub{display:block;font-size:12px;margin-top:2px}
 .adm-r{text-align:right;white-space:nowrap;color:var(--ink)}
 .adm-note{font-size:13px;color:var(--muted);margin:6px 0 0}
+.adm-tw{overflow-x:auto;margin:4px 0 0}
+.adm-t{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.adm-t th{text-align:left;font-weight:700;padding:6px 8px;border-bottom:1.5px solid var(--line)}
+.adm-t td{padding:7px 8px;border-top:1px solid var(--line);vertical-align:top}
+.adm-t .adm-k{color:var(--muted);padding-left:0}
+.adm-t th:first-child{width:30%}
+.adm-both{color:var(--muted);font-size:12px;white-space:nowrap}
+.adm-t th:first-child{padding-left:0}
+.adm-same{text-align:left}
+.adm-no{color:var(--muted)}
+.adm-race td{font-weight:700;padding-top:14px;padding-left:0;border-top:1.5px solid var(--line)}
+.adm-t .adm-sub{display:block;font-size:12px;color:var(--muted);margin-top:2px}
 @media (prefers-reduced-motion:no-preference){
   .vfade{animation:vfade .22s ease-out both}
 }
@@ -3794,18 +3806,20 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + ', ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
   function admDay(iso){ var d = parseIso(iso); return d ? pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) : iso; }
-  function admRow(l, r, sub){
-    return '<div class="adm-kv"><span class="adm-l">' + l + (sub ? '<span class="adm-sub">' + sub + '</span>' : '') + '</span><span class="adm-r">' + r + '</span></div>';
-  }
-  function adminHtml(people){
-    var today = isoOf(new Date()), ref = mkey(nowD()), lines = linesFor(ref);
-    var lim30 = isoOf(new Date(Date.now() - 30 * 86400000));
+
+  function adminHtml(all){
+    var today = isoOf(new Date());
+    var lim30 = isoOf(new Date(Date.now() - 30 * 86400000)), lim60 = isoOf(new Date(Date.now() - 60 * 86400000));
+    var myId = me && Number(me.id);
+    var others = all.filter(function(p){ return Number(p.id) !== myId; });
+    var name = function(p){ return esc(p.firstname || 'Atleta'); };
+
+    // Alerts cover everyone, the owner included (a race without start time is his to fix too).
     var alerts = [], noTime = {}, oldApp = [];
-    people.forEach(function(p){
-      var s = p.summary, nm = esc(p.firstname || 'Atleta');
+    all.forEach(function(p){
+      var s = p.summary, nm = name(p);
       if (!s || !s.at) { alerts.push('<strong>' + nm + ':</strong> ainda não publicou os números (nunca abriu o app até o fim)'); return; }
-      var days = Math.floor((Date.now() - s.at) / 86400000);
-      if (days > 5) alerts.push('<strong>' + nm + ':</strong> não abre o app desde ' + admWhen(s.at).split(',')[0]);
+      if (Date.now() - s.at > 5 * 86400000) alerts.push('<strong>' + nm + ':</strong> não abre o app desde ' + admWhen(s.at).split(',')[0]);
       if (s.app !== APP_VER) oldApp.push(nm);
       var past = {}; (s.pastRaces || []).forEach(function(r){ past[r.date] = true; });
       var atIso = isoOf(new Date(s.at));
@@ -3823,36 +3837,58 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<p class="adm-tag">Pra conferir</p>' +
       (alerts.length ? '<ul class="adm-box hq-li">' + alerts.map(function(a){ return '<li>' + a + '</li>'; }).join('') + '</ul>'
         : '<p class="adm-box adm-ok">Nada pra conferir agora.</p>');
+    if (!others.length) return html;
 
-    html += people.map(function(p){
-      var s = p.summary, nm = esc(p.firstname || 'Atleta');
-      var head = '<h3 class="adm-h">' + nm + '</h3><p class="hq-r">' + (s && s.at
-        ? 'Última abertura: ' + admWhen(s.at) + ' · ' + (s.app === APP_VER ? 'versão atual' : 'versão antiga')
-        : 'Ainda sem números publicados') + '</p>';
-      var placar = '<p class="adm-tag">Placar de ' + MON_FULL[+ref.slice(5, 7) - 1] + '</p>' + lines.map(function(L){
-        var v = lineVal(L, s, ref);
-        return admRow(esc(L.k), v == null ? '--' : L.f(v));
-      }).join('') + (p.live_at ? '<p class="adm-note">Constância e medalhas atualizadas pelo Strava em ' + admWhen(new Date(p.live_at).getTime()) + '.</p>' : '');
-      var races = (p.races || []).slice().sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
-      var provas = '<p class="adm-tag">Provas</p>' + (races.length ? races.map(function(r){
-        var l = esc(r.short || r.name) + ' · ' + admDay(r.date) + ' · ' + fmtKmShort(Number(r.km)) + ' km';
-        var sub = [r.local ? esc(r.local) : 'sem local', r.bib ? 'peito ' + esc(r.bib) : 'sem número de peito'].join(' · ');
-        var right = r.date >= today ? 'largada ' + (r.time ? r.time.replace(':', 'h') : '--')
-          : (Number(r.chip) > 0 ? 'oficial ' + fmtTime(Number(r.chip)) : 'sem tempo oficial');
-        return admRow(l, right, sub);
-      }).join('') : '<p class="adm-note">Nenhuma prova cadastrada.</p>');
-      var goals = p.goals || {}, rg = (s && s.raceGoals) || {};
-      var gk = GOAL_KEYS.filter(function(k){ return goals[k] && goals[k].baseT != null; });
-      var metas = '<p class="adm-tag">Metas</p>' + (gk.length ? gk.map(function(k){
-        var g = goals[k], rec = rg[k] && rg[k].obj ? fmtTime(rg[k].obj) : '--';
-        return admRow(DIST_BY[k].label, 'até ' + fmtTime(g.hi), 'base ' + fmtTime(g.baseT) + (g.baseDate ? ' (' + admDay(g.baseDate) + ')' : '') + ' · recorde&nbsp;' + rec);
-      }).join('') : '<p class="adm-note">Nenhuma meta ainda.</p>');
-      var pw = (p.pauses || []).slice().sort();
-      var outros = '<p class="adm-tag">Outros</p>' +
-        admRow('Semanas pausadas', pw.length ? pw.map(admDay).join(', ') : 'nenhuma') +
-        admRow('Avisos', p.push > 0 ? 'ligados (' + p.push + (p.push === 1 ? ' aparelho)' : ' aparelhos)') : 'desligados');
-      return '<div class="adm-card">' + head + placar + provas + metas + outros + '</div>';
-    }).join('');
+    // One table per topic: a row per item, a column per person. A value that is the same for
+    // everyone is written once across the row, so a difference stands out.
+    var head = '<tr><th></th>' + others.map(function(p){ return '<th>' + name(p) + '</th>'; }).join('') + '</tr>';
+    function row(label, cells){
+      var same = cells.length > 1 && cells.every(function(c){ return c === cells[0]; });
+      return '<tr><td class="adm-k">' + label + '</td>' + (same
+        ? '<td class="adm-same" colspan="' + cells.length + '">' + cells[0] + ' <span class="adm-both">(' + (cells.length === 2 ? 'os dois' : 'todos') + ')</span></td>'
+        : cells.map(function(c){ return '<td>' + c + '</td>'; }).join('')) + '</tr>';
+    }
+    function table(title, rows){
+      return '<p class="adm-tag">' + title + '</p><div class="adm-tw"><table class="adm-t"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>';
+    }
+    var none = '<span class="adm-no">—</span>';
+
+    // Situação
+    html += table('Situação',
+      row('Última abertura', others.map(function(p){ var s = p.summary; return s && s.at ? admWhen(s.at) : 'nunca'; })) +
+      row('Versão do app', others.map(function(p){ var s = p.summary; return s && s.app === APP_VER ? 'atual' : 'antiga'; })) +
+      row('Avisos', others.map(function(p){ return p.push > 0 ? 'ligados' : 'desligados'; })) +
+      row('Semanas pausadas', others.map(function(p){ var w = (p.pauses || []).slice().sort(); return w.length ? w.map(admDay).join(', ') : 'nenhuma'; })));
+
+    // Provas: one block per race (same date), upcoming first, then the last 60 days.
+    var byKey = {}, keys = [];
+    others.forEach(function(p, i){
+      (p.races || []).forEach(function(r){
+        if (r.date < lim60) return;
+        if (!byKey[r.date]) { byKey[r.date] = { date: r.date, label: esc(r.short || r.name), km: r.km, by: {} }; keys.push(r.date); }
+        byKey[r.date].by[i] = r;
+      });
+    });
+    keys.sort(function(a, b){ var fa = a >= today, fb = b >= today; return fa !== fb ? (fa ? -1 : 1) : fa ? (a < b ? -1 : 1) : (a > b ? -1 : 1); });
+    html += '<p class="adm-tag">Provas</p>' + (keys.length ? '<div class="adm-tw"><table class="adm-t"><thead>' + head + '</thead><tbody>' + keys.map(function(k){
+      var R = byKey[k], fut = k >= today;
+      var cell = function(f){ return others.map(function(p, i){ var r = R.by[i]; return r ? f(r) : none; }); };
+      return '<tr class="adm-race"><td colspan="' + (others.length + 1) + '">' + R.label + ' · ' + admDay(k) + ' · ' + fmtKmShort(Number(R.km)) + ' km' + (fut ? '' : ' · já foi') + '</td></tr>' +
+        (fut ? row('Largada', cell(function(r){ return r.time ? r.time.replace(':', 'h') : '--'; })) : row('Tempo oficial', cell(function(r){ return Number(r.chip) > 0 ? fmtTime(Number(r.chip)) : 'sem'; }))) +
+        row('Peito', cell(function(r){ return r.bib ? esc(r.bib) : '--'; })) +
+        row('Local', cell(function(r){ return r.local ? esc(r.local) : '--'; }));
+    }).join('') + '</tbody></table></div>' : '<p class="adm-note">Nenhuma prova nos últimos 60 dias nem marcada.</p>');
+
+    // Metas: a row per distance; the goal on top, base and record below.
+    var gk = GOAL_KEYS.filter(function(k){ return others.some(function(p){ return p.goals && p.goals[k] && p.goals[k].baseT != null; }); });
+    if (gk.length) html += table('Metas', gk.map(function(k){
+      return row(DIST_BY[k].label, others.map(function(p){
+        var g = p.goals && p.goals[k], rg = p.summary && p.summary.raceGoals && p.summary.raceGoals[k];
+        if (!g || g.baseT == null) return none;
+        return 'até ' + fmtTime(g.hi) + '<span class="adm-sub">base ' + fmtTime(g.baseT) + '<br>recorde ' + (rg && rg.obj ? fmtTime(rg.obj) : '--') + '</span>';
+      }));
+    }).join(''));
+    html += '<p class="adm-note">O placar de cada um está na aba Grupo.</p>';
     return html;
   }
   async function openAdmin(){
