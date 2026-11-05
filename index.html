@@ -692,6 +692,8 @@ span.yr-c{cursor:default}
 .mx tr.mx-r{cursor:pointer}
 .mx tr.mx-d td{text-align:left;font-size:12.5px;color:var(--muted);border-top:0;padding:0 12px 10px;line-height:1.5}
 .mx tr.mx-d b{color:var(--ink);font-weight:600}
+.mx tr.mx-info td{border-top:1.5px dashed var(--line)}
+.mx tr.mx-info .v{font-weight:600;color:var(--muted)}
 .mx tfoot td{font-family:var(--font-num-s);font-weight:800;font-size:18px;background:var(--surface-2)}
 .mx tfoot td:first-child{font-family:var(--font-ui);font-size:13px}
 .mx thead th span{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pc);margin-right:4px;vertical-align:1px}
@@ -3264,14 +3266,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'Quem não tem valor numa linha conta como último nela.',
         'Com 3 pessoas ou mais, a aba se chama Grupo.'
       ] }] },
-      linhas: { t: 'Linhas e pontos', r: '7 linhas, de 4 a 1 ponto.', g: [{ li: [
+      linhas: { t: 'Linhas e pontos', r: '7 linhas que valem de 4 a 1 ponto, mais o km do mês, que não pontua.', g: [{ li: [
         '<strong>Melhora recente nos 5 km (4 pontos):</strong> nos últimos 120 dias, o primeiro 5 km comparado com o melhor. Com um 5 km só, fica 0%.',
         '<strong>Nível por idade e sexo (3):</strong> a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais.',
         '<strong>Correndo sem parar (3):</strong> o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua.',
         '<strong>Metas batidas (2):</strong> quantas vezes alguma meta de 1 a 6 km foi batida no mês.',
         '<strong>Constância (1):</strong> quantas das últimas 12 semanas tiveram 2 corridas ou mais. Semana pausada fica de fora.',
         '<strong>Medalhas (1):</strong> a soma das medalhas do mês: bronze 1, prata 2, ouro 3, diamante 4.',
-        '<strong>Dias com recorde (1):</strong> em quantos dias do mês a pessoa bateu um recorde que já existia, em qualquer distância. Rua (com as provas) e esteira têm recordes separados.'
+        '<strong>Dias com recorde (1):</strong> em quantos dias do mês a pessoa bateu um recorde que já existia, em qualquer distância. Rua (com as provas) e esteira têm recordes separados.',
+        '<strong>Km no mês:</strong> aparece na tabela só pra comparar. Não vale ponto.'
       ] }] },
       nivel: { t: 'Nível por idade e sexo', r: 'Uma nota em % que compara seu tempo com o da sua idade e sexo. 100% é nível de recorde mundial.', g: [{ li: [
         'A referência é a tabela oficial de corrida de rua da USATF (edição 2025). Ela é conferida todo janeiro e vale o ano inteiro.',
@@ -5269,6 +5272,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return '<tr class="mx-r" data-mx="' + li + '"><td>' + esc(L.short || L.k) + '<small>' + esc(L.sm ? L.sm + ' · ' : '') + L.w + (L.w === 1 ? ' pt' : ' pts') + '</small></td>' + cells + '</tr>' +
         (det ? '<tr class="mx-d" data-mxd="' + li + '" hidden><td colspan="' + (cols.length + 1) + '">' + det + '</td></tr>' : '');
     }).join('');
+    // Decided on 04/11/2026: km in the month is shown for everyone to see, but gives no points.
+    rows += '<tr class="mx-info"><td>Km no mês<small>não pontua</small></td>' + cols.map(function(p){
+      var s0 = p.s || {};
+      return '<td><span class="v">' + (s0.month === ref && s0.kmMonth != null ? fmtKmShort(Number(s0.kmMonth)) : '--') + '</span></td>';
+    }).join('') + '</tr>';
     var matrix = '<h3 class="h3">Linha a linha</h3><table class="mx"><thead><tr><th>Linha</th>' + cols.map(function(p){
         return '<th style="--pc:' + pcol[p.id] + '"><span></span>' + esc(p.name) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody>' +
       '<tfoot><tr><td>Total</td>' + cols.map(function(p){ return '<td>' + pts[p.id] + '</td>'; }).join('') + '</tr></tfoot></table>' +
