@@ -1021,6 +1021,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      the owner): a manual Strava entry that summed two recordings, for example. */
   var KM_OVERRIDE = {};
   var EXTRA_ACTS = []; // config/overrides.add: runs the athlete did but never reached Strava
+  /* Strava descriptions (config/descs), fetched one by one only for runs that started within
+     20 minutes of someone in the group without a GPS match: the activity list has no description,
+     and a name written there is what makes a treadmill run count as together. */
+  var DESCS = {};
   var RACES = RACE_INFO;
 
   var session = null, me = null;
@@ -1277,7 +1281,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         effKm: effort != null ? effort / km : null,
         race: Array.isArray(a.activity_tags) && a.activity_tags.indexOf('Race') !== -1,
         name: a.name || '',
-        desc: a.description || '',
+        desc: a.description || DESCS[String(a.id)] || '',
         walk: type === 'Walk',
         place: a.location_summary || '',
         latlng: Array.isArray(a.latlng) && a.latlng.length === 2 ? a.latlng : null,
@@ -5067,6 +5071,36 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (key === lastSummary) return;
     lastSummary = key;
     putDoc('config', 'summary', s);
+    ensureDescs();
+  }
+  var descBusy = false;
+  function ensureDescs(){
+    if (descBusy || !partnerLoaded || !group.length || !state.sessions || !allAnalyzed()) return;
+    var theirs = [];
+    group.forEach(function(g){ ((g.summary && (g.summary.runsAll || g.summary.runs)) || []).forEach(function(t){ theirs.push(runInfo(t)); }); });
+    var want = state.sessions.filter(function(x){
+      if (!x.d || x.walk || DESCS[x.id] != null || !/^\d+$/.test(x.id)) return false;
+      var a = runInfo(runTag(x));
+      return theirs.some(function(b){
+        if (b.m == null || Math.abs(a.m - b.m) > 20) return false;
+        return !(a.cell && b.cell && Math.abs(a.cell[0] - b.cell[0]) <= 0.015 && Math.abs(a.cell[1] - b.cell[1]) <= 0.015);
+      });
+    }).map(function(x){ return x.id; }).reverse().slice(0, 20); // newest first; Strava's rate limit is shared by everyone
+    if (!want.length) return;
+    descBusy = true;
+    var batches = [];
+    for (var i = 0; i < want.length; i += 10) batches.push(want.slice(i, i + 10));
+    batches.reduce(function(p, ids){
+      return p.then(function(){ return apiFetch('/desc?ids=' + ids.join(',')).then(function(j){
+        Object.keys((j && j.descs) || {}).forEach(function(id){ DESCS[id] = String(j.descs[id] || '').slice(0, 300); });
+      }); });
+    }, Promise.resolve()).catch(function(){}).then(function(){
+      descBusy = false;
+      var got = false;
+      state.sessions.forEach(function(x){ if (DESCS[x.id] != null && !x.desc) { x.desc = DESCS[x.id]; got = true; } });
+      putDoc('config', 'descs', { d: DESCS });
+      if (got) { publishSummary(); render(); }
+    });
   }
   function loadPartner(){
     return apiFetch('/partner').then(function(j){
@@ -5077,6 +5111,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       partnerLoaded = true;
       syncDuoNav();
       if (view === 'dupla') render();
+      publishSummary(); // the run tags carry the group's names, known only now
+      ensureDescs();
     }).catch(function(){});
   }
   /* Upcoming races come straight from the server (config/races), so a race added for someone
@@ -5556,6 +5592,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
+        else if (d.col === 'config' && d.id === 'descs') { DESCS = v.d && typeof v.d === 'object' ? v.d : {}; }
         else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; VERIFIED = v.verified && typeof v.verified === 'object' ? v.verified : {}; EXTRA_ACTS = Array.isArray(v.add) ? v.add : []; }
         else if (d.col === 'config' && d.id === 'partner') { GROUP_SINCE = v.since && typeof v.since === 'object' ? v.since : {}; }
         else if (d.col === 'config' && d.id === 'painel') { PAINEL = v.km && typeof v.km === 'object' ? v.km : {}; }

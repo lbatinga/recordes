@@ -609,6 +609,22 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     if (!/^\d{1,20}$/.test(id)) throw new HttpError(400, 'bad_request');
     return json(req, await stravaGet(aid, '/activities/' + id + '/streams?keys=time,distance&key_by_type=true'));
   }
+  if (path === '/desc' && req.method === 'GET') {
+    // Strava descriptions of up to 10 of the athlete's own activities (the list has none).
+    const ids = (url.searchParams.get('ids') ?? '').split(',').filter((x) => /^\d{1,20}$/.test(x)).slice(0, 10);
+    const descs: Record<string, string> = {};
+    for (const id of ids) {
+      try {
+        // deno-lint-ignore no-explicit-any
+        const a: any = await stravaGet(aid, '/activities/' + id);
+        descs[id] = String(a?.description ?? '').slice(0, 300);
+      } catch (e) {
+        if (e instanceof HttpError && e.code === 'not_found') { descs[id] = ''; continue; }
+        break;
+      }
+    }
+    return json(req, { descs });
+  }
   if (path === '/docs' && req.method === 'GET') {
     const { data, error } = await sb.from('docs').select('col, id, data').eq('athlete_id', aid);
     if (error) throw new HttpError(500, 'db_error', error.message);
