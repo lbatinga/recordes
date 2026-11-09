@@ -38,3 +38,10 @@ O código da função está em `supabase/functions/api/index.ts` (cópia de refe
 ## Limites do Strava
 
 200 leituras a cada 15 min e 2.000 por dia para o app inteiro, até 10 atletas. O primeiro acesso de alguém novo calcula os esforços treino a treino; se bater no limite, o app pausa e continua sozinho.
+
+## Testes das regras
+
+`node --test tests/*.test.js` (Node 22 ou mais novo). Os testes carregam o `index.html` e a função `api` de verdade, com data fixa, sem rede e sem banco: não publicam nem alteram nada. `tests/regras.test.js` cobre recordes, metas, medalhas, placar, semana pausada e treinos juntos; `tests/servidor.test.js` compara o que o servidor calcula sozinho (webhook, avisos) com o app.
+
+Regras decididas em 09/11/2026 (ramo `correcoes-revisao`): mês fechado fica congelado (`closed` em `config/grouphist` e `config/duohist`); a meta é refeita desde o primeiro tempo, igual na tela e no placar; prova sem tempo oficial usa o tempo total na distância cadastrada; prova sem GPS só conta como rua com tempo oficial; esteira lançada à mão com distância redonda vale o tempo total; `/partner` passa a devolver `lastname` e `/cron/push` conta `overrides.add` (essas duas dependem de publicar a função no Supabase).
+

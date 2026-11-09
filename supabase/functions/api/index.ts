@@ -209,10 +209,23 @@ async function readPauses(aid: number): Promise<Record<string, string>> {
 async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: number; paused: boolean }> {
   const pauses = await readPauses(aid);
   const after = Math.floor(Date.now() / 1000) - 100 * 86400;
-  const acts = await stravaGet(aid, '/athlete/activities?per_page=200&after=' + after);
+  // deno-lint-ignore no-explicit-any
+  const fromStrava: any = await stravaGet(aid, '/athlete/activities?per_page=200&after=' + after);
+  // deno-lint-ignore no-explicit-any
+  const acts: any[] = Array.isArray(fromStrava) ? fromStrava.slice() : [];
+  // Runs added by hand in config/overrides.add (never reached Strava) count like any other,
+  // as they do in the app and in refreshLive.
+  const ov = (await configDoc(aid, 'overrides'))?.data;
+  if (Array.isArray(ov?.add)) {
+    // deno-lint-ignore no-explicit-any
+    ov.add.forEach((x: any) => {
+      if (!x?.start_local) return;
+      acts.push({ sport_type: x.sport_type ?? 'Run', start_date_local: x.start_local, distance: Number(x.summary?.distance) || 0, moving_time: Number(x.summary?.moving_time) || 0 });
+    });
+  }
   const counts: Record<string, number> = {};
   // deno-lint-ignore no-explicit-any
-  (Array.isArray(acts) ? acts : []).forEach((a: any) => {
+  acts.forEach((a: any) => {
     const t = a.sport_type || a.type;
     if (!['Run', 'TrailRun', 'VirtualRun'].includes(t) || !(a.distance > 0)) return;
     if (!(a.distance >= 1000 || a.moving_time >= 600)) return; // warm-ups don't count
@@ -658,7 +671,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const [theirs, sums, aths] = await Promise.all([
       sb.from('docs').select('athlete_id, data').in('athlete_id', want).eq('col', 'config').eq('id', 'partner'),
       sb.from('docs').select('athlete_id, data, updated_at').in('athlete_id', want).eq('col', 'config').eq('id', 'summary'),
-      sb.from('athletes').select('athlete_id, firstname').in('athlete_id', want),
+      sb.from('athletes').select('athlete_id, firstname, lastname').in('athlete_id', want),
     ]);
     const lives = await sb.from('docs').select('athlete_id, data').in('athlete_id', want).eq('col', 'config').eq('id', 'live');
     // Upcoming races straight from config/races, so a race added for someone shows up for the
@@ -680,7 +693,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
       const lv = (lives.data ?? []).find((r) => Number(r.athlete_id) === pid);
       const m = mergeLive(sm?.data ?? null, lv?.data ?? null);
       const rc = (racesQ.data ?? []).find((r) => Number(r.athlete_id) === pid);
-      return { id: pid, firstname: at?.firstname ?? null, summary: m.summary, updated_at: sm?.updated_at ?? null, live_at: m.live_at,
+      return { id: pid, firstname: at?.firstname ?? null, lastname: at?.lastname ?? null, summary: m.summary, updated_at: sm?.updated_at ?? null, live_at: m.live_at,
         races: rc ? upcoming(rc.data) : null };
     });
     return json(req, { partner: group[0] ?? null, group });

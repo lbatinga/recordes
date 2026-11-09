@@ -982,7 +982,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-04';
+  var APP_VER = '2026-11-09';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -1025,6 +1025,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      20 minutes of someone in the group without a GPS match: the activity list has no description,
      and a name written there is what makes a treadmill run count as together. */
   var DESCS = {};
+  /* When each description was last read (config/descs.t). An empty one is read again while the run
+     is up to 14 days old, at most once a day per run: people write the name after seeing the run
+     didn't count. */
+  var DESC_AT = {};
+  var DESC_REREAD_DAYS = 14;
   var RACES = RACE_INFO;
 
   var session = null, me = null;
@@ -1037,7 +1042,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var goalK = '5000';
   try { var sk = localStorage.getItem(lsKey('recordes-meta-k')); if (GOAL_KEYS.indexOf(sk) !== -1) goalK = sk; } catch(e) {}
   var GOAL = getGoal(goalK);
-  var GOAL_RULE = 5;
+  var GOAL_RULE = 6;
   var NO_RACE_DAYS = 42;
   var NEXT_LO = 0.93, NEXT_HI = 0.95;
   var goalLoaded = false;
@@ -1248,7 +1253,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var ver = VERIFIED[String(a.id)];
       var meters = ver ? Math.max(ver.m, gpsM) : gpsM;
       var ovp = ENV_OVERRIDE[String(a.id)];
-      var indoorPre = ovp ? ovp === 'esteira' : (a.is_trainer === true || type === 'VirtualRun' || /esteira/i.test(a.name || '') || (a.latlng === null && isRun && !(Array.isArray(a.activity_tags) && a.activity_tags.indexOf('Race') !== -1)));
+      var isRace = Array.isArray(a.activity_tags) && a.activity_tags.indexOf('Race') !== -1;
+      // A run with no GPS start point (manual entry, indoor watch mode) is treated as treadmill,
+      // unless the athlete marked it otherwise in config/overrides. Decided on 09/11/2026: a race
+      // with no GPS only counts as street when it has an official (chip) time; without one it is
+      // treadmill too, so a time typed by hand can't enter the street records, goals and grade.
+      var raceDay = (a.start_local || '').slice(0, 10);
+      var chipRace = isRace && RACE_INFO.some(function(r){ return r.date === raceDay && r.chip > 0; });
+      var noGps = a.latlng === null && isRun && !chipRace;
+      var indoorPre = ovp ? ovp === 'esteira' : (a.is_trainer === true || type === 'VirtualRun' || /esteira/i.test(a.name || '') || noGps);
       var pkm = indoorPre ? Number(PAINEL[String(a.id)]) : 0;
       if (pkm > 0) meters = pkm * 1000;
       var fkm = Number(KM_OVERRIDE[String(a.id)]);
@@ -1256,10 +1269,6 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var km = meters / 1000;
       var time = Number(s.moving_time) || Number(s.elapsed_time) || 0;
       if (km <= 0 || time <= 0) return;
-      var isRace = Array.isArray(a.activity_tags) && a.activity_tags.indexOf('Race') !== -1;
-      // A run with no GPS start point (manual entry, indoor watch mode) is treated as treadmill,
-      // unless the athlete marked it otherwise in config/overrides.
-      var noGps = a.latlng === null && isRun && !isRace;
       var ov = ENV_OVERRIDE[String(a.id)];
       var indoor = ov ? ov === 'esteira' : (a.is_trainer === true || type === 'VirtualRun' || /esteira/i.test(a.name || '') || noGps);
       var effort = typeof s.relative_effort === 'number' ? s.relative_effort : null;
@@ -1401,6 +1410,25 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       s.official = on;
     });
   }
+  /* Whole-run time that counts as the time of distance D (decided on 09/11/2026), or 0:
+     - a race, at its official distance only (the race entered in Provas): the official (chip) time
+       when there is one; otherwise the total time, start to finish, as long as the watch measured
+       at least 98% of that distance. The best stretch inside the race is not used there.
+     - a treadmill run with no recording (entered by hand) whose distance is round, up to 1% above
+       D: its total time is the time of D on the treadmill. */
+  function hasRecording(s){
+    var doc = effortDocs[s.id];
+    return /^\d+$/.test(s.id) && !(doc && doc.noStreams);
+  }
+  function wholeRunTime(s, D){
+    var info = s.race ? raceInfoOf(s) : null;
+    if (info && info.km > 0 && Math.abs(D.m - info.km * 1000) < 1) {
+      if (info.chip > 0) return info.chip;
+      return (s.gpsMeters >= D.m * RACE_TOL || s.meters >= D.m * RACE_TOL) ? (s.elapsed || s.watchTime || s.time) : 0;
+    }
+    if (!s.race && s.env === 'esteira' && !hasRecording(s) && s.meters >= D.m && s.meters <= D.m * 1.01) return s.elapsed || s.time;
+    return 0;
+  }
   function analyzeRaw(all, env){
     applyOfficial(all);
     var list = all.filter(function(s){
@@ -1428,14 +1456,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       });
       var doc = effortDocs[s.id];
       var efforts = (doc && doc.efforts) || {};
-      var rInfo = s.race ? raceInfoOf(s) : null;
-      var chipT = rInfo && rInfo.chip > 0 && rInfo.km > 0 ? rInfo.chip : 0;
       DISTS.forEach(function(D){
         var t = Number(efforts[D.k]);
         var official = false;
-        // The official result, when typed in, is the time at the race distance.
-        if (chipT && Math.abs(D.m - rInfo.km * 1000) < 1) { t = chipT; official = true; }
-        else if (!(t > 0) && s.gpsMeters < D.m && ((s.race && s.gpsMeters >= D.m * RACE_TOL) || (s.verified && s.meters >= D.m))) {
+        var whole = wholeRunTime(s, D);
+        if (whole > 0) { t = whole; official = true; }
+        else if (!(t > 0) && s.gpsMeters < D.m && s.verified && s.meters >= D.m) {
           t = s.elapsed;
           official = true;
         }
@@ -1675,26 +1701,31 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     GOAL.rule = GOAL_RULE;
   }
 
-  /* Base is fixed until the goal is beaten in a race (tagged Race in Strava).
-     Then that race time becomes the new base, and the goal is set
-     5 to 7 percent below the base. Training never moves the goal. */
-  /* Rebuilds a goal from the whole street history with the same rule the app
-     applies day to day, so the goal card and the Dupla count the same hits. */
+  /* One rule for the Metas screen and the board (decided on 09/11/2026): the goal of each distance
+     is replayed over the whole street history, from the first time. The first time is the base and
+     the goal is 5 to 7 percent below it; a time that beats the goal becomes the new base.
+     What beats it: a race; a street run at 1 to 4 km; a street run at 5 km or more only if, on
+     the day of that run, the last race was 42 days or more behind (the date of the run decides,
+     not today's). The treadmill never counts. */
+  function racesList(){ return (state.sessions || []).filter(function(x){ return x.race && x.d; }); }
+  function noRecentRace(s, races){
+    // Whole days, by the calendar: 42 days after the race already counts, whatever the time of day.
+    var day = dayOnly(s.d).getTime();
+    return !(races || racesList()).some(function(r){ return r.date < s.date && Math.round((day - dayOnly(r.d).getTime()) / 86400000) < NO_RACE_DAYS; });
+  }
+  function countsForGoal(e, k, races){ return !!(e && e.s && e.s.d && (e.s.race || isTrainDist(k) || noRecentRace(e.s, races))); }
   function rebuildGoal(k){
     var tb = analyze(state.sessions, 'rua').tables[k];
     if (!tb || !tb.length) return false;
     var entries = tb.slice().filter(function(e){ return e.s.d; }).sort(function(a, b){ return a.s.date < b.s.date ? -1 : a.s.date > b.s.date ? 1 : 0; });
-    var races = state.sessions.filter(function(x){ return x.race && x.d; });
-    function noRecentRace(s){
-      var lim = s.d.getTime() - NO_RACE_DAYS * 86400000;
-      return !races.some(function(r){ return r.date < s.date && r.d.getTime() >= lim; });
-    }
+    if (!entries.length) return false;
+    var races = racesList();
     var g = getGoal(k), hist = [];
     g.baseT = null;
     entries.forEach(function(e){
       var kind = e.s.race ? 'prova' : 'treino', d = isoOf(e.s.d);
       if (g.baseT == null) { g.baseT = e.t; g.baseDate = d; g.baseKind = kind; }
-      else if (e.t <= g.hi && (e.s.race || isTrainDist(k) || noRecentRace(e.s))) {
+      else if (e.t <= g.hi && countsForGoal(e, k, races)) {
         hist.push({ t: e.t, date: d, kind: kind, lo: g.lo, hi: g.hi, baseT: g.baseT, baseDate: g.baseDate, setDate: g.setDate });
         g.baseT = e.t; g.baseDate = d; g.baseKind = kind;
       } else return;
@@ -1706,68 +1737,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function maybeUpdateGoal(){
     if (!allAnalyzed()) return;
-    var sel = GOAL, any = false;
-    if (GOAL_KEYS.some(function(k){ return GOALS[k] && GOALS[k].baseT != null && GOALS[k].rule !== GOAL_RULE; })) {
-      GOAL_KEYS.forEach(function(k){ rebuildGoal(k); });
-      GOAL = getGoal(goalK);
-      persistGoals();
-      return;
-    }
-    GOAL_KEYS.forEach(function(k){
-      if (!GOALS[k] && !currentBest(k)) return;
-      GOAL = getGoal(k);
-      if (updateOneGoal()) any = true;
-    });
-    GOAL = sel;
-    if (any) persistGoals();
-  }
-
-  function updateOneGoal(){
-    var changed = false;
-    if (GOAL.baseT == null) {
-      var b = currentBest();
-      if (!b || !b.s.d) return false;
-      GOAL.baseT = b.t; GOAL.baseDate = isoOf(b.s.d); GOAL.baseKind = b.s.race ? 'prova' : 'treino';
-      setGoalFromBase();
-      changed = true;
-    } else if (chipRebase()) {
-      changed = true;
-    } else if (GOAL.rule !== GOAL_RULE) {
-      setGoalFromBase();
-      changed = true;
-    } else {
-      function beats(e){ return e && e.s.d && e.t <= GOAL.hi && GOAL.setDate && isoOf(e.s.d) >= GOAL.setDate; }
-      var r = bestBy(true), tr = bestBy(false);
-      var cands = [r];
-      if (trainingCountsFor(GOAL.k)) cands.push(tr);
-      var win = null;
-      cands.forEach(function(e){ if (beats(e) && (!win || e.t < win.t)) win = e; });
-      if (win) {
-        var kind = win.s.race ? 'prova' : 'treino';
-        var hit = { t: win.t, date: isoOf(win.s.d), kind: kind, lo: GOAL.lo, hi: GOAL.hi, baseT: GOAL.baseT, baseDate: GOAL.baseDate, setDate: GOAL.setDate };
-        GOAL.lastHit = hit;
-        GOAL.history = (GOAL.history || []).concat([hit]);
-        GOAL.baseT = win.t; GOAL.baseDate = hit.date; GOAL.baseKind = kind;
-        setGoalFromBase();
-        changed = true;
-      }
-    }
-    return changed;
-  }
-
-  /* The official time usually arrives after the app already used the Strava
-     time as the base. When the base race now has an official time for this
-     distance, it replaces the base and the goal is recalculated from it. */
-  function chipRebase(){
-    if (GOAL.baseKind !== 'prova' || !GOAL.baseDate || GOAL.baseT == null) return false;
-    var info = infoFor(parseIso(GOAL.baseDate), GOAL.k);
-    if (!info || !(info.chip > 0) || keyForKm(info.km) !== GOAL.k) return false;
-    if (Math.abs(info.chip - GOAL.baseT) < 0.05) return false;
-    GOAL.baseT = info.chip;
-    if (GOAL.lastHit && GOAL.lastHit.date === GOAL.baseDate) GOAL.lastHit.t = info.chip;
-    (GOAL.history || []).forEach(function(h){ if (h.date === GOAL.baseDate) h.t = info.chip; });
-    setGoalFromBase();
-    return true;
+    var before = JSON.stringify(goalsDoc());
+    GOAL_KEYS.forEach(function(k){ rebuildGoal(k); });
+    GOAL = getGoal(goalK);
+    if (JSON.stringify(goalsDoc()) !== before) persistGoals();
   }
 
   function kindDate(kind, d, official){
@@ -1792,7 +1765,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     else if (!b) status = prog ? 'Calculando' : 'Sem ' + D.label + ' na rua ainda';
     else if (GOAL.hi == null) status = 'A meta sai quando a análise terminar';
     else if (br && br.t <= GOAL.hi) { status = 'Meta batida em prova'; ok = true; }
-    else if (bt && bt.t <= GOAL.hi) { status = trainingCountsFor(GOAL.k) ? 'Meta batida em treino' : 'Batida em treino, falta na prova'; ok = true; }
+    else if (bt && bt.t <= GOAL.hi) { status = countsForGoal(bt, GOAL.k) ? 'Meta batida em treino' : 'Batida em treino, falta na prova'; ok = true; }
     else status = 'Faltam ' + fmtTime((br || b).t - GOAL.hi) + ' para a meta';
     var etb = state.sessions ? analyze(state.sessions, 'esteira').tables[GOAL.k] : null;
     var be = etb && etb.length ? etb[0] : null;
@@ -1804,7 +1777,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var span = GOAL.baseT - GOAL.hi;
       var pos = function(t){ return Math.max(0, Math.min(1, (GOAL.baseT - t) / span)) * 100; };
       var fill = br ? pos(br.t) : 0;
-      if (bt && trainingCountsFor(GOAL.k)) fill = Math.max(fill, pos(bt.t));
+      if (bt && countsForGoal(bt, GOAL.k)) fill = Math.max(fill, pos(bt.t));
       var waiting = [];
       var mk = function(e, cls, name){
         if (!e) return '';
@@ -1882,9 +1855,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* The result that counts toward the goal of distance k: a race, plus a street run
      (1 to 4 km always; 5 km and up after 6 weeks without a race). The treadmill never counts. */
   function metaBest(k){
-    var br = bestBy(true, k), bt = trainingCountsFor(k) ? bestBy(false, k) : null, w = null;
-    [br, bt].forEach(function(e){ if (e && (!w || e.t < w.t)) w = e; });
-    return w;
+    var tb = state.sessions ? analyze(state.sessions, 'rua').tables[k] : null, races = racesList();
+    for (var i = 0; tb && i < tb.length; i++) if (countsForGoal(tb[i], k, races)) return tb[i];
+    return null;
   }
   /* One goal as the screen shows it: the record (best street time), the goal (the time that
      counts as beating it) and the gap between the two. */
@@ -1950,7 +1923,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var vale;
     if (isTrainDist(k)) vale = 'Prova ou treino na rua.';
     else if (trainingCounts()) vale = 'Prova ou treino na rua' + (dsr != null ? ', porque você está há ' + Math.floor(dsr / 7) + ' semanas sem prova' : '') + '.';
-    else vale = 'Só prova. Treino na rua passa a valer depois de 6 semanas sem prova.';
+    else vale = 'Só prova. Treino na rua vale quando, no dia dele, já fizer 6 semanas da última prova.';
     vale += ' Esteira não vale.';
     function one(lbl, e, note){ return lbl + ' ' + (e ? (isEstimate(e) ? '≈' : '') + fmtTime(e.t) + ' (' + fmtShort(e.s.d) + ')' + (note || '') : '—'); }
     var bests = [one('Prova:', br), one('Rua:', bt), one('Esteira:', be, ', não vale')].join('<br>');
@@ -2292,9 +2265,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return best;
   }
   function bestTimeAt(s, k){
-    var info = s.race ? raceInfoOf(s) : null;
     var D = DIST_BY[k];
-    if (info && info.chip > 0 && info.km > 0 && D && Math.abs(D.m - info.km * 1000) < 1) return info.chip;
+    var whole = D ? wholeRunTime(s, D) : 0;
+    if (whole > 0) return whole;
     var doc = effortDocs[s.id];
     var t = doc && doc.efforts ? Number(doc.efforts[k]) : 0;
     return t > 0 ? t : 0;
@@ -2342,13 +2315,33 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      "|n=name,name" for group members named in its Strava description. Two runs are together when
      they start within 20 minutes and either both have GPS and started within about 1.5 km, or one
      of them names the other person. Untagged runs (an older app) keep the old time-only rule. */
+  /* The words that name one person of the group in a description: the Strava first name and,
+     decided on 09/11/2026, each word of the Strava last name with 3 letters or more that nobody
+     else in the group (me included) has in the last name or as first name. "Felipe" names Luiz
+     Felipe Batinga's run; "Batinga" names nobody when two people carry it. */
+  var NAME_SKIP = ['das', 'dos', 'del', 'von', 'van'];
+  function nameWords(n){ return plainName(n).split(/ +/).filter(function(w){ return w.length >= 3 && NAME_SKIP.indexOf(w) === -1; }); }
+  function nameKeys(p){
+    var first = plainName(p && p.firstname), keys = first.length >= 3 ? [first] : [];
+    var others = [me].concat(group || []).filter(function(o){ return o && p && String(o.id) !== String(p.id); });
+    nameWords(p && p.lastname).forEach(function(w){
+      var taken = others.some(function(o){ return nameWords(o.lastname).indexOf(w) > -1 || nameWords(o.firstname).indexOf(w) > -1 || plainName(o.firstname) === w; });
+      if (!taken && keys.indexOf(w) === -1) keys.push(w);
+    });
+    return keys;
+  }
+  function namedIn(desc, p){
+    var d = plainTxt(desc);
+    return nameKeys(p).some(function(k){ return new RegExp('(^|[^a-z])' + k + '([^a-z]|$)').test(d); });
+  }
   function runTag(x){
     var t = x.date.slice(0, 16);
     t += x.latlng && x.env !== 'esteira' ? '|' + Number(x.latlng[0]).toFixed(2) + ',' + Number(x.latlng[1]).toFixed(2) : '|i';
-    var d = plainTxt(x.desc), nm = [];
+    var nm = [];
     (group || []).forEach(function(g){
-      var f = plainTxt(g.firstname).trim().replace(/[^a-z ]/g, '');
-      if (f.length >= 3 && new RegExp('(^|[^a-z])' + f + '([^a-z]|$)').test(d) && nm.indexOf(f) === -1) nm.push(f);
+      // The tag always carries the first name, whichever word was found: that is what the other apps look for.
+      var f = plainName(g.firstname);
+      if (f.length >= 3 && nm.indexOf(f) === -1 && namedIn(x.desc, g)) nm.push(f);
     });
     return nm.length ? t + '|n=' + nm.join(',') : t;
   }
@@ -2371,14 +2364,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function plainTxt(t){ return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
   // Together = both have a run starting within 20 min, or the other person's first name
   // is written in this run's description (covers runs the other one didn't record).
-  function firstTogether(asc, runs, name){
+  function firstTogether(asc, runs, name, person){
     var bt = (Array.isArray(runs) ? runs : []).map(runInfo).filter(function(x){ return x.m != null; });
-    var nm = plainName(name);
-    var re = nm.length >= 3 ? new RegExp('(^|[^a-z])' + nm + '([^a-z]|$)') : null;
+    var who = person || { id: 'x', firstname: name };
     var myName = (me && me.firstname) || '';
     for (var i = 0; i < asc.length; i++) {
       if (!asc[i].d || asc[i].walk) continue;
-      if (re && re.test(plainTxt(asc[i].desc))) return asc[i];
+      if (namedIn(asc[i].desc, who)) return asc[i];
       var a = runInfo(runTag(asc[i]));
       for (var j = 0; j < bt.length; j++) if (runsTogether(a, bt[j], myName, name)) return asc[i];
     }
@@ -2661,7 +2653,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     (group || []).forEach(function(g){
       // runsAll: every run (the 120-day "runs" would let an old first slide forward).
       var gs = g.summary || {};
-      var hit = firstTogether(asc, Array.isArray(gs.runsAll) && gs.runsAll.length ? gs.runsAll : gs.runs, g.firstname);
+      var hit = firstTogether(asc, Array.isArray(gs.runsAll) && gs.runsAll.length ? gs.runsAll : gs.runs, g.firstname, g);
       momItems.push({ label: 'Primeira com ' + esc(g.firstname || 'a dupla'), hit: hit, where: hit ? whereOf(hit) : '' });
     });
 
@@ -2778,17 +2770,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      6 weeks without a race) becomes the new base. */
   function simulateGoals(k, tb){
     var entries = (tb || []).slice().sort(function(a, b){ return a.s.date < b.s.date ? -1 : a.s.date > b.s.date ? 1 : 0; });
-    var races = state.sessions.filter(function(x){ return x.race && x.d; });
-    function noRecentRace(s){
-      var lim = s.d.getTime() - NO_RACE_DAYS * 86400000;
-      return !races.some(function(r){ return r.date < s.date && r.d.getTime() >= lim; });
-    }
+    var races = racesList();
     function mk(t){ var hi = Math.round(t * NEXT_HI); return { baseT: t, hi: hi, lo: Math.min(hi, Math.round(t * NEXT_LO)) }; }
     var cur = null, out = {};
     entries.forEach(function(e){
       var rec = { t: e.t, before: cur };
       if (!cur) { rec.first = true; cur = mk(e.t); }
-      else if (e.t <= cur.hi && (e.s.race || isTrainDist(k) || noRecentRace(e.s))) { rec.beat = true; cur = mk(e.t); }
+      else if (e.t <= cur.hi && countsForGoal(e, k, races)) { rec.beat = true; cur = mk(e.t); }
       out[e.s.id] = rec;
     });
     return out;
@@ -3154,7 +3142,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'Cada treino aparece no máximo uma vez em cada distância.',
         'Distâncias maiores aparecem quando você passar delas.',
         'Na esteira, os trechos vêm do relógio, que estima pelo balanço do braço, e fecham com a distância total do treino. Valem como qualquer outro tempo.',
-        'Na rua, pode dar alguns segundos de diferença do Strava.'
+        'Esteira lançada à mão, sem gravação: se a distância for redonda (até 1% acima de uma distância da lista, como 5,00 a 5,05 km), o tempo total vale como o tempo daquela distância na esteira. Fora disso, o treino não entra nos melhores tempos.',
+        'Na rua, pode dar alguns segundos de diferença do Strava.',
+        'A primeira vez numa distância aparece no treino com o selo de recorde, mas não conta em Dias com recorde no placar. O primeiro treino de todos não ganha selo.'
       ] }] },
       portreino: { t: 'Recordes por treino', r: 'Aqui conta o treino inteiro, não só um trecho.', g: [{ li: [
         '<strong>Mais tempo correndo sem parar:</strong> o maior trecho acima de 6 km/h sem caminhar. Pausas de até 10 s não quebram. Só vale na rua, porque precisa do GPS.',
@@ -3167,12 +3157,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         ] },
         { h: 'Qual tempo vale', li: [
           '<strong>Com tempo oficial (líquido) preenchido:</strong> ele vale na distância da prova, nos recordes e nas metas. Os trechos menores continuam vindo do relógio.',
-          '<strong>Sem tempo oficial:</strong> vale o tempo total, do início ao fim, como no Strava.',
-          'Se o relógio marcar até 2% a menos que a distância oficial, a prova conta na distância oficial, com o tempo total.'
+          '<strong>Sem tempo oficial:</strong> vale o tempo total, do início ao fim, como no Strava, na distância da prova, nos recordes e nas metas. Os trechos menores continuam vindo do relógio.',
+          'Se o relógio marcar até 2% a menos que a distância oficial, a prova conta na distância oficial, com o tempo total. Essa margem vale só pra distância cadastrada na prova, não pras outras.',
+          'Pra isso a prova precisa estar cadastrada na tela Provas, com a distância. Sem cadastro, valem só os trechos do relógio.'
         ] },
         { h: 'Casos especiais', li: [
-          'Prova sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira.',
-          'Duas provas no mesmo dia: cada uma fica com a atividade que começou mais perto do horário de largada cadastrado.'
+          'Prova sem GPS (lançada à mão ou no modo interno do relógio) conta como esteira. Com o tempo oficial preenchido, ela conta como rua.',
+          'Só dá pra cadastrar uma prova por dia.'
         ] }
       ] },
       lugares: { t: 'Por onde corri', r: 'Cada cidade onde você correu vira um carimbo, como num passaporte.', g: [{ li: [
@@ -3186,12 +3177,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       metas: { t: 'Metas', r: 'Cada distância tem uma meta de 5% a 7% abaixo de um tempo-base.', g: [
         { h: 'Os três números', li: [
           '<strong>Recorde:</strong> seu melhor tempo na rua, provas incluídas.',
-          '<strong>Base:</strong> o tempo de onde a meta partiu. Só muda quando você bate a meta.',
+          '<strong>Base:</strong> o tempo de onde a meta partiu: o seu primeiro tempo na distância e, depois, cada tempo que bateu a meta. Só muda quando você bate a meta.',
           '<strong>Meta:</strong> uma faixa de 5% a 7% abaixo da base. Conta como batida com o tempo mais lento da faixa ou menos.'
         ] },
         { h: 'O que vale pra bater', li: [
           '<strong>1 a 4 km:</strong> prova ou treino na rua.',
-          '<strong>5 km ou mais:</strong> só prova. Depois de 6 semanas sem prova, treino na rua também vale.',
+          '<strong>5 km ou mais:</strong> prova sempre vale. Treino na rua vale quando, no dia do treino, já fazia 6 semanas (42 dias) ou mais da última prova. Um treino feito antes disso não passa a valer depois.',
+          'A tela de Metas e a linha Metas batidas do placar usam essa mesma conta.',
           'Esteira não vale. Aparece nos detalhes só como referência.'
         ] },
         { li: ['Toque numa distância pra ver os detalhes.'] }
@@ -3250,7 +3242,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<strong>Trote contínuo:</strong> só corridas na rua (GPS), acima de 6 km/h, sem pausas de mais de 10 s.',
         '<strong>Pace:</strong> conta rua e provas.',
         '<strong>Chuva:</strong> estimada pelo modelo do Open-Meteo para Maceió (pelo menos 1 mm por hora em metade da corrida), não por estação no local. Pode errar.',
-        '<strong>Primeira com alguém do grupo:</strong> a primeira corrida que começou até 20 minutos antes ou depois da dela, no mesmo lugar (as duas na rua, largando a até cerca de 1,5 km uma da outra), ou que tem o nome da pessoa na descrição de uma das duas corridas no Strava.'
+        '<strong>Primeira com alguém do grupo:</strong> a primeira corrida sua que começou até 20 minutos antes ou depois de uma dela, no mesmo lugar (as duas na rua, largando perto uma da outra), ou a primeira corrida sua que tem o nome da pessoa na descrição no Strava, mesmo que ela não tenha gravado a dela.'
       ] }] },
       medalhas: { t: 'Medalhas do mês', r: 'Bronze, prata, ouro e diamante, comparando o mês com a sua média recente.', g: [
         { h: 'Km do mês', li: [
@@ -3259,7 +3251,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           'Caminhada gravada à parte não soma km nem medalha de km. Ela aparece com o ícone de caminhada.'
         ] },
         { h: 'Dias ativos', li: [
-          'Conta qualquer atividade de 10 minutos ou mais no Strava, uma por dia (caminhada também).',
+          'Conta qualquer corrida, de qualquer duração, e qualquer outra atividade de 10 minutos ou mais no Strava (caminhada também). Um dia conta uma vez só.',
           'Mesmas faixas, usando a média de dias dos 3 meses anteriores (mínimo 8 dias).',
           'O diamante nunca pede mais que o mês inteiro menos um dia de descanso por semana.'
         ] }
@@ -3271,10 +3263,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'Com 3 pessoas ou mais, a aba se chama Grupo.'
       ] }] },
       linhas: { t: 'Linhas e pontos', r: '7 linhas que valem de 4 a 1 ponto, mais o km do mês, que não pontua.', g: [{ li: [
-        '<strong>Melhora recente nos 5 km (4 pontos):</strong> nos últimos 120 dias, o primeiro 5 km comparado com o melhor. Com um 5 km só, fica 0%.',
+        '<strong>Melhora recente nos 5 km (4 pontos):</strong> nos últimos 120 dias, o primeiro 5 km comparado com o melhor, na rua (treino ou prova). Com um 5 km só, fica 0%. Esteira não entra: quem só fez 5 km na esteira fica sem valor nessa linha.',
         '<strong>Nível por idade e sexo (3):</strong> a melhor nota dos últimos 90 dias, na rua (treino ou prova), em 5 km ou mais.',
         '<strong>Correndo sem parar (3):</strong> o maior trecho trotando ou correndo sem caminhar nos últimos 90 dias, na rua.',
-        '<strong>Metas batidas (2):</strong> quantas vezes alguma meta de 1 a 6 km foi batida no mês.',
+        '<strong>Metas batidas (2):</strong> quantas vezes alguma meta de 1 a 6 km ou de 10 km foi batida no mês.',
         '<strong>Constância (1):</strong> quantas das últimas 12 semanas tiveram 2 corridas ou mais. Semana pausada fica de fora.',
         '<strong>Medalhas (1):</strong> a soma das medalhas do mês: bronze 1, prata 2, ouro 3, diamante 4.',
         '<strong>Dias com recorde (1):</strong> em quantos dias do mês a pessoa bateu um recorde que já existia, em qualquer distância. Rua (com as provas) e esteira têm recordes separados.',
@@ -3286,23 +3278,32 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'Esteira não entra.'
       ] }] },
       desempate: { t: 'Empate no placar', r: 'Se os pontos empatarem, o desempate segue uma ordem.', g: [
-        { h: 'No mês', ol: 1, li: ['Nível por idade e sexo', 'Linhas vencidas sozinho', 'Km no mês', 'Dias ativos no mês'] },
-        { h: 'No ano', ol: 1, li: ['Meses vencidos', 'Pontos somados', 'Confronto direto', 'Nível por idade e sexo'] }
+        { h: 'No mês, no Grupo', ol: 1, li: ['Nível por idade e sexo', 'Linhas vencidas sozinho', 'Km no mês', 'Dias ativos no mês'] },
+        { h: 'No ano', ol: 1, li: ['Meses vencidos', 'Pontos somados', 'Confronto direto', 'Nível por idade e sexo'] },
+        { li: ['Na Dupla (duas pessoas), o desempate do mês é só o nível por idade e sexo.', 'Se o empate continuar depois de todos os critérios, o mês fica empatado e ninguém ganha o mês.'] }
       ] },
       fechamento: { t: 'Fechamento do mês', r: 'O mês fecha com tudo o que foi feito nele.', g: [{ li: [
         'O resultado final sai quando todos abrirem o app no mês seguinte.',
         'O placar conta desde junho de 2026, e cada mês usa os números como estavam no último dia dele.',
+        'Até o mês fechar, ainda dá pra acertar o que aconteceu nele: tempo oficial de uma prova, semana pausada, distância do painel.',
+        'Depois que todos abriram e o mês fechou, o resultado não muda mais, nem com pausa, tempo oficial ou treino editado depois.',
         'Quem entra no grupo disputa a partir do mês em que entrou. Os meses anteriores não mudam.'
       ] }] },
       atualiza: { t: 'Quando o placar atualiza', r: 'Uma parte atualiza sozinha; o resto depende de cada um abrir o app.', g: [{ li: [
-        '<strong>Na hora em que a pessoa salva um treino no Strava:</strong> constância, medalhas e treinos juntos.',
-        '<strong>Quando a pessoa abre o app:</strong> as outras linhas.'
+        '<strong>Na hora em que a pessoa salva um treino no Strava:</strong> constância, medalhas e treinos juntos na rua.',
+        '<strong>Quando a pessoa abre o app:</strong> as outras linhas e os treinos juntos na esteira, que dependem do nome na descrição.',
+        'Na virada do mês, as medalhas do mês novo só aparecem depois que a pessoa abrir o app.'
       ] }] },
       juntos: { t: 'Treinos juntos', r: 'Só curiosidade: não entra no placar.', g: [{ li: [
-        'Conta as corridas dos últimos 4 meses que começaram com até 20 minutos de diferença e no mesmo lugar.', '<strong>Na rua:</strong> as duas com GPS, largando a até cerca de 1,5 km uma da outra.', '<strong>Na esteira:</strong> como não tem GPS, só conta com o nome da outra pessoa na descrição de uma das corridas no Strava.'
+        'Conta as corridas dos últimos 4 meses que começaram com até 20 minutos de diferença e no mesmo lugar.',
+        '<strong>Na rua:</strong> as duas com GPS, largando perto uma da outra. O app compara os pontos de largada arredondados em quadrados de cerca de 1 km: até 1 km sempre conta, de 1 a 2 km depende de onde cada ponto caiu, e acima de 2 km (3 km na diagonal) nunca conta.',
+        '<strong>Na esteira:</strong> como não tem GPS, só conta com o nome da outra pessoa na descrição de uma das corridas no Strava.',
+        '<strong>Qual nome vale:</strong> o primeiro nome do Strava. O sobrenome também vale, se mais ninguém do grupo tiver o mesmo.',
+        'Escreveu o nome depois? O app relê a descrição vazia uma vez por dia, enquanto a corrida tiver até 14 dias.'
       ] }] },
       mudancas: { t: 'Mudanças nas regras', r: 'Meses que já fecharam continuam como estavam.', g: [{ li: [
-        '<strong>Dias com recorde, desde novembro de 2026:</strong> rua e esteira passaram a ter recordes separados. Até outubro, valia só o melhor de todos, com rua e esteira juntas.'
+        '<strong>Dias com recorde, desde novembro de 2026:</strong> rua e esteira passaram a ter recordes separados. Até outubro, valia só o melhor de todos, com rua e esteira juntas.',
+        '<strong>Desde 9 de novembro de 2026:</strong> mês fechado fica congelado. A meta é refeita desde o primeiro tempo, igual na tela e no placar, e o treino de 5 km ou mais vale pela data dele. Prova sem tempo oficial usa o tempo total. Prova sem GPS só conta como rua com tempo oficial. Empate total no mês não dá o mês a ninguém.'
       ] }] }
     };
   }
@@ -3652,13 +3653,18 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      The stream is stretched to end exactly at that distance, so the stretches agree with it. */
   function treadTarget(s){ return Math.round(s.painel > 0 ? s.painel * 1000 : s.gpsMeters); }
   var rateWait = false;
+  /* Strava's rate limit is shared by everyone, so a recording that could not be read is not asked
+     for again right away: the doc keeps the time of the failure (failAt) and the run only goes back
+     to the queue a day later. */
+  var RETRY_MS = 86400000;
+  function failedToday(d){ return !!(d && d.failAt && Date.now() - d.failAt < RETRY_MS); }
   async function kick(){
     if (processing || rateWait || !mcp || !state.sessions || !dbLoaded) return;
     var todo = state.sessions.filter(function(s){
       if (skipIds[s.id]) return false;
       var d = effortDocs[s.id];
       if (!d) return true;
-      if (d.noStreams) return false;
+      if (d.noStreams || failedToday(d)) return false;
       if (s.race && !d.splits && !d.noSplits) return true;
       if (s.env === 'esteira' && (d.tn !== 1 || d.tgt !== treadTarget(s))) return true;
       if (s.env === 'rua' && !s.walk && d.trot == null) return true;
@@ -3689,15 +3695,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         }
         if (st && pf !== 1) { var d0 = st.dist[0]; st.dist = st.dist.map(function(x){ return d0 + (x - d0) * pf; }); }
         var nd = st ? Object.assign({ v: ALGO, efforts: bestEfforts(st.time, st.dist), trot: longestTrot(st.time, st.dist), pf: pf }, tread || {})
-          : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 } }) : { v: ALGO, efforts: {}, noStreams: true });
+          : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 }, failAt: Date.now() }) : { v: ALGO, efforts: {}, noStreams: true });
         if (st && s.race) { var sp = splitsFrom(st.time, st.dist); nd.splits = sp.splits; nd.half = sp.half; }
+        // A treadmill recording with no usable distance can't be stretched: don't ask for it again today.
+        if (st && s.env === 'esteira' && !tread) nd.failAt = Date.now();
         await saveDoc(s.id, nd);
       } catch (e) {
         var code = (e && e.code) || 'upstream_error';
         if (code === 'tool_error') {
           var ex2 = effortDocs[s.id];
           await saveDoc(s.id, ex2 && ex2.efforts && Object.keys(ex2.efforts).length
-            ? Object.assign({}, ex2, { noSplits: true, trot: ex2.trot || { t: 0, m: 0 } })
+            ? Object.assign({}, ex2, { noSplits: true, trot: ex2.trot || { t: 0, m: 0 }, failAt: Date.now() })
             : { v: ALGO, efforts: {}, noStreams: true });
         } else if (RETRACT[code]) {
           effortErr = code;
@@ -3712,6 +3720,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         } else {
           effortErr = code;
           skipIds[s.id] = true;
+          // Any other failure with a doc already saved waits a day too (without one, it waits for the next open).
+          var ex3 = effortDocs[s.id];
+          if (ex3) await saveDoc(s.id, Object.assign({}, ex3, { failAt: Date.now() }));
         }
       }
       prog.done++;
@@ -4809,7 +4820,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var today = new Date();
     var h = pastMonths(today);
     s.prev = h[prevKey(mkey(today), 1)] || null; // the month that ended closes whenever everyone opens, any day
-    s.hist = h; // every month since HIST_FROM, as it stood on its last day: all months are scored by today's rules
+    s.hist = h; // every month since HIST_FROM, as it stood on its last day; once the group closes a month, its result is frozen (closeMonths)
     return s;
   }
   var HIST_FROM = '2026-06';
@@ -4865,7 +4876,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* From November 2026 on, Metas batidas and Dias com recorde count only the month (they measure
      what happened in it); level, evolution and constancy lines keep their windows. Earlier months
      are scored with the lines above, as they were. */
-  var LINES_FROM = '2000-01'; // decided on 01/11/2026: every month, past ones included, uses today's rules
+  // Which lines score a month while it is still open. A closed month is frozen with the result it had
+  // when everyone published its closing (decided on 09/11/2026, replacing the 01/11 note that every
+  // past month would be scored again by today's rules): see closeMonths.
+  var LINES_FROM = '2000-01';
   var SCORE_LINES_M = SCORE_LINES.map(function(L){
     if (L.id === 'beats') return { id: 'beats', k: 'Metas batidas no mês', w: 2, v: 9, get: function(s, ref){ return s.month === ref ? s.beatsM : 0; }, f: numF, sub: function(){ return ''; } };
     if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 9, get: function(s, ref){ return s.month === ref ? s.recDaysM : 0; }, f: numF, sub: function(){ return ''; } };
@@ -5078,8 +5092,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (descBusy || !partnerLoaded || !group.length || !state.sessions || !allAnalyzed()) return;
     var theirs = [];
     group.forEach(function(g){ ((g.summary && (g.summary.runsAll || g.summary.runs)) || []).forEach(function(t){ theirs.push(runInfo(t)); }); });
+    var nowMs = Date.now();
     var want = state.sessions.filter(function(x){
-      if (!x.d || x.walk || DESCS[x.id] != null || !/^\d+$/.test(x.id)) return false;
+      if (!x.d || x.walk || !/^\d+$/.test(x.id)) return false;
+      if (DESCS[x.id] != null) {
+        if (DESCS[x.id] !== '') return false;
+        if (nowMs - x.d.getTime() > DESC_REREAD_DAYS * 86400000) return false;
+        if (nowMs - (Number(DESC_AT[x.id]) || 0) < 86400000) return false;
+      }
       var a = runInfo(runTag(x));
       return theirs.some(function(b){
         if (b.m == null || Math.abs(a.m - b.m) > 20) return false;
@@ -5092,13 +5112,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     for (var i = 0; i < want.length; i += 10) batches.push(want.slice(i, i + 10));
     batches.reduce(function(p, ids){
       return p.then(function(){ return apiFetch('/desc?ids=' + ids.join(',')).then(function(j){
-        Object.keys((j && j.descs) || {}).forEach(function(id){ DESCS[id] = String(j.descs[id] || '').slice(0, 300); });
+        Object.keys((j && j.descs) || {}).forEach(function(id){ DESCS[id] = String(j.descs[id] || '').slice(0, 300); DESC_AT[id] = Date.now(); });
       }); });
     }, Promise.resolve()).catch(function(){}).then(function(){
       descBusy = false;
       var got = false;
-      state.sessions.forEach(function(x){ if (DESCS[x.id] != null && !x.desc) { x.desc = DESCS[x.id]; got = true; } });
-      putDoc('config', 'descs', { d: DESCS });
+      state.sessions.forEach(function(x){ if (DESCS[x.id] && !x.desc) { x.desc = DESCS[x.id]; got = true; } });
+      // Only the still-empty, recent ones need their reading time kept.
+      var keepAt = {};
+      state.sessions.forEach(function(x){ if (DESCS[x.id] === '' && DESC_AT[x.id] && x.d && Date.now() - x.d.getTime() <= DESC_REREAD_DAYS * 86400000) keepAt[x.id] = DESC_AT[x.id]; });
+      DESC_AT = keepAt;
+      putDoc('config', 'descs', { d: DESCS, t: DESC_AT });
       if (got) { publishSummary(); render(); }
     });
   }
@@ -5165,17 +5189,20 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           '<td class="num">' + (o.off ? fmtOff(o.t) : fmtTime(o.t)) + (o.off ? '<span class="t-sub">oficial</span>' : '') + '</td></tr>';
       }).join('') + '</tbody></table>';
   }
-  var duoHist = {};
+  /* Decided on 09/11/2026: a month closes when everyone in the group has published its closing
+     (their numbers as they stood on its last day). From then on its result is frozen: a pause,
+     an official time or an edited run later no longer changes it. Months already recorded when
+     this rule arrived (June to October 2026) stay exactly as they were stored. */
+  var duoHist = {}, duoClosed = {};
   function monthsBlock(pa, pb, myName, hisName, mine, his){
     var k = mkey(new Date()), dirty = false;
     if (!duoHist[k] || duoHist[k].a !== pa || duoHist[k].b !== pb) { duoHist[k] = { a: pa, b: pb }; dirty = true; }
     // The month that just ended gets its final score once both sides have published it.
     var mp = mine && mine.prev, hp = his && his.prev;
-    if (mp && hp && mp.month === hp.month) {
-      var fin = duoPoints(mp, hp), o = duoHist[mp.month];
-      if (!o || o.a !== fin.a || o.b !== fin.b) { duoHist[mp.month] = fin; dirty = true; }
+    if (mp && hp && mp.month === hp.month && !duoClosed[mp.month]) {
+      duoHist[mp.month] = duoPoints(mp, hp); duoClosed[mp.month] = 1; dirty = true;
     }
-    if (dirty && db) putDoc('config', 'duohist', { months: duoHist });
+    if (dirty && db) putDoc('config', 'duohist', { months: duoHist, closed: duoClosed });
     var keys = Object.keys(duoHist).sort().reverse().slice(0, 12);
     return '<h3 class="h3">Placar por mês</h3><table class="tbl duo-months"><thead><tr><th>Mês</th><th class="num">' + esc(myName) + '</th><th class="num">' + esc(hisName) + '</th></tr></thead><tbody>' +
       keys.map(function(m){
@@ -5194,6 +5221,36 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function togetherCount(a, b, aName, bName){ return togetherHits(a, b, aName, bName).length; }
   var groupHist = {}, groupOrder = {}; // order: the final places of each month, ties already broken
+  var groupTies = {};   // months whose first place is shared after every tie-break: nobody wins them
+  var groupClosed = {}; // months already closed: frozen, never scored again
+  // Who shares the first place of a ranking (rankBoard), when more than one person does.
+  function tiedFirst(rank){
+    var ids = rank.filter(function(r){ return r.pos === 1; }).map(function(r){ return String(r.p.id); });
+    return ids.length > 1 ? ids : null;
+  }
+  // Stores a month's result; returns true when something changed.
+  function storeMonth(m, pts, rank){
+    var ch = false, ord = rank.map(function(r){ return String(r.p.id); }), tie = tiedFirst(rank);
+    if (JSON.stringify(groupHist[m] || {}) !== JSON.stringify(pts)) { groupHist[m] = pts; ch = true; }
+    if (JSON.stringify(groupOrder[m] || []) !== JSON.stringify(ord)) { groupOrder[m] = ord; ch = true; }
+    if (JSON.stringify(groupTies[m] || null) !== JSON.stringify(tie)) { if (tie) groupTies[m] = tie; else delete groupTies[m]; ch = true; }
+    return ch;
+  }
+  /* Closes every past month that everyone who was in the group has published, once. people: [{ id, name, s }]. */
+  function closeMonths(people, k){
+    var pastMs = {}, ch = false;
+    people.forEach(function(p){ Object.keys((p.s && p.s.hist) || {}).forEach(function(m){ if (m < k) pastMs[m] = 1; }); });
+    Object.keys(pastMs).sort().forEach(function(pm){
+      if (groupClosed[pm]) return;
+      var inPm = people.filter(function(p){ var d = GROUP_SINCE[String(p.id)]; return !d || d.slice(0, 7) <= pm; });
+      if (inPm.length < 2 || !inPm.every(function(p){ return p.s && p.s.hist && p.s.hist[pm] && p.s.hist[pm].month === pm; })) return;
+      var ps = inPm.map(function(p){ return { id: p.id, name: p.name, s: p.s.hist[pm] }; });
+      var fin = scoreBoard(ps, pm);
+      storeMonth(pm, fin, rankBoard(ps, fin, pm));
+      groupClosed[pm] = 1; ch = true;
+    });
+    return ch;
+  }
   function grupoTab(){
     var mine = state.sessions && allAnalyzed() ? buildSummary() : null;
     if (!mine) return '<div class="msg"><strong>Calculando</strong>Seus números ainda estão sendo calculados.</div>';
@@ -5206,24 +5263,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var rank = rankBoard(people, pts, ref);
     var k = mkey(new Date()), snap = {};
     people.forEach(function(p){ snap[p.id] = pts[p.id]; });
-    var gDirty = JSON.stringify(groupHist[k] || {}) !== JSON.stringify(snap);
-    if (gDirty) groupHist[k] = snap;
-    var ordK = rank.map(function(r){ return String(r.p.id); });
-    if (JSON.stringify(groupOrder[k] || []) !== JSON.stringify(ordK)) { groupOrder[k] = ordK; gDirty = true; }
-    // Every past month is scored from everyone's numbers as they stood on its last day, counting only who
-    // was already in the group that month; it is (re)written once all of them have published that month.
-    // The months come from everyone's numbers, so whoever joined later also gets the months before.
-    var pastMs = {};
-    people.forEach(function(p){ Object.keys((p.s && p.s.hist) || {}).forEach(function(m){ if (m < k) pastMs[m] = 1; }); });
-    Object.keys(pastMs).sort().forEach(function(pm){
-      var inPm = people.filter(function(p){ var d = GROUP_SINCE[String(p.id)]; return !d || d.slice(0, 7) <= pm; });
-      if (inPm.length < 2 || !inPm.every(function(p){ return p.s && p.s.hist && p.s.hist[pm] && p.s.hist[pm].month === pm; })) return;
-      var ps = inPm.map(function(p){ return { id: p.id, name: p.name, s: p.s.hist[pm] }; });
-      var fin = scoreBoard(ps, pm), ord = rankBoard(ps, fin, pm).map(function(r){ return String(r.p.id); });
-      if (JSON.stringify(groupHist[pm] || {}) !== JSON.stringify(fin)) { groupHist[pm] = fin; gDirty = true; }
-      if (JSON.stringify(groupOrder[pm] || []) !== JSON.stringify(ord)) { groupOrder[pm] = ord; gDirty = true; }
-    });
-    if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist, order: groupOrder });
+    var gDirty = storeMonth(k, snap, rank);
+    if (closeMonths(people, k)) gDirty = true;
+    if (gDirty && db) putDoc('config', 'grouphist', { months: groupHist, order: groupOrder, ties: groupTies, closed: groupClosed });
     var nameOf = {}; people.forEach(function(p){ nameOf[p.id] = p.name; });
 
     var board = '<article class="bib duo-score"><div class="band band-ink"><span>Classificação</span><span class="bd">' + MON_FULL[new Date().getMonth()] + ', até agora</span></div>' +
@@ -5260,6 +5302,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       months.forEach(function(mk){
         if (mk === k || !hist[mk]) return;
         var o = groupOrder[mk], x = hist[mk];
+        var tie = groupTies[mk] || [];
+        if (tie.indexOf(String(a)) >= 0 && tie.indexOf(String(b)) >= 0) return;
         if (o && o.indexOf(String(a)) >= 0 && o.indexOf(String(b)) >= 0) { if (o.indexOf(String(a)) < o.indexOf(String(b))) n++; }
         else if (x[a] != null && x[b] != null && x[a] > x[b]) n++;
       });
@@ -5346,6 +5390,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   // Winner(s) of a month: the stored final order decides; without it (old months), the most points.
   function monthWinner(mk, x){
     var o = groupOrder[mk];
+    if (groupTies[mk] && groupTies[mk].length > 1) return groupTies[mk].slice();
     if (o && o.length) return [String(o[0])];
     var ids = Object.keys(x), t = Math.max.apply(null, ids.map(function(id){ return x[id]; }));
     return ids.filter(function(id){ return x[id] === t; });
@@ -5500,6 +5545,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var list = RACE_INFO.filter(function(x){ return !old || x !== old; }).concat([item]);
     setRaces(list);
     saveRaces();
+    if (lastActs) state.sessions = buildSessions(lastActs);
     bumpData();
     closeRaceDlg();
     render();
@@ -5510,6 +5556,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!window.confirm('Excluir esta prova?')) return;
     setRaces(RACE_INFO.filter(function(x){ return x.date !== raceEdit.orig; }));
     saveRaces();
+    if (lastActs) state.sessions = buildSessions(lastActs);
     bumpData();
     closeRaceDlg();
     render();
@@ -5581,6 +5628,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     flushDocs();
   }
 
+  // History saved before months were frozen: every month before the current one stays as stored.
+  function legacyClosed(months){
+    var out = {}, cur = mkey(new Date());
+    Object.keys(months || {}).forEach(function(m){ if (m < cur) out[m] = 1; });
+    return out;
+  }
   var docsReady = null;
   function startDb(){
     docsReady = apiFetch('/docs').then(function(j){
@@ -5592,12 +5645,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'races') setRaces(v.races);
         else if (d.col === 'config' && d.id === 'settings') { RANGE_START = v.range_start || ''; WALK_UNTIL = v.walk_until || ''; SEX = v.sex || ''; BIRTH = v.birth || ''; }
         else if (d.col === 'config' && d.id === 'weights') { if (Array.isArray(v.points)) weight.points = v.points; }
-        else if (d.col === 'config' && d.id === 'descs') { DESCS = v.d && typeof v.d === 'object' ? v.d : {}; }
+        else if (d.col === 'config' && d.id === 'descs') { DESCS = v.d && typeof v.d === 'object' ? v.d : {}; DESC_AT = v.t && typeof v.t === 'object' ? v.t : {}; }
         else if (d.col === 'config' && d.id === 'overrides') { ENV_OVERRIDE = v.env && typeof v.env === 'object' ? v.env : {}; KM_OVERRIDE = v.km && typeof v.km === 'object' ? v.km : {}; VERIFIED = v.verified && typeof v.verified === 'object' ? v.verified : {}; EXTRA_ACTS = Array.isArray(v.add) ? v.add : []; }
         else if (d.col === 'config' && d.id === 'partner') { GROUP_SINCE = v.since && typeof v.since === 'object' ? v.since : {}; }
         else if (d.col === 'config' && d.id === 'painel') { PAINEL = v.km && typeof v.km === 'object' ? v.km : {}; }
-        else if (d.col === 'config' && d.id === 'grouphist') { groupHist = v.months && typeof v.months === 'object' ? v.months : {}; groupOrder = v.order && typeof v.order === 'object' ? v.order : {}; }
-        else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; }
+        else if (d.col === 'config' && d.id === 'grouphist') { groupHist = v.months && typeof v.months === 'object' ? v.months : {}; groupOrder = v.order && typeof v.order === 'object' ? v.order : {};
+          groupTies = v.ties && typeof v.ties === 'object' ? v.ties : {};
+          groupClosed = v.closed && typeof v.closed === 'object' ? v.closed : legacyClosed(groupHist); }
+        else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; duoClosed = v.closed && typeof v.closed === 'object' ? v.closed : legacyClosed(duoHist); }
         else if (d.col === 'config' && d.id === 'pauses') { PAUSES = v.weeks && typeof v.weeks === 'object' ? v.weeks : {}; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
       });
