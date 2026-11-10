@@ -43,9 +43,9 @@ window.va = window.va || function(){ (window.vaq = window.vaq || []).push(argume
   --esteira:#F2B300;
   --prova:#2B4BD8;
   --prova-txt:#2B4BD8;
-  --rec:#D92D27;
+  --rec:#C62821;
   --rec-bib:#D92D27;
-  --ok:#12855A;
+  --ok:#0B6B47;
   --focus:#2B4BD8;
   --shadow:0 1px 0 rgba(21,24,28,.05),0 10px 24px -14px rgba(21,24,28,.45);
   --font-ui:"Barlow","Segoe UI",Roboto,system-ui,-apple-system,sans-serif;
@@ -78,7 +78,7 @@ details > *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:17px;line-height:1.45;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.wrap{max-width:780px;margin:0 auto;padding:22px 16px 48px}
+.wrap{max-width:780px;margin:0 auto;padding:22px 16px 112px}
 
 /* header */
 header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -143,7 +143,7 @@ h2{font-family:var(--font-num);font-weight:800;font-size:28px;line-height:1;marg
 body{padding-bottom:calc(130px + env(safe-area-inset-bottom, 0px))}
 .help-fab{position:fixed;right:max(14px,calc((100vw - 780px) / 2 + 14px));bottom:calc(74px + env(safe-area-inset-bottom, 0px));z-index:19;width:46px;height:46px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer}
 .help-fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-body.login .help-fab{display:none}
+body.login .help-fab,body.login #logout{display:none}
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
 .bnav-in{max-width:780px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .bnav button{border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 9px;min-height:60px;font-size:12px;font-weight:700;cursor:pointer;position:relative}
@@ -170,7 +170,7 @@ h2.first{margin-top:22px}
 .goal-card{padding:14px}
 .goal-card .goal-seg{margin-top:0}
 details.mini{margin-top:12px}
-details.mini > summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--focus);list-style:none;padding:6px 0}
+details.mini > summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--focus);list-style:none;padding:12px 0}
 details.mini > summary::-webkit-details-marker{display:none}
 details.mini > summary::after{content:" +"}
 details.mini[open] > summary::after{content:" −"}
@@ -449,7 +449,7 @@ details.sec[open] .sec-i::before{content:"−"}
 .pt-r{fill:var(--rua)}
 .pt-e{fill:var(--esteira)}
 .pt-p{fill:var(--prova)}
-.pt.rec{fill:var(--rec)}
+.pt.rec{stroke:var(--rec);stroke-width:2.5}
 .bar-rua{fill:var(--rua)}
 .bar-est{fill:var(--esteira)}
 .bar-prova{fill:var(--prova)}
@@ -519,7 +519,7 @@ details.sec[open] .sec-i::before{content:"−"}
 .bib .t-lbl,.bib .t-val{color:var(--bib-ink)}
 .bib .t-sub{color:var(--bib-muted)}
 .bib .t-val{font-size:19px}
-.bib .t-val.good{color:#12855A}
+.bib .t-val.good{color:#0B6B47}
 .bib .t-val.bad{color:#D92D27}
 .t-val.good{color:var(--ok)}
 .era-tbl .t-val{white-space:normal;font-size:17px;line-height:1.15;width:42%}
@@ -536,7 +536,7 @@ details.sec[open] .sec-i::before{content:"−"}
 .sp-tag.neg{color:#12855A}
 .split-tbl tr.sp-half td{border-top:2px solid var(--bib-line);background:#E9EDF1}
 .split-tbl tr.sp-half + tr.sp-half td{border-top:1px solid var(--bib-line)}
-.sp-neg{color:#12855A;font-weight:700;font-size:13px}
+.sp-neg{color:#0B6B47;font-weight:700;font-size:13px}
 .sp-pos{color:var(--bib-muted);font-weight:700;font-size:13px}
 .bib .t-time{color:var(--bib-ink)}
 .pv-tools{justify-content:flex-start;margin-bottom:14px}
@@ -635,7 +635,7 @@ html,body{overscroll-behavior-y:contain}
 .wt-acts{display:flex;gap:8px;margin-top:12px}
 .wt-acts .strava-btn{min-height:40px;font-size:16px;flex:1}
 .bnav-in.six{grid-template-columns:repeat(6,minmax(0,1fr))}
-.linkbtn{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--prova-txt);text-decoration:underline;cursor:pointer}
+.linkbtn{border:0;background:none;padding:13px 6px;margin:-13px -6px;font:inherit;font-weight:700;color:var(--prova-txt);text-decoration:underline;cursor:pointer}
 .ch-push{margin:10px 0 0;font-size:14px;color:var(--muted)}
 .ch-push-btn{margin-top:12px;width:100%}
 @media (max-width:370px){.split-tbl td{padding:8px 8px}.sp-tag{white-space:normal}}
@@ -648,7 +648,7 @@ html,body{overscroll-behavior-y:contain}
 .bib + .ch-tbl{margin-top:14px}
 .wx{display:flex;align-items:center;gap:6px}
 .wx svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.recap-btn{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}
+.recap-btn{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:11px 8px;margin:-11px -8px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}
 .recap-btn svg{width:16px;height:16px;fill:none;stroke:var(--prova-txt);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .recap-msg{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
 .recap-msg .btn{white-space:nowrap}
@@ -667,7 +667,7 @@ html,body{overscroll-behavior-y:contain}
 .yr-top b{font-family:var(--font-num-s);font-size:26px;font-weight:800}
 .yr-n{color:var(--bib-muted);font-size:13px}
 .yr-strip,.yr-ml{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px}
-.yr-c{height:26px;border-radius:6px;border:0;padding:0;background:var(--bib-line);display:grid;place-items:center;font:700 10px var(--font-ui);color:#fff;cursor:pointer;overflow:hidden}
+.yr-c{height:36px;border-radius:6px;border:0;padding:0;background:var(--bib-line);display:grid;place-items:center;font:700 10px var(--font-ui);color:#fff;cursor:pointer;overflow:hidden}
 span.yr-c{cursor:default}
 .yr-c.w{background:var(--pc)}
 .yr-c.tie{background:repeating-linear-gradient(135deg,#9AA3AD 0 4px,#C4CBD2 4px 8px);color:#15181C}
@@ -678,13 +678,16 @@ span.yr-c{cursor:default}
 .yr-rank i{width:12px;height:12px;border-radius:50%;background:var(--pc);display:block}
 .yr-rank .n{font-weight:500;color:var(--bib-muted);font-size:13px;text-align:right}
 .yr-det{margin:10px 0 0;color:var(--bib-muted);font-size:13px}
+.yr-det b{display:block;color:var(--bib-ink,#15181C);font-size:14px;margin-bottom:2px}
+.yr-dr{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid var(--bib-line);font-size:14px;color:var(--bib-ink,#15181C)}
 .mx{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-variant-numeric:tabular-nums;table-layout:fixed}
-.mx th,.mx td{padding:8px 6px;text-align:right;vertical-align:top;border-top:1px solid var(--line)}
+.mx th,.mx td{padding:8px 3px;text-align:right;vertical-align:top;border-top:1px solid var(--line)}
 .mx thead th{border-top:0;background:var(--surface-2);font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mx th:first-child,.mx td:first-child{text-align:left;padding-left:12px;width:38%}
+.mx th:first-child,.mx td:first-child{text-align:left;padding-left:12px;width:34%}
+.mx th:last-child,.mx td:last-child{padding-right:8px}
 .mx td:first-child{font-size:13px;font-weight:700;color:var(--ink)}
 .mx td:first-child small{display:block;font-weight:500;color:var(--muted);font-size:11px}
-.mx .v{display:block;font-weight:700;font-size:14px;color:var(--ink);white-space:nowrap}
+.mx .v{display:block;font-weight:700;font-size:13px;color:var(--ink);white-space:nowrap}
 .mx .p{display:block;font-size:11px;color:var(--muted);margin-top:1px}
 .mx td.win .v,.mx td.win .p{color:var(--ok)}
 .mx td.win .p{font-weight:700}
@@ -741,7 +744,7 @@ span.yr-c{cursor:default}
 :root[data-theme="dark"]{--link:#EEF0F2;--esteira-txt:#F2B300;--rua-txt:#26B5AF}
 /* The bib is paper: always light inside, in both themes (fixes light-blue links and grey units on white). */
 .bib:not(.upcoming){--ink:#15181C;--muted:#5E6772;--line:#E2E6EA;--link:#15181C;--surface:#F3F5F7;--surface-2:#E7EBEF;--zebra:rgba(21,24,28,.03);
-  --rec:#D92D27;--ok:#12855A;--prova-txt:#2B4BD8;--focus:#2B4BD8;--esteira-txt:#8A6400;--rua-txt:#0B7A76}
+  --rec:#C62821;--ok:#0B6B47;--prova-txt:#2B4BD8;--focus:#2B4BD8;--esteira-txt:#8A6400;--rua-txt:#0B7A76}
 
 /* header: screen name + one menu */
 h1{font-size:clamp(32px,9.5vw,42px)}
@@ -777,7 +780,7 @@ details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(
 
 /* records: a badge that opens the list */
 .rec-det{margin-top:7px}
-.rec-det > summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:4px 11px 4px 9px;border-radius:999px;font-size:13.5px;font-weight:700;line-height:1;color:var(--rec);background:color-mix(in srgb,var(--rec) 11%,transparent)}
+.rec-det > summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:4px 11px 4px 9px;border-radius:999px;font-size:13.5px;font-weight:700;line-height:1;color:var(--rec);background:color-mix(in srgb,var(--rec) 11%,transparent)}
 .rec-det > summary::-webkit-details-marker{display:none}
 .rec-det > summary svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .rec-det > summary::after{content:"";width:5px;height:5px;margin-left:2px;border-right:1.7px solid currentColor;border-bottom:1.7px solid currentColor;transform:translateY(-2px) rotate(45deg)}
@@ -804,7 +807,7 @@ details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(
 @media (max-width:480px){
   .yr-cal{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:6px}
   .yr-cal > .yr-strip,.yr-cal > .yr-ml{display:contents}
-  .yr-cal .yr-c{height:30px;font-size:13px}
+  .yr-cal .yr-c{height:40px;font-size:13px}
   .yr-strip > :nth-child(-n+6){grid-row:1}
   .yr-ml > :nth-child(-n+6){grid-row:2}
   .yr-strip > :nth-child(n+7){grid-row:3}
@@ -845,6 +848,7 @@ details.mini[open] > summary::after{content:"";transform:translateY(1px) rotate(
 details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
 .gm-v{font-family:var(--font-num-s);font-weight:800;font-size:18px;line-height:1;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .gm-v.gm-m{color:var(--ink)}
+.gm-note{grid-column:1/-1;font-size:12.5px;line-height:1.35;color:var(--muted);margin-top:4px}
 .gm-ok{font-family:var(--font-ui);font-size:13px;font-weight:700;line-height:1.1;color:var(--ok);white-space:normal}
 .gm-b{margin:0;padding:2px 12px 14px;display:grid;gap:8px}
 .gm-b > div{display:grid;grid-template-columns:6.4em minmax(0,1fr);gap:10px;font-size:14px;line-height:1.45}
@@ -886,6 +890,7 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
       <div class="menu" id="hdr-menu" role="menu" hidden>
         <button class="menu-it" id="refresh" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>Atualizar</button>
         <button class="menu-it" id="export" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>Exportar planilha</button>
+        <button class="menu-it" id="logout" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4"/><path d="M14 8l4 4-4 4"/><path d="M18 12H9"/></svg>Sair</button>
         <button class="menu-it" id="help-btn" type="button" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg>Como funciona</button>
         <button class="menu-it" id="admin-btn" type="button" role="menuitem" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12l2.2 2.2L15.5 10"/></svg>Conferência</button>
       </div>
@@ -929,7 +934,7 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
     </div>
     <div class="row2">
       <label>Número de peito<input name="bib" type="text" inputmode="numeric" autocomplete="off"></label>
-      <label>Tempo oficial<input name="chip" type="text" inputmode="decimal" autocomplete="off" placeholder="52:18"></label>
+      <label>Tempo oficial<input name="chip" type="text" inputmode="decimal" autocomplete="off" placeholder="52min18s"></label>
     </div>
     <label>Cidade<input name="cidade" type="text" autocomplete="off" placeholder="Automática, pelo GPS"></label>
     <label>Observação<input name="note" type="text" autocomplete="off"></label>
@@ -982,7 +987,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-09';
+  var APP_VER = '2026-11-10';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -1112,14 +1117,19 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function fmtShort(d){ return d ? d.getDate() + '/' + pad(d.getMonth()+1) : ''; }
   function otherYear(d){ return d && d.getFullYear() !== new Date().getFullYear(); }
-  function fmtKm(km){ return km.toFixed(3).replace('.', ','); }
-  function fmtKmShort(km){ return fmtKm(km).replace(/,0+$/, ''); }
+  function fmtKm(km){ return (Math.floor(km * 100 + 1e-6) / 100).toFixed(2).replace('.', ','); }
+  function fmtKmShort(km){
+    if (Math.abs(km - 21.0975) < 0.01) return '21,1';
+    if (Math.abs(km - 42.195) < 0.01) return '42,2';
+    return fmtKm(km).replace(/,0+$/, '');
+  }
   function fmt1(n){ return n.toFixed(1).replace('.', ','); }
   // Times and paces are cut, never rounded up (10:26,8 shows as 10min26s, like the watch).
   function fmtTime(sec){
     sec = Math.floor(sec + 1e-6);
     var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
     if (h) return h + 'h' + pad(m) + 'min' + pad(s) + 's';
+    if (!m) return s + 's';
     return m + 'min' + pad(s) + 's';
   }
   /* Official (chip) times keep their tenths, cut and never rounded: 47:22,906 shows as
@@ -1137,7 +1147,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function fmtPaceAxis(v){
     var m = Math.floor(v/60), s = Math.round(v%60);
-    return s ? m + 'min' + pad(s) : m + 'min';
+    return s ? m + 'min' + pad(s) + 's' : m + 'min';
   }
 
   var RECS = [
@@ -1402,7 +1412,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (s.watchKm == null) { s.watchKm = s.km; s.watchTime = s.time; }
       var info = s.race ? raceInfoOf(s) : null;
       var on = !!(info && info.chip > 0 && info.km > 0);
-      s.km = on ? info.km : s.watchKm;
+      // Decided on 10/11/2026: a race entered in Provas shows the official distance on every screen,
+      // official time or not (total time / official distance), as long as the watch covered it (2% margin).
+      var reg = !!(info && info.km > 0 && (on || s.watchKm >= info.km * RACE_TOL));
+      s.km = reg ? info.km : s.watchKm;
       // A race is timed from start to finish (like Strava does), not by moving time.
       s.time = on ? info.chip : (s.race ? (s.elapsed || s.watchTime) : s.watchTime);
       s.pace = s.time / s.km;
@@ -1524,8 +1537,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       '<div class="band band-ink"><span>Buscando treinos</span></div>' +
       '<div class="bib-body"><p class="bib-num">--<span class="u">km</span></p>' +
       '<div class="bib-stats"><div><span class="st-v">--</span><span class="st-k">Tempo</span></div>' +
-      '<div><span class="st-v">--</span><span class="st-k">Pace</span></div>' +
-      '<div><span class="st-v">--</span><span class="st-k">FC média</span></div></div></div>' +
+      '<div><span class="st-v">--</span><span class="st-k">Pace por km</span></div>' +
+      '<div><span class="st-v">--</span><span class="st-k">Batimentos médios</span></div></div></div>' +
       '<div class="bib-foot"></div></section>';
   }
 
@@ -1548,8 +1561,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return labels.length + ' recordes' + where + ', de ' + lcDist(labels[0]) + ' a ' + lcDist(labels[labels.length - 1]);
   }
   function topList(labels, where){
-    if (labels.length <= 3) return 'Top 5' + where + ' em ' + joinPt(labels);
-    return 'Top 5' + where + ' em ' + labels.length + ' distâncias, de ' + lcDist(labels[0]) + ' a ' + lcDist(labels[labels.length - 1]);
+    if (labels.length <= 3) return 'Entrou nos seus 5 melhores tempos' + where + ' em ' + joinPt(labels);
+    return 'Entrou nos seus 5 melhores tempos' + where + ' em ' + labels.length + ' distâncias, de ' + lcDist(labels[0]) + ' a ' + lcDist(labels[labels.length - 1]);
   }
   var TROPHY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M8 20h8M10 17h4"/></svg>';
   function recBadge(n, txt, where){
@@ -1573,8 +1586,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<div class="bib-stats">' +
           (s.race ? '<div><span class="st-v">' + fmtKm(s.km) + '<small> km</small></span><span class="st-k">Distância</span></div>'
             : '<div><span class="st-v">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</span><span class="st-k">' + (s.official ? 'Tempo oficial' : 'Tempo em movimento') + '</span></div>') +
-          '<div><span class="st-v">' + fmtPace(s.pace) + '</span><span class="st-k">Pace</span></div>' +
-          '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
+          '<div><span class="st-v">' + fmtPace(s.pace) + '</span><span class="st-k">Pace por km</span></div>' +
+          '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">Batimentos médios</span></div>' +
         '</div>' +
         recBadge(pl.first.length + s.broke.length, lines.join('. '), where) +
         (pl.top.length ? '<p class="bib-note">' + esc(topList(pl.top, where)) + '</p>' : '') +
@@ -1879,7 +1892,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (gs) {
       if (gs.hit) out += '<p class="tg-gap ok">Meta batida. A meta nova aparece na próxima atualização.</p>';
       else if (gs.trainOnly) out += '<p class="tg-gap">Você já fez o tempo da meta em treino. Pra valer, falta fazer numa prova.</p>';
-      else out += '<p class="tg-gap">Faltam <b>' + shortSec(gs.gap) + '</b> pra meta: ' + shortSec(gs.gap / km) + ' a menos por km.</p>';
+      else out += '<p class="tg-gap">Faltam <b>' + shortSec(gs.gap) + '</b> pra meta: ' + (gs.gap / km < 1 ? 'menos de 1s' : shortSec(gs.gap / km) + ' a menos') + ' por km.</p>';
     }
     return out;
   }
@@ -1904,12 +1917,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!keys.length) return allAnalyzed() ? '' : '<h2>Metas</h2><p class="note">As metas aparecem quando a análise dos treinos terminar.</p>';
     var rows = keys.map(function(k){
       var gs = goalState(k), D = DIST_BY[k];
-      var falta = gs.hit ? '<span class="gm-ok">batida</span>' : gs.trainOnly ? '<span class="gm-ok">em treino</span>' : shortSec(gs.gap);
+      var falta = gs.hit ? '<span class="gm-ok">batida</span>' : gs.trainOnly ? '<span class="gm-ok">só em prova</span>' : shortSec(gs.gap);
       return '<details class="gm-r" name="gm" data-sec="meta-' + k + '"' + (openSec['meta-' + k] ? ' open' : '') + '><summary class="gm-h">' +
         '<span class="gm-d">' + D.label + '</span>' +
         '<span class="gm-v">' + fmtTime(gs.best.t) + '</span>' +
         '<span class="gm-v gm-m">' + fmtTime(gs.g.hi) + '</span>' +
         '<span class="gm-v gm-f">' + falta + '</span>' +
+        (gs.trainOnly && !gs.hit ? '<span class="gm-note">Só vale em prova (ou em treino, depois de 6 semanas sem prova).</span>' : '') +
         '</summary>' + goalDetail(k) + '</details>';
     }).join('');
     return '<h2>Metas</h2><div class="rec-box gm"><div class="gm-hd"><span>Distância</span><span>Recorde</span><span>Meta</span><span>Falta</span></div>' + rows + '</div>' +
@@ -2058,6 +2072,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (hp > 0) out += '<rect class="bar-prova" x="' + x + '" y="' + yp.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hp.toFixed(1) + '"/>';
       if (he > 0) out += '<rect class="bar-est" x="' + x + '" y="' + ye.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + he.toFixed(1) + '"/>';
       var cx = (L + slot * i + slot / 2).toFixed(1);
+      if (!(tot[i] > 0) && PAUSES[isoOf(wk.start)]) out += '<text class="axis" x="' + cx + '" y="' + (T + h - 6) + '" text-anchor="middle">pausada</text>';
       if (tot[i] > 0) out += '<text class="bar-val" x="' + cx + '" y="' + (ye - 4).toFixed(1) + '" text-anchor="middle">' + fmtKm(tot[i]) + '</text>';
       out += '<text class="axis" x="' + cx + '" y="' + (H - 7) + '" text-anchor="middle">' + (i === weeks.length - 1 ? 'atual' : fmtShort(wk.start)) + '</text>';
       return out;
@@ -2115,7 +2130,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function openRecTop(){ var ids = ['dist', 'trot', 'pace2', 'pace3', 'pace5']; for (var i = 0; i < ids.length; i++) if (openSec['rec-' + ids[i]]) return ids[i]; return null; }
   function recRow(r, best, list){
     var s = best[r.id];
-    if (!s) return '<div class="rr rr-empty"><div class="rr-h"><span class="rr-l"><span class="t-lbl">' + REC_SHORT[r.id] + '</span></span><span class="t-val">--</span></div></div>';
+    if (!s) return '<div class="rr rr-empty"><div class="rr-h"><span class="rr-l"><span class="t-lbl">' + REC_SHORT[r.id] + '</span></span><span class="t-sub">' + (r.id === 'trot' && tab === 'esteira' ? 'só na rua' : 'ainda não tem') + '</span></div></div>';
     var v = recVal(r, s);
     var head = '<span class="rr-l"><span class="t-lbl">' + REC_SHORT[r.id] + '</span>' +
       '<span class="t-sub"><span class="o ' + origCls(s) + '"></span>' + shortDate(s) + (s.race ? ', ' + esc(raceShort(s)) : '') + '</span></span>' +
@@ -2177,7 +2192,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
             '<text class="axis" x="' + xx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + (i === 0 ? 'start' : 'middle') + '">' + lbl + '</text>';
     });
     return '<div class="panel chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pace médio por treino, do mais antigo ao mais recente">' +
-           g + '<path class="path" d="' + d + '"/>' + dots + xl + '</svg></div>' +
+           g + '<text class="axis" x="' + (L + 4) + '" y="11">pace por km</text><path class="path" d="' + d + '"/>' + dots + xl + '</svg></div>' +
            '<div class="legend">' + (tab === 'ruat' || tab === 'tudo' ? '<span class="lg-r">Rua</span>' : '') + (tab === 'prova' || tab === 'tudo' ? '<span class="lg-p">Prova</span>' : '') + (tab === 'esteira' || tab === 'tudo' ? '<span class="lg-e">Esteira</span>' : '') + '<span class="lg-x">Recorde de pace na época</span></div>';
   }
 
@@ -2192,7 +2207,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     s.broke.forEach(function(id){ recs.push('Recorde de ' + REC_BY[id].chip); });
     var z = histRow.i++ % 2 ? ' zb' : '';
     var dow = DOW[s.d.getDay()];
-    var detail = '<span class="t-sub">' + dow.charAt(0).toUpperCase() + dow.slice(1) + (s.hr != null ? ', FC média ' + s.hr : '') + (tags.length ? ' ' + tags.join(' ') : '') + '</span>' +
+    var detail = '<span class="t-sub">' + dow.charAt(0).toUpperCase() + dow.slice(1) + (s.hr != null ? ', batimentos médios ' + s.hr : '') + (tags.length ? ' ' + tags.join(' ') : '') + '</span>' +
       recBadge(s.prs.length + s.broke.length, recs.join('. '), tab === 'esteira' ? ' na esteira' : tab === 'ruat' ? ' na rua' : tab === 'prova' ? ' em prova' : '');
     return '<tr class="h-main' + z + '"><td><span class="t-lbl"><span class="o ' + origCls(s) + '"></span>' + fmtDate(s.d).replace(/^[^,]+, /, '') + '</span></td>' +
       '<td class="t-n">' + fmtKm(s.km) + '</td><td class="t-n">' + (s.official ? fmtOff(s.time) : fmtTime(s.time)) + '</td><td class="t-n">' + fmtPace(s.pace) + '</td></tr>' +
@@ -2393,7 +2408,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     else if (lockedAll.length) bits.push('próxima: ' + lockedAll[0].label);
     return sec('pv-' + key, title, bits.join(' · '),
       '<table class="tbl ch-tbl"><thead><tr><th>Marco</th><th class="num">Quando</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-      (hidden > 0 ? '<p class="fine">+ ' + hidden + (hidden === 1 ? ' bloqueada' : ' bloqueadas') + '</p>' : ''));
+      (hidden > 0 ? '<p class="fine">+ ' + hidden + (hidden === 1 ? ' conquista aparece' : ' conquistas aparecem') + ' depois das anteriores' + '</p>' : ''));
   }
 
   function streakInfo(list){
@@ -2539,10 +2554,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var wNow = st.walk[now] || 0;
     var html = '<h3 class="h3">Medalhas de ' + mlabel(now, true).replace(/ de \d+$/, '') + '</h3>' +
       '<div class="md-now">' +
-        '<div class="panel mc">' + medalSVG('km', ktier, fmt1(kmNow) + ' km', 88) +
+        '<div class="panel mc">' + medalSVG('km', ktier, fmtKm(kmNow) + ' km', 88) +
           '<p class="mc-k">' + ICON_RUN + 'Km do mês</p><p class="mc-t">' + (ktier >= 0 ? TIER_NAMES[ktier] : 'Sem medalha') + '</p>' +
           seg(kmNow, kt) + left(kmNow, kt, ktier, 'km') +
-          (wNow > 0 ? '<p class="mc-w">' + ICON_WALK + fmt1(wNow) + ' km</p>' : '') + '</div>' +
+          (wNow > 0 ? '<p class="mc-w">' + ICON_WALK + fmtKm(wNow) + ' km</p>' : '') + '</div>' +
         '<div class="panel mc">' + medalSVG('dias', dtier, dNow + (dNow === 1 ? ' dia' : ' dias'), 88) +
           '<p class="mc-k">Dias ativos</p><p class="mc-t">' + (dtier >= 0 ? TIER_NAMES[dtier] : 'Sem medalha') + '</p>' +
           seg(dNow, dt) + left(dNow, dt, dtier, 'dias') + '</div>' +
@@ -2550,13 +2565,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (onlyNow) return html;
     // collection: past months with activity
     var keys = Object.keys(st.km).concat(Object.keys(st.days)).filter(function(k, i, arr){ return arr.indexOf(k) === i && k < now; }).sort().reverse();
+    // The collection starts at the first month with a workout the app counts (a run, or a walk before
+    // walk_until, which counts as a workout on purpose): a stray walk before that opens no month.
+    var firstMk = (state.sessions || []).reduce(function(m, x){ var mk = x.d ? mkey(x.d) : null; return mk && (!m || mk < m) ? mk : m; }, null);
+    if (firstMk) keys = keys.filter(function(k){ return k >= firstMk; });
     if (keys.length) {
       html += '<h3 class="h3">Coleção</h3><table class="tbl md-tbl"><thead><tr><th>Mês</th><th>Km</th><th>Dias ativos</th></tr></thead><tbody>' +
         keys.map(function(k){
           var v = st.km[k] || 0, dd = st.days[k] || 0;
           var t1 = tierOf(v, kmTiers(st, k)), t2 = tierOf(dd, daysTiers(st, k));
           return '<tr><td class="md-month"><button type="button" class="recap-btn" data-recap="' + k + '" aria-label="Cartão de ' + mlabel(k, true) + '">' + mlabel(k) + RECAP_ICON + '</button></td>' +
-            '<td><span class="md-cell">' + medalSVG('km', t1, '', 40) + '<span><span class="md-ct">' + (t1 >= 0 ? TIER_NAMES[t1] : 'Sem medalha') + '</span><span class="t-sub">' + ICON_RUN + fmt1(v) + ' km</span>' + ((st.walk[k] || 0) > 0 ? '<span class="t-sub md-wk">' + ICON_WALK + fmt1(st.walk[k]) + ' km</span>' : '') + '</span></span></td>' +
+            '<td><span class="md-cell">' + medalSVG('km', t1, '', 40) + '<span><span class="md-ct">' + (t1 >= 0 ? TIER_NAMES[t1] : 'Sem medalha') + '</span><span class="t-sub">' + ICON_RUN + fmtKm(v) + ' km</span>' + ((st.walk[k] || 0) > 0 ? '<span class="t-sub md-wk">' + ICON_WALK + fmt1(st.walk[k]) + ' km</span>' : '') + '</span></span></td>' +
             '<td><span class="md-cell">' + medalSVG('dias', t2, '', 40) + '<span><span class="md-ct">' + (t2 >= 0 ? TIER_NAMES[t2] : 'Sem medalha') + '</span><span class="t-sub">' + dd + (dd === 1 ? ' dia' : ' dias') + '</span></span></span></td></tr>';
         }).join('') + '</tbody></table>' + (keys.some(function(k){ return (st.walk[k] || 0) > 0; }) ? WALK_NOTE : '');
     }
@@ -2648,7 +2667,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       { label: 'Primeiro split negativo', hit: negHit, where: negHit ? raceShort(negHit) : '', cls: 'o-p' },
       { label: 'Primeira prova noturna', hit: nightHit, where: nightHit ? raceShort(nightHit) : '' },
       { label: 'Primeira na chuva', hit: rainHit, where: rainHit ? whereOf(rainHit) : '' },
-      { label: 'Primeira antes das 6h', hit: earlyHit, where: earlyHit ? whereOf(earlyHit) + ', ' + pad(earlyHit.d.getHours()) + ':' + pad(earlyHit.d.getMinutes()) : '' }
+      { label: 'Primeira antes das 6h', hit: earlyHit, where: earlyHit ? whereOf(earlyHit) + ', ' + pad(earlyHit.d.getHours()) + 'h' + pad(earlyHit.d.getMinutes()) : '' }
     ];
     (group || []).forEach(function(g){
       // runsAll: every run (the 120-day "runs" would let an old first slide forward).
@@ -2795,7 +2814,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var sim = simulateGoals(k, tb)[s.id];
     if (sim) {
       var retro = isoOf(s.d) < GOAL_SYSTEM_START ? ' Calculada pela regra atual.' : '';
-      if (sim.first) meta = { kind: 'base', txt: 'Virou a base' };
+      if (sim.first) meta = { kind: 'base', txt: 'Primeira prova nessa distância: este tempo vira o ponto de partida da meta' };
       else if (sim.beat) meta = { kind: 'hit', txt: fmtGoalOf(sim.before) };
       else meta = { kind: 'miss', txt: fmtGoalOf(sim.before) };
     }
@@ -2821,9 +2840,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var diff = doc.half.second - doc.half.first;
       halves = '<tr class="sp-half"><td class="sp-k">1ª metade</td><td class="sp-t">' + fmtTime(doc.half.first) + '</td><td class="sp-n"></td></tr>' +
         '<tr class="sp-half"><td class="sp-k">2ª metade</td><td class="sp-t">' + fmtTime(doc.half.second) + '</td><td class="sp-n">' +
-        (diff < 0 ? '<span class="sp-tag neg">' + fmtTime(-diff) + ' mais rápida</span>' : '<span class="sp-tag">' + fmtTime(diff) + ' mais lenta</span>') + '</td></tr>';
+        (Math.abs(diff) < 1 ? '<span class="sp-tag">metades iguais</span>' : diff < 0 ? '<span class="sp-tag neg">' + fmtTime(-diff) + ' mais rápida</span>' : '<span class="sp-tag">' + fmtTime(diff) + ' mais lenta</span>') + '</td></tr>';
     }
-    var head = doc.half ? (doc.half.second < doc.half.first ? '<span class="sp-neg">Split negativo</span>' : '<span class="sp-pos">Split positivo</span>') : '';
+    var hd = doc.half ? doc.half.second - doc.half.first : 0;
+    var head = !doc.half || Math.abs(hd) < 1 ? '' : (hd < 0 ? '<span class="sp-neg">2ª metade mais rápida</span>' : '<span class="sp-pos">2ª metade mais lenta</span>');
     return '<table class="tbl split-tbl"><thead><tr><th colspan="3"><div class="t-head"><span>Tempo de cada km</span>' + head + '</div></th></tr></thead><tbody>' + rows + halves + '</tbody></table>';
   }
 
@@ -2900,20 +2920,20 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
               '<td class="t-val ' + (resT < ctx.before.t ? 'good' : 'bad') + '">' + (resT < ctx.before.t ? 'superou por ' + fmtTime(ctx.before.t - resT) : 'faltaram ' + fmtTime(resT - ctx.before.t)) + '</td></tr>'
             : '<tr><td><span class="t-lbl">Recorde até então</span><span class="t-sub">Primeira vez</span></td><td class="t-val">--</td></tr>';
           var metaRow = ctx.meta ? '<tr><td><span class="t-lbl">Meta</span><span class="t-sub">' + ctx.meta.txt + '</span></td>' +
-            '<td class="t-val ' + (ctx.meta.kind === 'hit' ? 'good' : '') + '">' + (ctx.meta.kind === 'hit' ? 'batida' : ctx.meta.kind === 'base' ? 'base' : 'não batida') + '</td></tr>' : '';
+            '<td class="t-val ' + (ctx.meta.kind === 'hit' ? 'good' : '') + '">' + (ctx.meta.kind === 'hit' ? 'batida' : ctx.meta.kind === 'base' ? '' : 'não batida') + '</td></tr>' : '';
           era = '<table class="tbl era-tbl"><thead><tr><th colspan="2">Na época</th></tr></thead><tbody>' + objRow + metaRow + '</tbody></table>';
         }
         var ruaPrs = (s.prsBy && s.prsBy.rua) || s.prs || [];
         var prs = recBadge(ruaPrs.length, 'Recorde na rua em ' + esc(joinPt(ruaPrs.map(function(k){ return DIST_BY[k].label; }))), ' na rua');
         var splitTbl = splitsTable(doc);
         return '<article class="bib past-race">' +
-          '<div class="band band-prova"><span>' + esc(name) + '</span><span class="bd">' + (info.km ? info.km + ' km' : fmtKm(s.km) + ' km') + '</span></div>' +
+          '<div class="band band-prova"><span>' + esc(name) + '</span><span class="bd">' + (info.km ? fmtKmShort(info.km) + ' km' : fmtKm(s.km) + ' km') + '</span></div>' +
           '<div class="bib-body">' +
             '<p class="bib-num time">' + (info.chip > 0 ? fmtOff(resT) : fmtTime(resT)) + '</p>' +
             '<p class="bib-sub">' + (info.chip > 0 ? 'Tempo oficial nos ' : 'Tempo nos ') + fmtKmShort(distKm) + ' km · ' + fmtDate(s.d) + (local ? ', ' + esc(local) : '') + '</p>' +
             '<div class="bib-stats' + (info.bib ? '' : ' two') + '">' +
-              '<div><span class="st-v">' + fmtPace(resT / distKm) + '</span><span class="st-k">Pace</span></div>' +
-              '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">FC média</span></div>' +
+              '<div><span class="st-v">' + fmtPace(resT / distKm) + '</span><span class="st-k">Pace por km</span></div>' +
+              '<div><span class="st-v">' + (s.hr != null ? s.hr + '<small> bpm</small>' : '--') + '</span><span class="st-k">Batimentos médios</span></div>' +
               (info.bib ? '<div><span class="st-v">' + esc(info.bib) + '</span><span class="st-k">Nº de peito</span></div>' : '') +
             '</div>' + prs +
             '<details class="mini race-more" data-sec="race-' + s.id + '"' + (expanded || openSec['race-' + s.id] ? ' open' : '') + '><summary>Ver detalhes</summary>' +
@@ -3190,8 +3210,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       ] },
       pace: { t: 'Evolução do pace', r: 'Cada ponto é um treino de 2 km ou mais, do mais antigo ao mais recente.', g: [{ li: [
         'Quanto mais alto o ponto, mais rápido.',
-        'Ponto vermelho: o treino mais rápido até aquele dia.',
-        'Na aba Tudo, pontos vazados são esteira.'
+        'Contorno vermelho: o treino mais rápido até aquele dia.',
+        'Na aba Tudo, a cor do ponto diz o tipo: verde é rua, azul é prova e amarelo é esteira.'
       ] }] },
       volume: { t: 'Volume semanal', r: 'Quilômetros por semana, de domingo a sábado.', g: [{ li: [
         'As cores separam rua, prova e esteira.',
@@ -3199,8 +3219,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'Fique de olho: subida grande de uma semana pra outra é sinal de alerta pro joelho e a panturrilha.',
         'Com muitas semanas, arraste o gráfico pro lado pra ver as mais antigas.'
       ] }] },
-      desafios: { t: 'Desafios', r: 'Contam esteira e rua' + (walk ? ', além das caminhadas antigas' : '') + '.', g: [{ li: [
-        '<strong>Sequência:</strong> semanas seguidas com pelo menos 2 corridas. O plano pede 3.',
+      desafios: { t: 'Semana e constância', r: 'Contam esteira e rua' + (walk ? ', além das caminhadas antigas' : '') + '.', g: [{ li: [
+        '<strong>As três bolinhas:</strong> cada corrida da semana enche uma. Com 2, a semana conta. A terceira, tracejada, é a meta do plano de treino, de 3 corridas por semana.',
+        '<strong>Constância (sequência):</strong> semanas seguidas com pelo menos 2 corridas.',
         'Cada corrida precisa ter no mínimo 1 km ou 10 minutos. Caminhada e aquecimento curto não contam.',
         'Em prova, vale a distância oficial.'
       ] }] },
@@ -3285,7 +3306,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       fechamento: { t: 'Fechamento do mês', r: 'O mês fecha com tudo o que foi feito nele.', g: [{ li: [
         'O resultado final sai quando todos abrirem o app no mês seguinte.',
         'O placar conta desde junho de 2026, e cada mês usa os números como estavam no último dia dele.',
-        'Até o mês fechar, ainda dá pra acertar o que aconteceu nele: tempo oficial de uma prova, semana pausada, distância do painel.',
+        'Até o mês fechar, ainda dá pra acertar o que aconteceu nele: tempo oficial de uma prova ou semana pausada.',
         'Depois que todos abriram e o mês fechou, o resultado não muda mais, nem com pausa, tempo oficial ou treino editado depois.',
         'Quem entra no grupo disputa a partir do mês em que entrou. Os meses anteriores não mudam.'
       ] }] },
@@ -3336,7 +3357,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
 
   function histTable(rows){
-    return '<div class="tbl-wrap"><table class="tbl hist-tbl"><thead><tr><th>Data</th><th class="num">Km</th><th class="num">Tempo</th><th class="num">Pace</th></tr></thead><tbody>' +
+    return '<div class="tbl-wrap"><table class="tbl hist-tbl"><thead><tr><th>Data</th><th class="num">Km</th><th class="num">Tempo</th><th class="num">Pace por km</th></tr></thead><tbody>' +
       (histRow.i = 0, rows.map(function(s){ return histRow(s); }).join('')) + '</tbody></table></div>';
   }
 
@@ -3353,7 +3374,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (view === 'dupla') return html + duplaTab();
 
     var all = analyze(state.sessions, 'tudo').list;
-    if (!all.length) return html + '<div class="msg"><strong>Nenhum treino ainda</strong>Treinos de corrida aparecem aqui assim que chegam ao Strava.</div>';
+    if (!all.length) {
+      var soon = { inicio: 'Aqui vão aparecer o seu último treino, a semana, as medalhas do mês e as metas de cada distância.',
+        recordes: 'Aqui vão aparecer os seus melhores tempos em cada distância, na rua e na esteira.',
+        evolucao: 'Aqui vão aparecer o gráfico do seu pace, os km de cada semana e a lista de todos os treinos.',
+        conquistas: 'Aqui vão aparecer o total de km, a constância, as medalhas de cada mês e as primeiras vezes.' };
+      return html + '<div class="msg"><strong>Nenhum treino ainda</strong>' + (soon[view] || '') + ' Os treinos de corrida entram assim que chegam ao Strava.</div>';
+    }
 
     if (view === 'inicio') {
       var last = all[all.length - 1];
@@ -3462,7 +3489,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (state.status === 'loading') text = 'Buscando seus treinos no Strava';
     else if (state.updatedAt) {
       var d = new Date(state.updatedAt);
-      text = 'Atualizado às ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) +
+      text = 'Atualizado às ' + pad(d.getHours()) + 'h' + pad(d.getMinutes()) +
         (isToday(d) ? '' : ' de ' + d.getDate() + ' ' + MON[d.getMonth()]);
       if (state.refreshing || state.revalidating) text += ', buscando novidades';
     } else if (state.status === 'error') text = 'Não foi possível ler o Strava';
@@ -3634,8 +3661,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function acctHtml(){
     if (!session) return '';
     var nm = me ? [me.firstname, me.lastname].filter(Boolean).join(' ') : '';
-    return '<div class="acct"><span>Conectado' + (nm ? ' como <strong>' + esc(nm) + '</strong>' : '') + '</span>' +
-      '<button type="button" class="btn" id="logout">Sair</button></div>';
+    return '<div class="acct"><span>Conectado' + (nm ? ' como <strong>' + esc(nm) + '</strong>' : '') + '. Pra sair, use o menu ⋮.</span></div>';
   }
 
   function updateProgress(){
@@ -3855,7 +3881,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* ---------- Conferência (owner only): what is saved for each person in the group ---------- */
   function admWhen(ms){
     var d = new Date(ms);
-    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + ', ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + ', ' + pad2(d.getHours()) + 'h' + pad2(d.getMinutes());
   }
   function admDay(iso){ var d = parseIso(iso); return d ? pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) : iso; }
 
@@ -3982,7 +4008,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (yc) {
       var det = document.getElementById('yr-det'), map = {};
       try { map = JSON.parse(det.getAttribute('data-det') || '{}'); } catch (e) {}
-      if (det && map[yc.getAttribute('data-yr')]) det.textContent = map[yc.getAttribute('data-yr')];
+      var line = det && map[yc.getAttribute('data-yr')];
+      if (line) {
+        // "Outubro: Ana 14 · Bia 9" becomes a small board, one row per person.
+        var cut = line.indexOf(': '), rows = line.slice(cut + 2).split(' · ');
+        det.innerHTML = '<b>' + esc(line.slice(0, cut)) + '</b>' + rows.map(function(r){ var m = /^(.*) (\S+)$/.exec(r) || [0, r, '']; return '<span class="yr-dr"><span>' + esc(m[1]) + '</span><span>' + esc(m[2]) + (m[2] === '1' ? ' ponto' : / /.test(m[2]) || isNaN(+m[2]) ? '' : ' pontos') + '</span></span>'; }).join('');
+      }
       return;
     }
     var mr = ev.target.closest && ev.target.closest('[data-mx]');
@@ -4086,7 +4117,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       g.fillStyle = '#15181C'; g.font = '800 128px ' + NUM; g.fillText(info.chip > 0 ? fmtOff(resT) : fmtTime(resT), bx + 70, by + 690);
       g.fillStyle = '#5E6772'; g.font = '500 36px ' + UI; g.fillText('Tempo nos ' + distTxt, bx + 70, by + 740);
       g.fillStyle = '#15181C'; g.font = '800 96px ' + NUM; g.fillText(fmtPace(resT / distKm), bx + 70, by + 860);
-      g.fillStyle = '#5E6772'; g.font = '500 36px ' + UI; g.fillText('Pace', bx + 70, by + 905);
+      g.fillStyle = '#5E6772'; g.font = '500 36px ' + UI; g.fillText('Pace por km', bx + 70, by + 905);
     } else {
       g.fillStyle = '#15181C'; g.font = '800 128px ' + NUM; g.fillText(fmtPace(resT / distKm), bx + 70, by + 690);
       g.fillStyle = '#5E6772'; g.font = '500 36px ' + UI; g.fillText('Pace nos ' + distTxt, bx + 70, by + 740);
@@ -4094,10 +4125,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var hl = [];
     if (ctx && ctx.before && resT < ctx.before.t) hl.push(['Superou o recorde por ' + fmtTime(ctx.before.t - resT), '#12855A']);
     if (ctx && ctx.meta && ctx.meta.kind === 'hit') hl.push(['Meta batida', '#12855A']);
-    if (doc && doc.half && doc.half.second < doc.half.first) hl.push(['Split negativo: 2ª metade ' + fmtTime(doc.half.first - doc.half.second) + ' mais rápida', '#2B4BD8']);
+    if (doc && doc.half && doc.half.first - doc.half.second >= 1) hl.push(['2ª metade ' + fmtTime(doc.half.first - doc.half.second) + ' mais rápida', '#2B4BD8']);
     if (s.prs && s.prs.length) hl.push(['Recorde pessoal em ' + joinPt(s.prs.slice(0, 3).map(function(k){ return DIST_BY[k].label; })) + (s.prs.length > 3 ? ' e mais' : ''), '#D92D27']);
     hl.slice(0, 3).forEach(function(x, i){
-      var yy = by + 985 + i * 58;
+      var yy = by + 972 + i * 48;
       g.fillStyle = x[1]; g.beginPath(); g.arc(bx + 82, yy - 12, 9, 0, Math.PI * 2); g.fill();
       fitFont(g, x[0], '700', UI, 38, bw - 180); g.fillText(x[0], bx + 104, yy);
     });
@@ -4727,24 +4758,30 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var kw = g.measureText(kmTxt).width;
     g.fillStyle = '#5E6772'; g.font = '700 64px ' + UI; g.fillText('km', bx + 90 + kw, by + 400);
     var sub = o.n + (o.n === 1 ? ' treino, ' : ' treinos, ') + fmtTime(o.time) + ' em movimento, ' + o.days + (o.days === 1 ? ' dia ativo' : ' dias ativos');
-    fitFont(g, sub, '500', UI, 38, bw - 140); g.fillText(sub, bx + 70, by + 470);
+    fitFont(g, sub, '500', UI, 38, bw - 140); g.fillText(sub, bx + 70, by + 484);
     var parts = [];
     if (o.kr > 0) parts.push(['#0E9F9A', fmtKm(o.kr) + ' km na rua']);
     if (o.kp > 0) parts.push(['#2B4BD8', fmtKm(o.kp) + ' km em prova']);
     if (o.ke > 0) parts.push(['#F2B300', fmtKm(o.ke) + ' km na esteira']);
-    var px = bx + 70;
+    // The parts wrap to a second line when they don't fit the card; everything below moves down with them.
     g.font = '600 32px ' + UI;
+    var px = bx + 70, py = by + 536, maxX = bx + bw - 70;
     parts.forEach(function(pt){
-      g.fillStyle = pt[0]; g.beginPath(); g.arc(px + 10, by + 520, 10, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#3A424C'; g.fillText(pt[1], px + 30, by + 531);
-      px += 30 + g.measureText(pt[1]).width + 36;
+      var pw = 30 + g.measureText(pt[1]).width;
+      if (px > bx + 70 && px + pw > maxX) { px = bx + 70; py += 48; }
+      g.fillStyle = pt[0]; g.beginPath(); g.arc(px + 10, py - 11, 10, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#3A424C'; g.fillText(pt[1], px + 30, py);
+      px += pw + 36;
     });
+    var dy = py - (by + 531);
+    by += dy;
     g.save(); g.setLineDash([16, 12]); g.strokeStyle = '#D9DEE3'; g.lineWidth = 4; g.beginPath(); g.moveTo(bx + 70, by + 580); g.lineTo(bx + bw - 70, by + 580); g.stroke(); g.restore();
     function medal(x, y, tier, label, value){
       var col = tier >= 0 ? TIER_COLORS[tier] : { o: '#8A939D', m: '#B9C0C7', i: '#E6E9EC' };
       g.fillStyle = col.o; g.beginPath(); g.arc(x, y, 62, 0, Math.PI * 2); g.fill();
       g.fillStyle = col.m; g.beginPath(); g.arc(x, y, 54, 0, Math.PI * 2); g.fill();
       g.fillStyle = col.i; g.beginPath(); g.arc(x, y, 42, 0, Math.PI * 2); g.fill();
+      g.save(); g.fillStyle = col.o; g.font = '800 30px ' + UI; g.textAlign = 'center'; g.fillText(label === 'Km do mês' ? 'km' : 'dias', x, y + 10); g.restore();
       g.fillStyle = '#15181C'; g.font = '700 34px ' + UI; g.fillText(tier >= 0 ? TIER_NAMES[tier] : 'Sem medalha', x + 90, y - 8);
       g.fillStyle = '#5E6772'; g.font = '500 30px ' + UI; g.fillText(label + ': ' + value, x + 90, y + 32);
     }
@@ -4754,7 +4791,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (o.prs.length) hl.push(['#D92D27', 'Recorde em ' + joinPt(o.prs.slice(0, 3).map(function(pk){ return DIST_BY[pk].label; })) + (o.prs.length > 3 ? ' e mais' : '')]);
     if (o.races.length) hl.push(['#2B4BD8', (o.races.length === 1 ? 'Prova: ' : 'Provas: ') + joinPt(o.races)]);
     if (o.wDelta != null && o.wDelta !== 0) hl.push(['#3A424C', 'Peso no mês: ' + (o.wDelta > 0 ? '+' : '−') + fmt1(Math.abs(o.wDelta)) + ' kg']);
-    hl.slice(0, 3).forEach(function(x, i){
+    hl.slice(0, dy > 20 ? 2 : 3).forEach(function(x, i){
       var yy = by + 945 + i * 52;
       g.fillStyle = x[0]; g.beginPath(); g.arc(bx + 82, yy - 11, 9, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#15181C'; fitFont(g, x[1], '700', UI, 36, bw - 180); g.fillText(x[1], bx + 104, yy);
@@ -4808,6 +4845,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function agSub(s){
     if (s && s.agK && DIST_BY[s.agK]) return DIST_BY[s.agK].label + ' em ' + fmtTime(s.agT) + (s.agD ? ', ' + fmtShort(parseIso(s.agD)) : '');
+    if (s && s.agMiss) return 'falta informar sexo e data de nascimento';
     if (s && s.v >= 10) return 'sem 5 km ou mais na rua em 90 dias';
     return s && s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua';
   }
@@ -4826,7 +4864,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var HIST_FROM = '2026-06';
   function asOfMonth(end){
     var c = buildSummaryCore();
-    return { v: c.v, month: c.month, ag: c.ag, agK: c.agK, agT: c.agT, agD: c.agD, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
+    return { v: c.v, month: c.month, ag: c.ag, agMiss: c.agMiss, agK: c.agK, agT: c.agT, agD: c.agD, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
       recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
       daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
       recDaysM: c.recDaysM, recDaysE: c.recDaysE, beatsM: c.beatsM };
@@ -5044,7 +5082,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       nextRaces: duoNextRaces(), raceGoals: duoRaceGoals(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(runTag),
       runsAll: all.filter(function(x){ return x.d; }).map(runTag).slice(-800),
-      ag: ag, agK: agB ? agB.k : null, agT: agB ? Math.round(agB.t * 10) / 10 : null, agD: agB ? agB.d : null,
+      ag: ag, agMiss: (SEX !== 'M' && SEX !== 'F') || !BIRTH ? 1 : 0, agK: agB ? agB.k : null, agT: agB ? Math.round(agB.t * 10) / 10 : null, agD: agB ? agB.d : null,
       best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
       streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek, act12: act12, wkc: wkc, trot90: trot90, trot90m: trot90m,
@@ -5293,7 +5331,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       Object.keys(x).forEach(function(id){ if (yPts[id] != null) yPts[id] += x[id]; });
       if (wins.length === 1) {
         if (yWins[wins[0]] != null) yWins[wins[0]]++;
-        chips += '<button type="button" class="yr-c w" style="--pc:' + (pcol[wins[0]] || '#8A939D') + '" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': ' + esc(nameOf[wins[0]] || 'Atleta') + '">' + esc(shortName(nameOf[wins[0]] || '?', people)) + '</button>';
+        chips += '<button type="button" class="yr-c w" style="--pc:' + (pcol[wins[0]] || '#8A939D') + '" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': ' + esc(nameOf[wins[0]] || 'Atleta') + '"></button>';
       } else chips += '<button type="button" class="yr-c tie" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': empate">=</button>';
     }
     // Year: months won, then points in the year, then head to head (months finished ahead of the other), then age grade.
@@ -5428,7 +5466,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var u = p.upd ? new Date(p.upd) : null, l = p.live ? new Date(p.live) : null;
     var t = u && l ? (l > u ? l : u) : (u || l);
     if (!t || isNaN(t)) return '<span class="g-u">ainda sem números</span>';
-    return '<span class="g-u">números de ' + pad(t.getDate()) + '/' + pad(t.getMonth() + 1) + ', ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + '</span>';
+    return '<span class="g-u">abriu o app em ' + pad(t.getDate()) + '/' + pad(t.getMonth() + 1) + ' às ' + pad(t.getHours()) + 'h' + pad(t.getMinutes()) + '</span>';
   }
   function recSub(x){
     if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + ' → ' + fmtTime(x.recNow);
@@ -5475,14 +5513,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<div><p class="bib-num">' + pb + '</p><span class="nm">' + esc(hisName) + '</span></div>' +
       '</div><p class="duo-lead">' + esc(lead) + '</p></div><div class="bib-foot"></div></article>' +
       together + table + monthsBlock(pa, pb, myName, hisName, mine, his) + racesTogetherBlock(mine, his, myName, hisName) +
-      (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + ':' + pad(upd.getMinutes()) + '.' +
-        (live ? ' Constância, medalhas e treinos juntos atualizados pelo Strava em ' + fmtDate(live).replace(/^[^,]+, /, '') + ' às ' + pad(live.getHours()) + ':' + pad(live.getMinutes()) + '.' : '') + '</p>' : '');
+      (upd ? '<p class="fine">Números de ' + esc(hisName) + ' de ' + fmtDate(upd).replace(/^[^,]+, /, '') + ' às ' + pad(upd.getHours()) + 'h' + pad(upd.getMinutes()) + '.' +
+        (live ? ' Constância, medalhas e treinos juntos atualizados pelo Strava em ' + fmtDate(live).replace(/^[^,]+, /, '') + ' às ' + pad(live.getHours()) + 'h' + pad(live.getMinutes()) + '.' : '') + '</p>' : '');
   }
 
   /* ---------- race editor ---------- */
 
   // Official (chip) time: "52:18", "0:52:18.128", "52:18,1", "1:02:03".
   function parseChip(v){
+    // "52min18s", "1h02min03s" and "29min15,7s" are read like "52:18", "1:02:03" and "29:15,7".
+    v = String(v || '').replace(/\s+/g, '').replace(/h/i, ':').replace(/min/i, ':').replace(/s$/i, '');
     var m = /^(?:(\d{1,2}):)?(\d{1,3}):(\d{2})(?:[.,](\d{1,3}))?$/.exec(String(v || '').trim());
     if (!m || +m[3] > 59 || (m[1] && +m[2] > 59)) return null;
     var t = (+(m[1] || 0)) * 3600 + (+m[2]) * 60 + (+m[3]) + (m[4] ? +('0.' + m[4]) : 0);
@@ -5492,7 +5532,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var whole = Math.floor(t + 1e-9), ms = Math.round((t - whole) * 1000);
     var h = Math.floor(whole / 3600), m = Math.floor(whole % 3600 / 60), s = whole % 60;
     var frac = ms ? ',' + String(ms).padStart(3, '0').replace(/0+$/, '') : '';
-    return (h ? h + ':' + pad(m) : m) + ':' + pad(s) + frac;
+    return (h ? h + 'h' + pad(m) : m) + 'min' + pad(s) + frac + 's';
   }
 
   var raceEdit = null;
@@ -5521,22 +5561,28 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var dlg = $('#race-dlg');
     if (dlg.close) dlg.close(); else dlg.removeAttribute('open');
   }
-  function raceErr(t){ var e = $('#race-err'); e.textContent = t; e.hidden = false; }
+  function raceErr(t, field){
+    var e = $('#race-err'); e.textContent = t; e.hidden = false;
+    // The message goes right under the field it is about.
+    var f = field ? raceField(field) : null, host = f && (f.closest('.row2') || f.closest('label'));
+    if (host) host.insertAdjacentElement('afterend', e);
+    if (f) f.focus();
+  }
   $('#race-form').addEventListener('submit', function(ev){
     ev.preventDefault();
     var name = raceField('name').value.trim();
     var date = raceField('date').value;
     var km = parseFloat(String(raceField('km').value).replace(',', '.'));
-    if (!name) return raceErr('Coloque o nome da prova.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return raceErr('Escolha a data.');
-    if (!(km > 0 && km <= 300)) return raceErr('Coloque a distância em km, como 5 ou 21,1.');
+    if (!name) return raceErr('Coloque o nome da prova.', 'name');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return raceErr('Escolha a data.', 'date');
+    if (!(km > 0 && km <= 300)) return raceErr('Coloque a distância em km, como 5 ou 21,1.', 'km');
     var clash = RACE_INFO.filter(function(x){ return x.date === date && x.date !== (raceEdit && raceEdit.orig); })[0];
-    if (clash) return raceErr('Já existe uma prova nesse dia.');
+    if (clash) return raceErr('Já existe uma prova nesse dia.', 'date');
     var chipRaw = String(raceField('chip').value).trim();
     var chip = chipRaw ? parseChip(chipRaw) : 0;
-    if (chipRaw && !chip) return raceErr('Tempo oficial no formato 52:18 ou 1:02:03 (pode ter décimos, como 52:18,128).');
+    if (chipRaw && !chip) return raceErr('Tempo oficial como 52min18s ou 1h02min03s (pode ter décimos, como 52min18,1s). Também aceita 52:18.', 'chip');
     var cidade = raceField('cidade').value.trim().replace(/\s+/g, ' ');
-    if (cidade && !parseCidade(cidade)) return raceErr('Cidade com o estado, como Recife, PE, ou com o país, como Lisboa, Portugal.');
+    if (cidade && !parseCidade(cidade)) return raceErr('Cidade com o estado, como Recife, PE, ou com o país, como Lisboa, Portugal.', 'cidade');
     var old = raceEdit && raceEdit.orig ? RACE_INFO.filter(function(x){ return x.date === raceEdit.orig; })[0] : null;
     var item = { date: date, name: name, short: old && old.name === name ? old.short : name, km: Math.round(km * 1000) / 1000,
       local: raceField('local').value.trim() || 'A confirmar', bib: raceField('bib').value.trim(), note: raceField('note').value.trim(),

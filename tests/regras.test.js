@@ -601,3 +601,38 @@ test('[E13] erro inesperado do Strava (500) numa gravação também espera um di
   app.ev('skipIds = {}; kick()'); await new Promise((r) => setTimeout(r, 50)); // "Atualizar" limpa a lista de pulados
   assert.equal(app.ev('globalThis.__n'), 1);
 });
+
+// ───────────────────────── Telas (revisão de 10/11/2026) ─────────────────────────
+test('[A3] prova cadastrada sem tempo oficial: tempo total ÷ distância oficial em todas as telas', () => {
+  const app = loadApp(HOJE);
+  app.setActivities([act({ id: 'p', start: '2026-10-31', km: 5.04, time: 2338, elapsed: 2352, race: true })], {
+    efforts: { p: eff({ 5000: 2330 }) }, races: [{ date: '2026-10-31', name: 'Estações', km: 5 }],
+  });
+  assert.equal(tabela(app, 'rua', '5000')[0].t, 2352);
+  const s = app.json('(function(){var s=state.sessions[0];return {km:s.km,time:s.time,pace:Math.floor(s.pace),watch:s.watchKm}})()');
+  assert.deepEqual(s, { km: 5, time: 2352, pace: 470, watch: 5.04 });
+  assert.equal(app.ev('fmtPace(state.sessions[0].pace)'), '7min50s');
+  assert.equal(app.json('analyze(state.sessions,"rua").best.pace5.id'), 'p');
+});
+
+test('[A3] relógio parou antes (mais de 2% curto): a prova fica com a distância do relógio', () => {
+  const app = loadApp(HOJE);
+  app.setActivities([act({ id: 'p', start: '2026-10-31', km: 3.2, time: 1500, race: true })], { races: [{ date: '2026-10-31', name: 'Estações', km: 5 }] });
+  tabela(app, 'rua', '5000');
+  assert.equal(app.json('state.sessions[0].km'), 3.2);
+});
+
+test('[M1][M2][B2][B4] formatos: segundos sozinhos, km com 2 casas cortadas, meia maratona, tempo oficial por extenso', () => {
+  const app = loadApp(HOJE);
+  assert.equal(app.ev('fmtTime(35.9)'), '35s');
+  assert.equal(app.ev('fmtTime(60)'), '1min00s');
+  assert.equal(app.ev('fmtKm(3)'), '3,00');
+  assert.equal(app.ev('fmtKm(4.996)'), '4,99');
+  assert.equal(app.ev('fmtKmShort(21.0975)'), '21,1');
+  assert.equal(app.ev('fmtKmShort(5)'), '5');
+  assert.equal(app.ev('parseChip("52min18s")'), 3138);
+  assert.equal(app.ev('parseChip("1h02min03s")'), 3723);
+  assert.equal(app.ev('parseChip("29:15,72")'), 1755.72);
+  assert.equal(app.ev('fmtChip(1755.72)'), '29min15,72s');
+  assert.equal(app.ev('parseChip(fmtChip(4008.57))'), 4008.57);
+});
