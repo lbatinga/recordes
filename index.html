@@ -670,7 +670,7 @@ html,body{overscroll-behavior-y:contain}
 .yr-c{height:36px;border-radius:6px;border:0;padding:0;background:var(--bib-line);display:grid;place-items:center;font:700 10px var(--font-ui);color:#fff;cursor:pointer;overflow:hidden}
 span.yr-c{cursor:default}
 .yr-c.w{background:var(--pc)}
-.yr-c.tie{background:repeating-linear-gradient(135deg,#9AA3AD 0 4px,#C4CBD2 4px 8px);color:#15181C}
+.yr-c.tie{background:repeating-linear-gradient(135deg,#9AA3AD 0 4px,#C4CBD2 4px 8px);color:#15181C;border:0}
 .yr-c.cur{outline:2px dashed var(--bib-muted);outline-offset:-2px;background:transparent;color:var(--bib-muted)}
 .yr-ml{margin-top:4px;font-size:10px;color:var(--bib-muted);text-align:center}
 .yr-rank{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
@@ -987,7 +987,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-11a';
+  var APP_VER = '2026-11-11b';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -3300,7 +3300,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       ] }] },
       desempate: { t: 'Empate no placar', r: 'Se os pontos empatarem, o desempate segue uma ordem.', g: [
         { h: 'No mês, no Grupo', ol: 1, li: ['Nível por idade e sexo', 'Linhas vencidas sozinho', 'Km no mês', 'Dias ativos no mês'] },
-        { h: 'No ano', ol: 1, li: ['Meses vencidos', 'Pontos somados', 'Confronto direto', 'Nível por idade e sexo'] },
+        { h: 'No ano', ol: 1, li: ['Meses vencidos', 'Pontos somados', 'Confronto direto, só quando o empate é entre 2 pessoas'] },
+        { li: ['Mês empatado vale fração no ano: cada empatado recebe 1 dividido pelo número de empatados (2 empatados, 0,5 mês pra cada). Se todos do grupo empatarem, ninguém recebe.',
+          'Se o empate do ano continuar, ninguém leva o troféu: o card mostra "Empate no ano".',
+          'O nível por idade e sexo não desempata o ano: ele olha os últimos 90 dias e mudaria o resultado depois que o ano acaba.'] },
         { li: ['Na Dupla (duas pessoas), o desempate do mês é só o nível por idade e sexo.', 'Se o empate continuar depois de todos os critérios, o mês fica empatado e ninguém ganha o mês.'] }
       ] },
       fechamento: { t: 'Fechamento do mês', r: 'O mês fecha com tudo o que foi feito nele.', g: [{ li: [
@@ -5327,7 +5330,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     // Until this year has a finished month with a winner, the card shows last year's final.
     var hasWin = Object.keys(hist).some(function(m){
       if (m.slice(0, 4) !== year || m >= k) return false;
-      return monthWinner(m, hist[m]).length === 1;
+      var w = monthWinner(m, hist[m]);
+      return w.length >= 1 && w.length < Object.keys(hist[m]).length;
     });
     if (!hasWin && Object.keys(hist).some(function(m){ return m.slice(0, 4) === String(+year - 1); })) { year = String(+year - 1); yFinal = true; }
     var yWins = {}, yPts = {}, chips = '', months = [];
@@ -5342,9 +5346,19 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (wins.length === 1) {
         if (yWins[wins[0]] != null) yWins[wins[0]]++;
         chips += '<button type="button" class="yr-c w" style="--pc:' + (pcol[wins[0]] || '#8A939D') + '" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': ' + esc(nameOf[wins[0]] || 'Atleta') + '"></button>';
-      } else chips += '<button type="button" class="yr-c tie" data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': empate">=</button>';
+      } else {
+        // A tied month is worth a fraction to each tied person (2 tied: 0,5 each), unless everyone
+        // in the month tied. The month's own result stays what grouphist holds.
+        if (wins.length && wins.length < Object.keys(x).length) wins.forEach(function(id){ if (yWins[id] != null) yWins[id] += 1 / wins.length; });
+        var stops = wins.map(function(id, i){ return (pcol[id] || '#8A939D') + ' ' + (i * 100 / wins.length).toFixed(2) + '% ' + ((i + 1) * 100 / wins.length).toFixed(2) + '%'; }).join(',');
+        chips += '<button type="button" class="yr-c tie"' + (wins.length > 1 ? ' style="background:linear-gradient(90deg,' + stops + ')"' : '') + ' data-yr="' + mk + '" aria-label="' + MON_FULL[mi - 1] + ': empate' +
+          (wins.length > 1 ? ' entre ' + esc(joinPt(wins.map(function(id){ return nameOf[id] || 'Atleta'; }))) : '') + '">' + (wins.length > 1 ? '' : '=') + '</button>';
+      }
     }
-    // Year: months won, then points in the year, then head to head (months finished ahead of the other), then age grade.
+    /* Year (decided on 11/11/2026): months won (a tied month counts as a fraction), then points in the
+       year, then head to head, only when exactly two are tied. Still tied: nobody takes the trophy.
+       The age grade is not a tiebreak here: it looks at the last 90 days and keeps changing after
+       the year ends, so a closed year could change hands. */
     function ahead(a, b){
       var n = 0;
       months.forEach(function(mk){
@@ -5357,30 +5371,35 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       });
       return n;
     }
+    function near(a, b){ return Math.abs(a - b) < 1e-9; }
+    function sameTop(p, q){ return near(yWins[p.id], yWins[q.id]) && yPts[p.id] === yPts[q.id]; }
+    function fmtWins(v){ return near(v, Math.round(v)) ? String(Math.round(v)) : (Math.round(v * 10) / 10).toFixed(1).replace('.', ','); }
+    function monthsWord(v){ return near(v, 1) ? ' mês' : ' meses'; }
     var yOrder = people.slice().sort(function(a, b){
-      return (yWins[b.id] - yWins[a.id]) || (yPts[b.id] - yPts[a.id]) || (ahead(b.id, a.id) - ahead(a.id, b.id)) ||
-        (((b.s && b.s.ag) || 0) - ((a.s && a.s.ag) || 0));
+      return near(yWins[a.id], yWins[b.id]) ? yPts[b.id] - yPts[a.id] : yWins[b.id] - yWins[a.id];
     });
+    for (var gi = 0; gi < yOrder.length;) {
+      var gj = gi;
+      while (gj + 1 < yOrder.length && sameTop(yOrder[gi], yOrder[gj + 1])) gj++;
+      if (gj - gi === 1 && ahead(yOrder[gj].id, yOrder[gi].id) > ahead(yOrder[gi].id, yOrder[gj].id)) { var sw = yOrder[gi]; yOrder[gi] = yOrder[gj]; yOrder[gj] = sw; }
+      gi = gj + 1;
+    }
     var lead = yOrder[0];
+    // Who shares the top after every tiebreak: more than one means nobody takes the year.
+    var topGroup = lead ? yOrder.filter(function(p){ return sameTop(p, lead); }) : [];
+    var topTie = topGroup.length === 2 && ahead(topGroup[0].id, topGroup[1].id) !== ahead(topGroup[1].id, topGroup[0].id) ? [lead] : topGroup;
     // Same months won at the top: say which tiebreak put the leader ahead, with the numbers.
     function yTieNote(){
-      var tied = yOrder.filter(function(p){ return yWins[p.id] === yWins[lead.id]; });
+      var tied = yOrder.filter(function(p){ return near(yWins[p.id], yWins[lead.id]); });
       if (tied.length < 2) return '';
       var b = tied[1], how = '';
       var nm = function(p){ return esc(p.name); };
       if (yPts[lead.id] !== yPts[b.id]) how = 'pontos somados: ' + tied.map(function(p){ return nm(p) + ' ' + yPts[p.id]; }).join(' × ');
-      else if (ahead(lead.id, b.id) !== ahead(b.id, lead.id)) {
-        var na = ahead(lead.id, b.id), nb = ahead(b.id, lead.id);
-        how = 'confronto direto (meses à frente): ' + nm(lead) + ' ' + na + ' × ' + nm(b) + ' ' + nb;
-      } else {
-        var ga = lead.s && lead.s.ag, gb = b.s && b.s.ag;
-        if (ga != null && gb != null && ga !== gb) how = 'nível por idade e sexo: ' + nm(lead) + ' ' + fmtPct(ga) + ' × ' + nm(b) + ' ' + fmtPct(gb);
-      }
+      else if (topTie.length === 1) how = 'confronto direto (meses à frente): ' + nm(lead) + ' ' + ahead(lead.id, b.id) + ' × ' + nm(b) + ' ' + ahead(b.id, lead.id);
       var w = yWins[lead.id];
-      return '<p class="yr-det">Empate em ' + w + (w === 1 ? ' mês' : ' meses') + '. ' +
-        (how ? 'Desempate por ' + how + '.' : 'Empate também nos desempates.') + '</p>';
+      return '<p class="yr-det">Empate em ' + fmtWins(w) + monthsWord(w) + '. ' +
+        (how ? 'Desempate por ' + how + '.' : topGroup.length === 2 ? 'Empate também nos pontos somados e no confronto direto.' : 'Empate também nos pontos somados. Com mais de dois empatados, o confronto direto não vale.') + '</p>';
     }
-    function fmtPct(v){ return String(Math.round(v * 10) / 10).replace('.', ',') + '%'; }
     var ties = months.filter(function(mk){ return mk !== k && hist[mk] && monthWinner(mk, hist[mk]).length > 1; });
     var monthDet = {};
     months.forEach(function(mk){
@@ -5392,12 +5411,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var yearCard = '';
     if (lead && yWins[lead.id] > 0) {
       yearCard = '<article class="bib yr"><div class="band band-ink"><span>' + year + '</span><span class="bd">' + (yFinal ? 'final' : 'até agora') + '</span></div><div class="bib-body">' +
-        '<div class="yr-top"><span class="cr" aria-hidden="true">🏆</span><b>' + esc(lead.name) + '</b><span class="yr-n">' + yWins[lead.id] + (yWins[lead.id] === 1 ? ' mês vencido' : ' meses vencidos') + '</span></div>' +
+        (topTie.length > 1
+          ? '<div class="yr-top"><b>Empate no ano</b><span class="yr-n">' + esc(joinPt(topTie.map(function(p){ return p.name; }))) + '</span></div>'
+          : '<div class="yr-top"><span class="cr" aria-hidden="true">🏆</span><b>' + esc(lead.name) + '</b><span class="yr-n">' + fmtWins(yWins[lead.id]) + (near(yWins[lead.id], 1) ? ' mês vencido' : ' meses vencidos') + '</span></div>') +
         '<div class="yr-cal"><div class="yr-strip">' + chips + '</div>' +
         '<div class="yr-ml">' + MON.map(function(m){ return '<span>' + m + '</span>'; }).join('') + '</div></div>' +
         '<ol class="yr-rank">' + yOrder.map(function(p){
           var since = GROUP_SINCE[String(p.id)], w = yWins[p.id];
-          return '<li style="--pc:' + pcol[p.id] + '"><i></i><span>' + esc(p.name) + '</span><span class="n">' + w + (w === 1 ? ' mês' : ' meses') +
+          return '<li style="--pc:' + pcol[p.id] + '"><i></i><span>' + esc(p.name) + '</span><span class="n">' + fmtWins(w) + monthsWord(w) +
             (since && since.slice(0, 4) === year ? ' · entrou em ' + MON_FULL[+since.slice(5, 7) - 1] : '') + '</span></li>';
         }).join('') + '</ol>' + yTieNote() +
         '<p class="yr-det" id="yr-det" data-det=\'' + esc(JSON.stringify(monthDet)) + '\'>' + (ties.length ? joinPt(ties.map(function(mk){ return MON_FULL[+mk.slice(5) - 1]; })).replace(/^./, function(c){ return c.toUpperCase(); }) + (ties.length === 1 ? ' empatou. ' : ' empataram. ') : '') + 'Toque num mês pra ver o placar dele.</p>' +
