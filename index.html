@@ -987,7 +987,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-10b';
+  var APP_VER = '2026-11-11a';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -5362,6 +5362,25 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         (((b.s && b.s.ag) || 0) - ((a.s && a.s.ag) || 0));
     });
     var lead = yOrder[0];
+    // Same months won at the top: say which tiebreak put the leader ahead, with the numbers.
+    function yTieNote(){
+      var tied = yOrder.filter(function(p){ return yWins[p.id] === yWins[lead.id]; });
+      if (tied.length < 2) return '';
+      var b = tied[1], how = '';
+      var nm = function(p){ return esc(p.name); };
+      if (yPts[lead.id] !== yPts[b.id]) how = 'pontos somados: ' + tied.map(function(p){ return nm(p) + ' ' + yPts[p.id]; }).join(' × ');
+      else if (ahead(lead.id, b.id) !== ahead(b.id, lead.id)) {
+        var na = ahead(lead.id, b.id), nb = ahead(b.id, lead.id);
+        how = 'confronto direto (meses à frente): ' + nm(lead) + ' ' + na + ' × ' + nm(b) + ' ' + nb;
+      } else {
+        var ga = lead.s && lead.s.ag, gb = b.s && b.s.ag;
+        if (ga != null && gb != null && ga !== gb) how = 'nível por idade e sexo: ' + nm(lead) + ' ' + fmtPct(ga) + ' × ' + nm(b) + ' ' + fmtPct(gb);
+      }
+      var w = yWins[lead.id];
+      return '<p class="yr-det">Empate em ' + w + (w === 1 ? ' mês' : ' meses') + '. ' +
+        (how ? 'Desempate por ' + how + '.' : 'Empate também nos desempates.') + '</p>';
+    }
+    function fmtPct(v){ return String(Math.round(v * 10) / 10).replace('.', ',') + '%'; }
     var ties = months.filter(function(mk){ return mk !== k && hist[mk] && monthWinner(mk, hist[mk]).length > 1; });
     var monthDet = {};
     months.forEach(function(mk){
@@ -5380,7 +5399,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           var since = GROUP_SINCE[String(p.id)], w = yWins[p.id];
           return '<li style="--pc:' + pcol[p.id] + '"><i></i><span>' + esc(p.name) + '</span><span class="n">' + w + (w === 1 ? ' mês' : ' meses') +
             (since && since.slice(0, 4) === year ? ' · entrou em ' + MON_FULL[+since.slice(5, 7) - 1] : '') + '</span></li>';
-        }).join('') + '</ol>' +
+        }).join('') + '</ol>' + yTieNote() +
         '<p class="yr-det" id="yr-det" data-det=\'' + esc(JSON.stringify(monthDet)) + '\'>' + (ties.length ? joinPt(ties.map(function(mk){ return MON_FULL[+mk.slice(5) - 1]; })).replace(/^./, function(c){ return c.toUpperCase(); }) + (ties.length === 1 ? ' empatou. ' : ' empataram. ') : '') + 'Toque num mês pra ver o placar dele.</p>' +
         '</div><div class="bib-foot"></div></article>';
     }
