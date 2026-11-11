@@ -2,8 +2,8 @@
 // Keeps the app shell available offline. The page itself is always fetched
 // from the network first so updates show up on the next open; Strava data
 // is never cached here (it goes through the backend with no-store).
-const CACHE = 'rc-shell-v15';
-const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'rc-shell-v16';
+const SHELL = ['./', './index.html', './treino.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

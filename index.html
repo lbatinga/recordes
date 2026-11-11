@@ -142,6 +142,20 @@ h2{font-family:var(--font-num);font-weight:800;font-size:28px;line-height:1;marg
 /* screens and navigation */
 body{padding-bottom:calc(130px + env(safe-area-inset-bottom, 0px))}
 .help-fab{position:fixed;right:max(14px,calc((100vw - 780px) / 2 + 14px));bottom:calc(74px + env(safe-area-inset-bottom, 0px));z-index:19;width:46px;height:46px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow);display:grid;place-items:center;cursor:pointer}
+.coach-card{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 18px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow);font:inherit;text-align:left;cursor:pointer}
+.coach-card .cc-t{display:block;min-width:0}
+.coach-card b{display:block;font-family:var(--font-num-s);font-size:24px;font-weight:800;line-height:1.05;color:var(--ink)}
+.coach-card .cc-s{display:block;font-size:14px;color:var(--muted);font-weight:600;margin-top:2px}
+.coach-card i{margin-left:auto;font-style:normal;font-size:26px;color:var(--muted)}
+.coach-card:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.coach{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--bg);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.coach[hidden]{display:none}
+.coach-bar{display:flex;align-items:center;gap:10px;min-height:52px;padding-block:4px;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
+.coach-bar button{appearance:none;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:700;font-size:16px;min-height:44px;padding:0 10px;border-radius:10px;cursor:pointer}
+.coach-bar button:focus-visible{outline:3px solid var(--focus)}
+.coach-bar span{font-weight:700;color:var(--muted);font-size:14px}
+.coach iframe{flex:1;width:100%;border:0;background:var(--bg)}
+body.coach-open{overflow:hidden}
 .help-fab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 body.login .help-fab{display:none}
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
@@ -906,6 +920,10 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
   </div>
 </nav>
 
+<div class="coach" id="coach" hidden role="dialog" aria-modal="true" aria-label="Treino do dia">
+  <div class="coach-bar"><button type="button" id="coach-close">← Recordes</button><span>Treino do dia</span></div>
+  <iframe id="coach-frame" title="Treino do dia" allow="screen-wake-lock"></iframe>
+</div>
 <button type="button" class="help-fab" id="help-fab" aria-label="Como funciona esta tela"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg></button>
 
 <dialog id="help" aria-labelledby="help-title">
@@ -1019,6 +1037,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      the owner): a manual Strava entry that summed two recordings, for example. */
   var KM_OVERRIDE = {};
   var EXTRA_ACTS = []; // config/overrides.add: runs the athlete did but never reached Strava
+  /* Treino do dia (only for athletes with config/coach.enabled, set by the owner): the workout page
+     (treino.html) runs in a full-screen layer and keeps its data here, in config/coachplan
+     (rest days), config/coachlog (blocks written down) and config/coachstats (per-run numbers). */
+  var COACH = false, CZ = { plan: null, log: {}, stats: {} }, czSubs = [];
   var RACES = RACE_INFO;
 
   var session = null, me = null;
@@ -3315,6 +3337,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!all.length) return html + '<div class="msg"><strong>Nenhum treino ainda</strong>Treinos de corrida aparecem aqui assim que chegam ao Strava.</div>';
 
     if (view === 'inicio') {
+      if (COACH) html += '<button type="button" class="coach-card" data-coach-open><span class="cc-t"><b>Treino do dia</b><span class="cc-s">Treino de hoje, descanso e anotações</span></span><i aria-hidden="true">›</i></button>';
       var last = all[all.length - 1];
       var ae = analyze(state.sessions, last.env === 'esteira' ? 'esteira' : 'rua');
       html += '<div class="sec-hd"><h2>Último treino</h2><button type="button" class="linkbtn" data-goview="evolucao">Todos os treinos</button></div>' + hero(last, ae.tables);
@@ -3940,6 +3963,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (d2) d2.hidden = !d2.hidden;
       return;
     }
+    if (ev.target.closest && ev.target.closest('[data-coach-open]')) { openCoach(); return; }
     var gv = ev.target.closest && ev.target.closest('[data-goview]');
     if (gv) {
       var pvg = gv.getAttribute('data-pv-go'), osk = gv.getAttribute('data-open-sec');
@@ -5513,6 +5537,84 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     flushDocs();
   }
 
+  /* ---------- Treino do dia: bridge for treino.html (same shape as the claude.ai runtime it was built on) ---------- */
+  function czSnapDoc(v){ return { exists: !!v, data: function(){ return v; }, metadata: { fromCache: false } }; }
+  function czSnapCol(map){ return { docs: Object.keys(map).map(function(id){ return { id: id, data: function(){ return map[id]; } }; }), metadata: { fromCache: false } }; }
+  function czEmit(){ czSubs.forEach(function(f){ try { f(); } catch (e) {} }); }
+  function czSave(id){
+    var body = id === 'coachplan' ? (CZ.plan || { days: {}, keep: {} }) : id === 'coachlog' ? { days: CZ.log } : { acts: CZ.stats };
+    putDoc('config', id, body); flushDocs();
+  }
+  var czDb = {
+    doc: function(path){
+      var parts = String(path).split('/');
+      return {
+        set: function(data){
+          if (path === 'plan/rests') { CZ.plan = { days: data.days || {}, keep: data.keep || {} }; czSave('coachplan'); }
+          else if (parts[0] === 'stats') { CZ.stats[parts[1]] = data; czSave('coachstats'); }
+          else if (parts[0] === 'log') { CZ.log[parts[1]] = data; czSave('coachlog'); }
+          return Promise.resolve();
+        },
+        onSnapshot: function(cb){
+          var f = function(){ if (path === 'plan/rests') cb(czSnapDoc(CZ.plan)); };
+          (docsReady || Promise.resolve()).then(function(){ f(); czSubs.push(f); });
+          return function(){ czSubs = czSubs.filter(function(x){ return x !== f; }); };
+        }
+      };
+    },
+    collection: function(name){
+      return {
+        onSnapshot: function(cb){
+          var f = function(){ cb(czSnapCol(name === 'stats' ? CZ.stats : name === 'log' ? CZ.log : {})); };
+          (docsReady || Promise.resolve()).then(function(){ f(); czSubs.push(f); });
+          return function(){ czSubs = czSubs.filter(function(x){ return x !== f; }); };
+        }
+      };
+    }
+  };
+  var czMcp = {
+    callTool: async function(server, tool, input){
+      if (tool === 'get_activity_streams') {
+        var j = await apiFetch('/streams?id=' + encodeURIComponent(input.activity_id) + '&keys=time,heartrate,velocity_smooth');
+        var pick = function(k){ return j && j[k] && Array.isArray(j[k].data) ? j[k].data : []; };
+        return { payload: { time: pick('time'), heart_rate: pick('heartrate'), velocity_smooth: pick('velocity_smooth') } };
+      }
+      if (tool === 'list_activities') {
+        if (!lastActs) await new Promise(function(res){ var n = 0, t = setInterval(function(){ if (lastActs || ++n > 40) { clearInterval(t); res(); } }, 500); });
+        return { payload: { activities: (lastActs || []).slice(0, 120) } };
+      }
+      throw { code: 'tool_error', message: '' };
+    }
+  };
+  window.__coachBridge = {
+    use: function(name){
+      if (!session) return Promise.resolve(null);
+      if (name === 'db') return Promise.resolve(czDb);
+      if (name === 'mcp') return Promise.resolve(czMcp);
+      if (name === 'permissions') return Promise.resolve({ state: function(){ return Promise.resolve('granted'); }, request: function(){ return Promise.resolve('granted'); } });
+      return Promise.resolve(null);
+    }
+  };
+  var czOpenedAt = null;
+  function openCoach(){
+    var lay = $('#coach'), fr = $('#coach-frame');
+    if (!fr.getAttribute('src')) fr.setAttribute('src', 'treino.html');
+    lay.hidden = false; document.body.classList.add('coach-open');
+    if (!history.state || !history.state.coach) { try { history.pushState({ coach: 1 }, ''); } catch (e) {} }
+    czOpenedAt = document.activeElement;
+    setTimeout(function(){ $('#coach-close').focus(); }, 30);
+  }
+  function closeCoach(fromPop){
+    var lay = $('#coach'); if (lay.hidden) return;
+    lay.hidden = true; document.body.classList.remove('coach-open');
+    flushDocs();
+    if (!fromPop && history.state && history.state.coach) { try { history.back(); } catch (e) {} }
+    if (czOpenedAt && czOpenedAt.focus) czOpenedAt.focus();
+  }
+  $('#coach-close').addEventListener('click', function(){ closeCoach(false); });
+  window.addEventListener('popstate', function(){ closeCoach(true); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('#coach').hidden) closeCoach(false); });
+
   var docsReady = null;
   function startDb(){
     docsReady = apiFetch('/docs').then(function(j){
@@ -5531,8 +5633,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'duohist') { duoHist = v.months && typeof v.months === 'object' ? v.months : {}; }
         else if (d.col === 'config' && d.id === 'pauses') { PAUSES = v.weeks && typeof v.weeks === 'object' ? v.weeks : {}; }
         else if (d.col === 'config' && d.id === 'summary') lastSummary = JSON.stringify(Object.assign({}, v, { at: 0 }));
+        else if (d.col === 'config' && d.id === 'coach') COACH = v.enabled === true;
+        else if (d.col === 'config' && d.id === 'coachplan') CZ.plan = { days: v.days || {}, keep: v.keep || {} };
+        else if (d.col === 'config' && d.id === 'coachlog') CZ.log = v.days && typeof v.days === 'object' ? v.days : {};
+        else if (d.col === 'config' && d.id === 'coachstats') CZ.stats = v.acts && typeof v.acts === 'object' ? v.acts : {};
       });
       GOAL = getGoal(goalK);
+      czEmit();
     }).catch(function(){ db = null; }).then(function(){
       dbLoaded = true;
       goalLoaded = true;

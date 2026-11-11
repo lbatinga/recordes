@@ -11,7 +11,7 @@ const APP_ORIGIN = 'https://recordes-pi.vercel.app';
 const OTHER_ORIGINS = ['https://lbatinga.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'];
 const STRAVA = 'https://www.strava.com/api/v3';
 const COLS = ['efforts', 'config'];
-const PROTECTED_CONFIG = ['partner', 'weights', 'push', 'live'];
+const PROTECTED_CONFIG = ['partner', 'weights', 'push', 'live', 'coach'];
 const FN_URL = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
 const APP_URL = 'https://recordes-pi.vercel.app/';
 // Accounts that can open the Conferência screen (read-only view of their own group).
@@ -602,7 +602,10 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
   if (path === '/streams' && req.method === 'GET') {
     const id = url.searchParams.get('id') ?? '';
     if (!/^\d{1,20}$/.test(id)) throw new HttpError(400, 'bad_request');
-    return json(req, await stravaGet(aid, '/activities/' + id + '/streams?keys=time,distance&key_by_type=true'));
+    // Treino do dia also asks for heart rate and speed; anything else falls back to time and distance.
+    const ok = ['time', 'distance', 'heartrate', 'velocity_smooth'];
+    const keys = (url.searchParams.get('keys') ?? '').split(',').filter((k) => ok.includes(k));
+    return json(req, await stravaGet(aid, '/activities/' + id + '/streams?keys=' + (keys.length ? keys.join(',') : 'time,distance') + '&key_by_type=true'));
   }
   if (path === '/docs' && req.method === 'GET') {
     const { data, error } = await sb.from('docs').select('col, id, data').eq('athlete_id', aid);

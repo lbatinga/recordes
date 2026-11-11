@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>
+// Runs inside the Recordes: storage and Strava come from the app (window.claude is the app's bridge).
+try { if (window.parent !== window && window.parent.__coachBridge) window.claude = window.parent.__coachBridge; } catch (e) {}
+try { var th = window.parent.document.documentElement.getAttribute('data-theme'); if (th) document.documentElement.setAttribute('data-theme', th); } catch (e) {}
+</script>
+<title>Treino do Dia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@500;600;700&display=swap">
+<style>
+/* Layout: one treadmill card per workout, read at arm's length — huge numbers, one column, sticky A/B/C/R switch. */
+:root{
+  --bg:#1D2126; --surface:#262B31; --surface2:#323941; --line:#3A4149;
+  --fg:#EEF0F2; --muted:#9BA4AE;
+  --a:#FFA62B; --b:#3DB8F5; --c:#B497FF; --l:#FF7AB8; --r:#4FD97F; --hr:#FF5B4F;
+  --on-acc:#0D1115;
+  --font-num:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --font-ui:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#E7EAED; --surface:#F7F8F9; --surface2:#E3E8ED; --line:#CFD5DB;
+    --fg:#15181C; --muted:#59626D;
+    --a:#B25B00; --b:#0369A1; --c:#6B3FD6; --l:#B8336A; --r:#157A3A; --hr:#C62424;
+    --on-acc:#FFFFFF; color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#E7EAED; --surface:#F7F8F9; --surface2:#E3E8ED; --line:#CFD5DB;
+  --fg:#15181C; --muted:#59626D;
+  --a:#B25B00; --b:#0369A1; --c:#6B3FD6; --l:#B8336A; --r:#157A3A; --hr:#C62424;
+  --on-acc:#FFFFFF; color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font-ui); font-size:17px; line-height:1.35;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:0 32px;
+}
+
+.wrap{max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:14px}
+
+/* sticky switch */
+.top{position:sticky; top:env(safe-area-inset-top, 0px); z-index:5; background:var(--bg); padding-block:12px 10px; display:flex; flex-direction:column; gap:8px}
+.tabs{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px}
+.tab{
+  position:relative; appearance:none; border:2px solid var(--line); background:var(--surface); color:var(--fg);
+  border-radius:14px; padding:8px 4px 6px; display:flex; flex-direction:column; align-items:center; gap:0; cursor:pointer;
+  font:inherit; min-height:72px;
+}
+.tab b{font-family:var(--font-num); font-weight:800; font-size:38px; line-height:1}
+.tab small{font-family:var(--font-num); font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.01em; line-height:1.05; text-align:center; white-space:nowrap}
+[hidden]{display:none!important}
+.tab[aria-pressed="true"]{background:var(--acc); border-color:var(--acc); color:var(--on-acc)}
+.tab[aria-pressed="true"] small{color:var(--on-acc)}
+.tab .today{position:absolute; top:-8px; left:50%; transform:translateX(-50%); background:var(--fg); color:var(--bg); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:99px; white-space:nowrap}
+.tab:focus-visible,.chip:focus-visible,summary:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+[data-k="A"]{--acc:var(--a)} [data-k="B"]{--acc:var(--b)} [data-k="C"]{--acc:var(--c)} [data-k="L"]{--acc:var(--l)} [data-k="R"]{--acc:var(--r)}
+.dayline{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:14px; color:var(--muted); font-weight:600}
+.lock{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.lock.on{color:var(--r)}
+
+.banner{background:var(--surface); border:2px solid var(--line); border-radius:16px; padding:14px 16px; font-weight:600}
+.banner strong{display:block; font-family:var(--font-num); font-size:30px; line-height:1.05; font-weight:800; letter-spacing:.01em}
+
+/* workout */
+.w{display:flex; flex-direction:column; gap:12px}
+.head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+.head h1{margin:0; font-family:var(--font-num); font-weight:800; font-size:44px; line-height:1; color:var(--acc); text-wrap:balance}
+.head .meta{font-family:var(--font-num); font-weight:700; font-size:24px; color:var(--muted); font-variant-numeric:tabular-nums}
+
+.limit{display:flex; flex-wrap:wrap; gap:8px}
+.lim{flex:1 1 140px; border:2px solid var(--hr); border-radius:14px; padding:8px 12px; display:flex; flex-direction:column}
+.lim span{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--hr)}
+.lim b{font-family:var(--font-num); font-weight:800; font-size:40px; line-height:1; font-variant-numeric:tabular-nums}
+.lim i{font-style:normal; font-size:14px; color:var(--muted); font-weight:600}
+
+.steps{display:flex; flex-direction:column; gap:10px}
+.step{background:var(--surface); border-radius:16px; padding:12px 16px 14px; display:flex; flex-direction:column; gap:2px; border-left:8px solid var(--line)}
+.step.run{border-left-color:var(--acc)}
+.step .lbl{font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+.big{display:flex; align-items:baseline; flex-wrap:wrap; column-gap:14px; row-gap:0}
+.v{font-family:var(--font-num); font-weight:800; font-size:64px; line-height:.95; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.u{font-family:var(--font-num); font-weight:700; font-size:22px; color:var(--muted); margin-left:2px}
+.d{font-family:var(--font-num); font-weight:800; font-size:40px; line-height:1; font-variant-numeric:tabular-nums}
+.d.hr{color:var(--hr)}
+.note{font-size:15px; color:var(--muted); font-weight:600; margin-top:4px}
+.note b{color:var(--fg)}
+
+.rep{border:2px dashed var(--acc); border-radius:20px; padding:12px; display:flex; flex-direction:column; gap:10px}
+.rep-h{display:flex; align-items:center; justify-content:space-between; gap:8px; padding-inline:4px}
+.rep-h b{font-family:var(--font-num); font-weight:800; font-size:44px; line-height:1; color:var(--acc)}
+.rep-h span{font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.rep .step{background:var(--surface2)}
+
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{appearance:none; font:inherit; cursor:pointer; min-width:56px; height:56px; padding:0 12px; border-radius:14px; border:2px solid var(--line); background:var(--surface); color:var(--fg); font-family:var(--font-num); font-weight:800; font-size:28px; font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--acc); border-color:var(--acc); color:var(--on-acc)}
+.chips-cap{font-size:13px; color:var(--muted); font-weight:600; padding-inline:4px}
+.logp{background:var(--surface); border:2px solid var(--acc); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px}
+.logp h3{margin:0; font-family:var(--font-num); font-weight:800; font-size:26px}
+.logp label{font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.hrin{width:100%; font-family:var(--font-num); font-weight:800; font-size:48px; text-align:center; padding:6px; border-radius:12px; border:2px solid var(--line); background:var(--bg); color:var(--fg); font-variant-numeric:tabular-nums}
+.hrin:focus-visible{outline:3px solid var(--acc); outline-offset:1px}
+.durs{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px}
+.durs.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.durs.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.durs.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stepper{display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:8px; align-items:center}
+.stepper output{font-family:var(--font-num); font-weight:800; font-size:40px; text-align:center; font-variant-numeric:tabular-nums}
+.dur{appearance:none; font:inherit; font-family:var(--font-num); font-weight:800; font-size:19px; padding:0; height:52px; border-radius:12px; border:2px solid var(--line); background:var(--bg); color:var(--fg); cursor:pointer}
+.dur[aria-pressed="true"]{background:var(--acc); border-color:var(--acc); color:var(--on-acc)}
+.logbtns{display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px}
+.logbtns button{appearance:none; font:inherit; font-weight:700; font-size:16px; height:52px; border-radius:12px; border:2px solid var(--line); background:transparent; color:var(--fg); cursor:pointer}
+.logbtns .save{background:var(--acc); border-color:var(--acc); color:var(--on-acc)}
+.logerr{margin:0; color:var(--hr); font-weight:700; font-size:14px}
+.loglist{display:flex; flex-direction:column; gap:2px; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; padding-inline:4px}
+.loglist span{color:var(--muted)}
+.dur:focus-visible,.logbtns button:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+
+.watch{display:block; font-weight:600; font-size:15px; color:var(--muted); padding:2px 4px}
+.watch b{color:var(--fg)}
+
+details{background:var(--surface); border-radius:16px; padding:0 16px}
+summary{cursor:pointer; list-style:none; padding:14px 0; font-weight:700; display:flex; justify-content:space-between; align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+"; font-family:var(--font-num); font-size:28px; line-height:1; color:var(--muted)}
+details[open] summary::after{content:"–"}
+details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:column; gap:8px; font-size:15px}
+.cal{display:flex; flex-direction:column; margin:0 0 10px; font-size:15px; font-variant-numeric:tabular-nums}
+.row{display:grid; grid-template-columns:72px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:52px; border-top:1px solid var(--line)}
+.row .dt{color:var(--muted); font-weight:600}
+.row .wk{font-weight:700; min-width:0}
+.row.now .wk{color:var(--acc-today, var(--fg))}
+.row.now .dt::before{content:"▸ "}
+.row.off .wk{color:var(--muted)}
+.mini{appearance:none; font:inherit; font-size:14px; font-weight:700; border:2px solid var(--line); background:transparent; color:var(--fg); border-radius:10px; padding:6px 12px; min-height:40px; cursor:pointer; white-space:nowrap}
+.mini.undo{border-color:var(--fg)}
+.restbtn{appearance:none; font:inherit; width:100%; min-height:52px; border-radius:14px; border:2px solid var(--line); background:transparent; color:var(--fg); font-weight:700; font-size:16px; cursor:pointer}
+.restbtn.armed{border-color:var(--hr); color:var(--hr)}
+.banner .mini{margin-top:12px}
+.evo{background:var(--surface); border-radius:16px; padding:14px 16px; display:flex; flex-direction:column; gap:10px}
+.evo-h{margin:0; font-family:var(--font-num); font-weight:800; font-size:26px; line-height:1.1}
+.evo-cap{margin:0; font-size:13px; color:var(--muted); font-weight:600}
+.evo-sum{margin:0; font-weight:600}
+.erow{display:grid; grid-template-columns:52px minmax(0,1fr); gap:0 10px; padding-top:8px; border-top:1px solid var(--line); align-items:baseline}
+.erow .ed{color:var(--muted); font-weight:600; font-variant-numeric:tabular-nums}
+.erow .em{font-weight:700; font-variant-numeric:tabular-nums}
+.erow .es{grid-column:2; font-size:14px; color:var(--muted); font-weight:600}
+.best{display:inline-block; margin-left:6px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; background:var(--acc); color:var(--on-acc); padding:1px 7px; border-radius:99px; vertical-align:2px}
+.evo-foot{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.evo-status{font-size:13px; color:var(--muted); font-weight:600; min-width:0}
+.gymnote{margin:0; border:2px solid var(--acc-today, var(--line)); border-radius:14px; padding:10px 14px; font-weight:700}
+.gymnote span{display:block; font-size:14px; color:var(--muted); font-weight:600}
+.syncnote{font-size:13px; color:var(--muted); text-align:center; margin:0}
+.mini:focus-visible,.restbtn:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+.foot{font-size:13px; color:var(--muted); text-align:center}
+@media (max-width:360px){ .v{font-size:56px} .head h1{font-size:38px} .tab b{font-size:32px} }
+@media (prefers-reduced-motion:no-preference){ .tab,.chip{transition:background-color .12s, border-color .12s} }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="top">
+    <div class="tabs" role="group" aria-label="Tipo de treino">
+      <button class="tab" id="t-A" data-k="A" aria-pressed="false"><b>A</b><small>Prova</small></button>
+      <button class="tab" id="t-B" data-k="B" aria-pressed="false"><b>B</b><small>Resist.</small></button>
+      <button class="tab" id="t-C" data-k="C" aria-pressed="false"><b>C</b><small>Tiros</small></button>
+      <button class="tab" id="t-L" data-k="L" aria-pressed="false"><b>L</b><small>Longão</small></button>
+      <button class="tab" id="t-R" data-k="R" aria-pressed="false"><b>R</b><small>Regen.</small></button>
+    </div>
+    <div class="dayline"><span id="dayline">Hoje</span><span class="lock" id="lock">Tela pode apagar</span></div>
+  </div>
+
+  <button class="restbtn" id="restbtn" hidden>Hoje vou descansar</button>
+  <p class="gymnote" id="gymnote" hidden></p>
+  <p class="syncnote" id="syncnote" hidden></p>
+  <div class="banner" id="banner" hidden></div>
+
+  <!-- A -->
+  <section class="w" data-k="A" id="w-A" hidden>
+    <div class="head"><h1>A · Mini prova</h1><span class="meta">3 km · ~32 min</span></div>
+    <div class="limit"><div class="lim"><span>Teto de FC</span><b>175</b><i>Passou? Encerra o bloco e caminha</i></div></div>
+    <div class="banner" id="a-note" hidden></div>
+    <div class="steps">
+      <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v" id="a-warm">5,0<span class="u">km/h</span></span><span class="d">5 min</span></div></div>
+      <div class="rep">
+        <div class="rep-h"><b class="reps-n">5×</b><span>Blocos</span></div>
+        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v" id="a-trote">6,5<span class="u">km/h</span></span><span class="d">3 min</span></div></div>
+        <div class="step"><span class="lbl" id="a-walk-l">Caminhada</span><div class="big"><span class="v" id="a-walk">5,0<span class="u">km/h</span></span><span class="d">1:30</span></div></div>
+        <div class="chips-cap">Toque no bloco que terminou</div>
+        <div class="chips" data-reps="5"></div>
+      </div>
+      <div class="step"><span class="lbl">Final</span><div class="big"><span class="v" id="a-final">5,0<span class="u">km/h</span></span><span class="d">até 3 km</span></div></div>
+    </div>
+    <div class="watch" id="a-watch">⌚ Guia de zona: <b>100–175</b></div>
+      <div class="evo" data-evo="A"></div>
+  </section>
+
+  <!-- B -->
+  <section class="w" data-k="B" id="w-B" hidden>
+    <div class="head"><h1>B · Resistência</h1><span class="meta" id="b-meta">5 km · ~51 min</span></div>
+    <div class="limit">
+      <div class="lim"><span>Trote até</span><b>160</b><i>Também no último</i></div>
+      <div class="lim"><span>Caminha até</span><b>145</b><i>ou 3 min</i></div>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d">5 min</span></div>
+        <div class="note">FC <b>acima de 140</b> no fim? Mais 3 min. Ainda acima? Hoje é <b>só caminhada</b>.</div></div>
+      <div class="rep">
+        <div class="rep-h"><b id="b-km">Até 5 km</b><span>Repete</span></div>
+        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v">6,5<span class="u">km/h</span></span><span class="d hr">FC 160</span></div></div>
+        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d hr">FC 145</span></div>
+          <div class="note">Máx. 3 min. Ainda <b>acima de 155</b>? Mais 1 min.</div></div>
+        <div class="chips-cap">Toque no trote que terminou</div>
+        <div class="chips" data-reps="10"></div>
+      </div>
+    </div>
+    <div class="watch">⌚ Guia de zona: <b>ligado, 145–160</b></div>
+      <div class="evo" data-evo="B"></div>
+  </section>
+
+  <!-- C -->
+  <section class="w" data-k="C" id="w-C" hidden>
+    <div class="head"><h1>C · Velocidade</h1><span class="meta">3 km · ~30 min</span></div>
+    <div class="limit"><div class="lim"><span>Teto de FC</span><b>175</b><i>Passou? Corta o tiro</i></div></div>
+    <div class="steps">
+      <div class="step"><span class="lbl">Primeiros 10 min · igual ao B</span><div class="big"><span class="v">6,5<span class="u">km/h</span></span><span class="d hr">FC 160</span></div>
+        <div class="note">Trote até 160, caminha a <b>5,0</b> até 145.</div></div>
+      <div class="rep">
+        <div class="rep-h"><b>6×</b><span>Tiros</span></div>
+        <div class="step run"><span class="lbl">Tiro</span><div class="big"><span class="v">9,0<span class="u">km/h</span></span><span class="d">30 s</span></div></div>
+        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d">1:30</span></div></div>
+        <div class="chips-cap">Toque no tiro que terminou</div>
+        <div class="chips" data-reps="6"></div>
+      </div>
+      <div class="step"><span class="lbl">Final</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d">até 3 km</span></div></div>
+    </div>
+    <div class="watch">⌚ Guia de zona: <b>desligado</b> · teto 175 olhando a FC</div>
+      <div class="evo" data-evo="C"></div>
+  </section>
+
+  <!-- L -->
+  <section class="w" data-k="L" id="w-L" hidden>
+    <div class="head"><h1>L · Longão leve</h1><span class="meta" id="l-meta">5 km · ~52 min</span></div>
+    <div class="limit">
+      <div class="lim"><span>Trote até</span><b>150</b><i>Menos no trote longo</i></div>
+      <div class="lim"><span>Caminha até</span><b>140</b><i>ou 3 min</i></div>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d">5 min</span></div></div>
+      <div class="step run"><span class="lbl">Trote longo · 1º trote</span><div class="big"><span class="v">6,5<span class="u">km/h</span></span><span class="d" id="l-long">5 min</span></div>
+        <div class="note">Ou até a FC chegar a <b>160</b>, o que vier antes. Depois, caminhada até 140 e segue o resto.</div>
+        <button class="mini" id="log-L" style="margin-top:10px">Anotar trote longo</button></div>
+      <div class="logp-wrap"></div>
+      <div class="loglist"></div>
+      <div class="rep">
+        <div class="rep-h"><b id="l-km">Até 5 km</b><span>Depois, repete</span></div>
+        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v">6,5<span class="u">km/h</span></span><span class="d hr">FC 150</span></div></div>
+        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d hr">FC 140</span></div>
+          <div class="note">Máx. 3 min. O que conta aqui é a distância, não a velocidade.</div></div>
+        <div class="chips-cap">Toque no trote que terminou</div>
+        <div class="chips" data-reps="12"></div>
+      </div>
+    </div>
+    <div class="watch">⌚ Guia de zona: <b>desligado</b> · olhe a FC</div>
+    <div class="evo" data-evo="L"></div>
+  </section>
+
+  <!-- R -->
+  <section class="w" data-k="R" id="w-R" hidden>
+    <div class="head"><h1>R · Regenerativo</h1><span class="meta">3 km · ~36 min</span></div>
+    <div class="limit">
+      <div class="lim"><span>Caminhando</span><b>140</b><i>Passou? Base 2%</i></div>
+      <div class="lim"><span>Na subida</span><b>150</b><i>Passou? Volta 3%</i></div>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="lbl">O treino todo</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d">3%</span></div>
+        <div class="note">Velocidade fixa. Sem segurar no corrimão.</div></div>
+      <div class="rep">
+        <div class="rep-h"><b>7%</b><span>1 min nos minutos</span></div>
+        <div class="chips" data-labels="7,14,21,28"></div>
+        <div class="chips-cap">Toque quando fizer cada subida</div>
+      </div>
+      <div class="step"><span class="lbl">Final</span><div class="big"><span class="v">5,0<span class="u">km/h</span></span><span class="d">até 3 km</span></div>
+        <button class="mini" id="log-R" style="margin-top:10px">Anotar inclinação usada</button></div>
+      <div class="logp-wrap"></div>
+      <div class="loglist"></div>
+    </div>
+    <div class="watch">⌚ Guia de zona: <b>desligado</b></div>
+      <div class="evo" data-evo="R"></div>
+  </section>
+
+  <details id="rules">
+    <summary>Regras de sempre</summary>
+    <ul>
+      <li>Caminhada de recuperação sempre a <b>5,0</b>. Trote a <b>6,5</b>.</li>
+      <li>Ciclo: <b>L → B → forte</b> (o forte alterna C e A), sempre com um R ou descanso entre eles.</li>
+      <li>Musculação depois do <b>B e do C</b>, sempre <b>depois</b> da esteira. Nunca depois do A nem do L, nunca todo dia.</li>
+      <li>Semana da prova (6 dias antes): sem exercício de perna.</li>
+      <li>Cansado? Baixe a intensidade, não só a distância. Muito cansado: troque por um R.</li>
+      <li>A FC sobe mais uns segundos depois que você para. Pare <b>no</b> limite.</li>
+      <li>No fim, confira a distância do painel e ajuste no relógio antes de salvar.</li>
+    </ul>
+  </details>
+
+  <details id="calendar">
+    <summary>Próximos dias</summary>
+    <div class="cal" id="cal"></div>
+    <p class="note" style="margin:0 0 14px">Marcou descanso? O dia conta como R e os treinos seguintes se reorganizam. Depois de 6 dias seguidos de treino, o 7º vira descanso sozinho. A semana da prova não muda.</p>
+  </details>
+
+  <p class="foot">Mesmo conteúdo do plano de treinos do projeto Corpo · dados salvos no Recordes · atualizado em 08/11/2026</p>
+</div>
+
+<script>
+(function(){
+  var NAMES = {A:'A · Mini prova', B:'B · Resistência', C:'C · Velocidade', L:'L · Longão leve', R:'R · Regenerativo'};
+  // Cycle L → B → strong, always with an R (or a rest) between them. The strong slot alternates C and A;
+  // from 11 to 4 days before a race it is always the A rehearsal. After a race the cycle starts again at L.
+  var CYCLE = ['L','B','F'];
+  var PLAN_START = '2026-11-08', START_TYPE = 'C'; // last session done before this plan started
+  // Race week never moves: light A 3 days before, R 2 days before, rest the day before.
+  var RACES = [{d:'2026-11-21', name:'Santander Night Run', km:'5 km'}];
+  var DOW = ['dom','seg','ter','qua','qui','sex','sáb'];
+  function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function addDays(s,n){ var d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return iso(d); }
+  function br(s){ var d=new Date(s+'T12:00:00'); return DOW[d.getDay()]+' '+s.slice(8,10)+'/'+s.slice(5,7); }
+  function raceAt(d){ for (var i=0;i<RACES.length;i++) if (RACES[i].d===d) return RACES[i]; return null; }
+  function fixedAt(d){
+    for (var i=0;i<RACES.length;i++){ var r=RACES[i].d;
+      if (d===r) return 'race'; if (d===addDays(r,-1)) return 'eve'; if (d===addDays(r,-2)) return 'R'; if (d===addDays(r,-3)) return 'A3';
+      if (d===addDays(r,1) || d===addDays(r,2)) return 'R'; }
+    return null;
+  }
+  function hard(t){ return t==='A'||t==='B'||t==='C'||t==='L'||t==='A3'||t==='race'; }
+  function preRace(d){ for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d >= addDays(r,-11) && d < addDays(r,-3)) return true; } return false; }
+  // L distance: 5 km until the Santander, 6 km after it, +1 km every 2 weeks, up to 8.
+  function lKm(d){
+    if (d < '2026-11-22') return 5;
+    var days = Math.round((new Date(d+'T12:00:00') - new Date('2026-11-22T12:00:00')) / 86400000);
+    return Math.min(8, 6 + Math.floor(days / 14));
+  }
+  var L_MIN = {5:52, 6:62, 7:72, 8:83};
+  // L long trote: the first trote of each L runs to a set time (or HR 160), growing every 2 weeks.
+  var L_LONG = [['2026-11-22',6],['2026-12-08',8],['2026-12-22',10],['2027-01-05',13],['2027-01-19',16],['2027-02-02',20],['2027-02-16',25],['2027-03-02',30]];
+  function lLong(d){ var m = 5; L_LONG.forEach(function(x){ if (d >= x[0]) m = x[1]; }); return m; }
+  // B distance: 4 km in the 5 days before a race, 5 km otherwise.
+  function bKm(d){
+    for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d < r && d >= addDays(r,-5)) return 4; }
+    return 5;
+  }
+  var B_MIN = {4:41, 5:51, 6:62};
+  // A before a race: from 11 to 4 days before it, trote at race speed (7,5); the light A 3 days before at 7,5 with 1% incline.
+  function aVariant(d, t){
+    if (t==='A3') return 'light';
+    if (t!=='A') return 'normal';
+    for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d >= addDays(r,-11) && d < addDays(r,-3)) return 'fast'; }
+    return 'normal';
+  }
+  // Strength: after the run on L, B and C days (the next day is always R), never after A; no legs in the 6 days before a race.
+  var GYM_FROM = '2026-11-22'; // strength starts after the Santander; the first session is light
+  function gymOn(d, t){
+    if (d < GYM_FROM || !(t==='B' || t==='C')) return false;
+    for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d >= addDays(r,-6) && d <= r) return false; }
+    return true;
+  }
+  // Training days in a row ending on PLAN_START (01/11 to 08/11).
+  var START_STREAK = 8, MAX_STREAK = 6;
+  function isRest(t){ return t==='off' || t==='eve' || t==='auto'; }
+  function buildPlan(rests, until){
+    // qi starts on the strong slot: the first session of this plan was the A rehearsal of 10/11.
+    var out = {}, prev = START_TYPE, qi = 2, nextF = 'C', streak = START_STREAK, d = addDays(PLAN_START, 1);
+    out[PLAN_START] = START_TYPE;
+    while (d <= until){
+      var f = fixedAt(d), nxt = addDays(d, 1), t;
+      if (f === 'race') t = 'race';
+      else if (f === 'eve') t = 'eve';
+      else if (rests[d]) t = 'off';
+      else if (streak >= MAX_STREAK && !keep[d]) t = 'auto';
+      else if (f) t = f;
+      else if (hard(prev)) t = 'R';
+      else if (fixedAt(nxt) === 'A3' && !rests[nxt]) t = 'R';
+      else {
+        var slot = CYCLE[qi % CYCLE.length]; qi++;
+        if (slot === 'F'){ t = preRace(d) ? 'A' : nextF; nextF = t==='A' ? 'C' : 'A'; } else t = slot;
+      }
+      if (t === 'race') qi = 0;
+      out[d] = t; prev = t; streak = isRest(t) ? 0 : streak + 1; d = nxt;
+    }
+    return out;
+  }
+  function label(t, d){
+    if (t==='off') return 'Descanso';
+    if (t==='auto') return 'Descanso (automático)';
+    if (t==='eve') return 'Descanso (véspera da prova)';
+    if (t==='race'){ var r=raceAt(d); return r ? r.name+' · '+r.km : 'Prova'; }
+    if (t==='A3') return 'A leve na esteira (ensaio da prova)';
+    if (t==='L') return NAMES.L+' · '+lKm(d)+' km';
+    if (t==='A' && aVariant(d, t)==='fast') return 'A · ensaio a 7,5';
+    if (t==='B') return NAMES.B+' · '+bKm(d)+' km';
+    return NAMES[t] || '';
+  }
+
+  function store(k, v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } }
+  function loadMap(k){ try{ var o=JSON.parse(store(k)||'{}'); return o && typeof o==='object' ? o : {}; }catch(e){ return {}; } }
+  function loadRests(){ return loadMap('tdd-rests'); }
+
+  var today = iso(new Date());
+  var rests = loadRests();
+  var keep = loadMap('tdd-keep'); // automatic rest days the user chose to train through
+  var userPicked = false, db = null, writing = Promise.resolve();
+  var tabs = document.querySelectorAll('.tab');
+  var restBtn = document.getElementById('restbtn'), note = document.getElementById('syncnote');
+  function setNote(s){ note.textContent = s; note.hidden = !s; }
+
+  function horizon(){
+    var nr = null; RACES.forEach(function(r){ if (r.d >= today && (!nr || r.d < nr.d)) nr = r; });
+    var min = addDays(today, 6);
+    return nr ? (nr.d > min ? nr.d : min) : addDays(today, 13);
+  }
+
+  // rep tracker chips, remembered per day on this device
+  function buildChips(sec, n){
+    var box = sec.querySelector('.chips'), k = sec.dataset.k;
+    if (k==='A' || k==='C'){ buildLogChips(sec, box, k, n); return; }
+    if (k==='R'){ var rb = document.getElementById('log-R'); if (!rb.dataset.on){ rb.dataset.on = '1'; rb.addEventListener('click', openRPanel); } }
+    if (k==='L'){ var lb = document.getElementById('log-L'); if (!lb.dataset.on){ lb.dataset.on = '1'; lb.addEventListener('click', function(){ openPanel('L', 0); }); } paintLog('L'); }
+    var labels = box.dataset.labels ? box.dataset.labels.split(',') : null;
+    if (labels) n = labels.length;
+    if (box.childElementCount === n && box.dataset.day === today) return;
+    box.innerHTML = ''; box.dataset.day = today;
+    var key = 'tdd-'+today+'-'+k, done = {};
+    try{ done = JSON.parse(store(key)||'{}')||{}; }catch(e){}
+    for (var i=0;i<n;i++){
+      var b = document.createElement('button'); b.className='chip'; b.id='chip-'+k+'-'+i;
+      b.textContent = labels ? labels[i] : String(i+1);
+      b.setAttribute('aria-label', labels ? 'Subida do minuto '+labels[i] : 'Repetição '+(i+1));
+      b.setAttribute('aria-pressed', done[i]?'true':'false');
+      (function(i,b){ b.addEventListener('click', function(){
+        var on = b.getAttribute('aria-pressed')!=='true'; b.setAttribute('aria-pressed', on?'true':'false');
+        if (on) done[i]=1; else delete done[i]; store(key, JSON.stringify(done));
+      }); })(i,b);
+      box.appendChild(b);
+    }
+    if (k==='R') paintLog('R');
+  }
+
+  // ---------- block log (A and C): FC on the watch when you stopped + how long the block lasted ----------
+  var logs = loadMap('tdd-log'), logWriting = Promise.resolve();
+  var DURS = {A:[180,150,120,90,60], C:[30,20,15]};
+  function dayLog(k, date){ var d = logs[date || today]; return (d && d[k]) || {}; }
+  function fmtDur(x){ return Math.floor(x/60)+':'+String(x%60).padStart(2,'0'); }
+  function persistLog(date){
+    var body = Object.assign({}, logs[date] || {});
+    store('tdd-log', JSON.stringify(logs));
+    logWriting = logWriting.then(function(){
+      if (!db) return;
+      return db.doc('log/'+date).set(body).catch(function(){ setNote('Não deu pra salvar o bloco agora. Ficou só neste aparelho.'); });
+    });
+  }
+  function saveBlock(k, i, entry){
+    var day = Object.assign({}, logs[today] || {}), m = Object.assign({}, day[k] || {});
+    if (entry) m[i] = entry; else delete m[i];
+    day[k] = m; logs[today] = day; persistLog(today);
+    paintLog(k); renderEvo();
+  }
+  function paintLog(k){
+    var sec = document.getElementById('w-'+k), box = sec.querySelector('.chips'), lg = dayLog(k);
+    if (k!=='L' && k!=='R') box.querySelectorAll('.chip').forEach(function(b, i){
+      b.setAttribute('aria-pressed', lg[i] ? 'true' : 'false');
+      b.setAttribute('aria-label', 'Bloco '+(i+1)+(lg[i] ? ', anotado: FC '+lg[i].hr+', '+fmtDur(lg[i].dur) : ', sem anotação'));
+    });
+    var list = sec.querySelector('.loglist'); if (!list) return; list.textContent = '';
+    Object.keys(lg).sort(function(a,b){ return a-b; }).forEach(function(i){
+      var row = document.createElement('div');
+      if (k==='R'){ row.textContent = rText(lg[i]); list.appendChild(row); return; }
+      row.appendChild(document.createTextNode((k==='L' ? 'Trote longo' : (+i+1))+' · FC '+lg[i].hr+' '));
+      var sp = document.createElement('span'); sp.textContent = '· '+fmtDur(lg[i].dur); row.appendChild(sp);
+      list.appendChild(row);
+    });
+  }
+  function openPanel(k, i){
+    var sec = document.getElementById('w-'+k), panel = sec.querySelector('.logp-wrap');
+    var full = k==='L' ? lLong(today)*60 : DURS[k][0], cur = dayLog(k)[i], dur = cur ? cur.dur : full;
+    panel.textContent = '';
+    var p = document.createElement('div'); p.className = 'logp';
+    var h = document.createElement('h3'); h.textContent = k==='L' ? 'Trote longo' : (k==='A' ? 'Bloco ' : 'Tiro ')+(i+1); p.appendChild(h);
+    var lb = document.createElement('label'); lb.setAttribute('for','hr-'+k); lb.textContent = 'FC no relógio quando parou'; p.appendChild(lb);
+    var inp = document.createElement('input'); inp.id = 'hr-'+k; inp.className = 'hrin'; inp.type = 'text';
+    inp.setAttribute('inputmode','numeric'); inp.setAttribute('pattern','[0-9]*'); inp.maxLength = 3; inp.autocomplete = 'off';
+    inp.value = cur ? String(cur.hr) : ''; p.appendChild(inp);
+    var lb2 = document.createElement('label'); lb2.textContent = 'Duração'; p.appendChild(lb2);
+    if (k==='L'){
+      var st = document.createElement('div'); st.className = 'stepper';
+      var mn = document.createElement('button'); mn.className = 'dur'; mn.id = 'dur-L-minus'; mn.textContent = '−30 s';
+      var out = document.createElement('output'); out.id = 'dur-L-val'; out.textContent = fmtDur(dur);
+      var pl = document.createElement('button'); pl.className = 'dur'; pl.id = 'dur-L-plus'; pl.textContent = '+30 s';
+      mn.addEventListener('click', function(){ dur = Math.max(30, dur-30); out.textContent = fmtDur(dur); });
+      pl.addEventListener('click', function(){ dur = Math.min(3600, dur+30); out.textContent = fmtDur(dur); });
+      st.appendChild(mn); st.appendChild(out); st.appendChild(pl); p.appendChild(st);
+    }
+    var ds = document.createElement('div'); ds.className = 'durs' + ((DURS[k]||[]).length===3 ? ' c3' : '');
+    (k==='L' ? [] : DURS[k]).forEach(function(v){
+      var b = document.createElement('button'); b.className = 'dur'; b.id = 'dur-'+k+'-'+v; b.textContent = fmtDur(v);
+      b.setAttribute('aria-pressed', v===dur ? 'true' : 'false');
+      b.addEventListener('click', function(){ dur = v; ds.querySelectorAll('.dur').forEach(function(x){ x.setAttribute('aria-pressed', x===b ? 'true' : 'false'); }); });
+      ds.appendChild(b);
+    });
+    if (k!=='L') p.appendChild(ds);
+    var err = document.createElement('p'); err.className = 'logerr'; err.hidden = true; p.appendChild(err);
+    var bt = document.createElement('div'); bt.className = 'logbtns';
+    var sv = document.createElement('button'); sv.className = 'save'; sv.id = 'save-'+k; sv.textContent = 'Salvar';
+    var del = document.createElement('button'); del.id = 'del-'+k; del.textContent = 'Apagar';
+    var cl = document.createElement('button'); cl.id = 'close-'+k; cl.textContent = 'Fechar';
+    sv.addEventListener('click', function(){
+      var hr = parseInt(inp.value, 10);
+      if (!(hr >= 80 && hr <= 220)){ err.textContent = 'Digite a FC que o relógio mostrava, entre 80 e 220.'; err.hidden = false; return; }
+      saveBlock(k, i, {hr: hr, dur: dur}); panel.textContent = '';
+    });
+    del.addEventListener('click', function(){ saveBlock(k, i, null); panel.textContent = ''; });
+    cl.addEventListener('click', function(){ panel.textContent = ''; });
+    bt.appendChild(sv); bt.appendChild(del); bt.appendChild(cl); p.appendChild(bt);
+    panel.appendChild(p);
+    try { inp.focus({preventScroll:false}); } catch(e){}
+  }
+  function openRPanel(){
+    var sec = document.getElementById('w-R'), panel = sec.querySelector('.logp-wrap');
+    var cur = dayLog('R')[0] || {}, base = cur.base || 3, peak = cur.peak || 7, low = !!cur.low;
+    panel.textContent = '';
+    var p = document.createElement('div'); p.className = 'logp';
+    var h = document.createElement('h3'); h.textContent = 'Inclinação usada'; p.appendChild(h);
+    function group(title, opts, val, fmt, set, id){
+      var lb = document.createElement('label'); lb.textContent = title; p.appendChild(lb);
+      var g = document.createElement('div'); g.className = 'durs c' + opts.length;
+      opts.forEach(function(v){
+        var b = document.createElement('button'); b.className = 'dur'; b.id = id+'-'+v; b.textContent = fmt(v);
+        b.setAttribute('aria-pressed', v===val ? 'true' : 'false');
+        b.addEventListener('click', function(){ set(v); g.querySelectorAll('.dur').forEach(function(x){ x.setAttribute('aria-pressed', x===b ? 'true' : 'false'); }); });
+        g.appendChild(b);
+      });
+      p.appendChild(g);
+    }
+    group('Base', [2,3,4,5], base, function(v){ return v+'%'; }, function(v){ base = v; }, 'r-base');
+    group('Nas subidas', [5,6,7,8], peak, function(v){ return v+'%'; }, function(v){ peak = v; }, 'r-peak');
+    group('Precisou baixar no meio?', [0,1], low ? 1 : 0, function(v){ return v ? 'Sim' : 'Não'; }, function(v){ low = !!v; }, 'r-low');
+    var bt = document.createElement('div'); bt.className = 'logbtns';
+    var sv = document.createElement('button'); sv.className = 'save'; sv.id = 'save-R'; sv.textContent = 'Salvar';
+    var del = document.createElement('button'); del.id = 'del-R'; del.textContent = 'Apagar';
+    var cl = document.createElement('button'); cl.id = 'close-R'; cl.textContent = 'Fechar';
+    sv.addEventListener('click', function(){ saveBlock('R', 0, {base: base, peak: peak, low: low}); panel.textContent = ''; });
+    del.addEventListener('click', function(){ saveBlock('R', 0, null); panel.textContent = ''; });
+    cl.addEventListener('click', function(){ panel.textContent = ''; });
+    bt.appendChild(sv); bt.appendChild(del); bt.appendChild(cl); p.appendChild(bt);
+    panel.appendChild(p);
+  }
+  function rText(e){ return 'Inclinação '+e.base+'% / '+e.peak+'%'+(e.low ? ' · baixou no meio' : ''); }
+  function buildLogChips(sec, box, k, n){
+    if (!(box.childElementCount === n && box.dataset.day === today)){
+      box.innerHTML = ''; box.dataset.day = today;
+      for (var i=0;i<n;i++){
+        var b = document.createElement('button'); b.className='chip'; b.id='chip-'+k+'-'+i; b.textContent = String(i+1);
+        (function(i){ b.addEventListener('click', function(){ openPanel(k, i); }); })(i);
+        box.appendChild(b);
+      }
+      if (!sec.querySelector('.logp-wrap')){
+        var w = document.createElement('div'); w.className = 'logp-wrap'; box.parentNode.insertBefore(w, box.nextSibling);
+        var l = document.createElement('div'); l.className = 'loglist'; w.parentNode.insertBefore(l, w.nextSibling);
+      }
+      var cap = sec.querySelector('.chips-cap'); if (cap) cap.textContent = 'Terminou o '+(k==='A' ? 'bloco' : 'tiro')+'? Toque no número e anote a FC do relógio e a duração';
+    }
+    paintLog(k);
+  }
+
+  function show(k){
+    ['A','B','C','L','R'].forEach(function(x){ document.getElementById('w-'+x).hidden = x!==k; });
+    tabs.forEach(function(t){ t.setAttribute('aria-pressed', t.dataset.k===k?'true':'false'); });
+    document.documentElement.style.setProperty('--acc-today', getComputedStyle(document.getElementById('t-'+k)).getPropertyValue('--acc'));
+    store('tdd-last', k);
+  }
+
+  function render(){
+    var end = horizon();
+    var plan = buildPlan(rests, addDays(end, 1));
+    var t = plan[today];
+    var todayK = t && /^[ABCLR]/.test(t) ? t[0] : null;
+
+    document.querySelectorAll('.tab .today').forEach(function(s){ s.remove(); });
+    if (todayK){ var s=document.createElement('span'); s.className='today'; s.textContent='hoje'; document.getElementById('t-'+todayK).appendChild(s); }
+
+    var aDay = today; for (var q3 = today; q3 <= end; q3 = addDays(q3,1)) if (plan[q3]==='A' || plan[q3]==='A3'){ aDay = q3; break; }
+    var av = aVariant(aDay, plan[aDay]);
+    function setV(id, v, u){ var e=document.getElementById(id); e.textContent=v; if (u){ var su=document.createElement('span'); su.className='u'; su.textContent=u; e.appendChild(su); } }
+    setV('a-warm', '5,0', 'km/h');
+    setV('a-trote', av==='normal' ? '6,5' : '7,5', av==='light' ? 'km/h · 1%' : 'km/h');
+    setV('a-walk', '5,0', 'km/h');
+    setV('a-final', '5,0', 'km/h');
+    var an = document.getElementById('a-note'); an.textContent = '';
+    if (av !== 'normal'){
+      var ast = document.createElement('strong'); ast.textContent = av==='light' ? 'A leve: ensaio da prova' : 'Ensaio do ritmo da prova';
+      an.appendChild(ast);
+      an.appendChild(document.createTextNode(av==='light'
+        ? 'Só 3 blocos, trote a 7,5 com 1% de inclinação pra simular a rua. Na prova, confira o pace no relógio (8:00/km) a cada uns 20 s no 1º km.'
+        : 'Trote a 7,5 em vez de 6,5: é o ritmo planejado pra Santander (pace 8:00/km). Teto de 175 continua valendo.'));
+    }
+    an.hidden = av==='normal';
+    document.getElementById('a-watch').innerHTML = '⌚ Guia de zona: <b>desligado</b> · teto 175 olhando a FC';
+    var secA = document.getElementById('w-A');
+    secA.querySelector('.reps-n').textContent = plan[aDay]==='A3' ? '3×' : '5×';
+    secA.querySelector('.meta').textContent = (plan[aDay]==='A3' ? '3 km · ~31 min · leve' : '3 km · ~'+(av==='fast' ? 30 : 32)+' min') + (aDay!==today ? ' · '+br(aDay) : '');
+    buildChips(secA, plan[aDay]==='A3' ? 3 : 5);
+    var bDay = today; for (var q = today; q <= end; q = addDays(q,1)) if (plan[q]==='B'){ bDay = q; break; }
+    var km = bKm(bDay);
+    document.getElementById('b-meta').textContent = km+' km · ~'+B_MIN[km]+' min' + (bDay!==today ? ' · '+br(bDay) : '');
+    document.getElementById('b-km').textContent = 'Até '+km+' km';
+    var lDay = today; for (var q4 = today; q4 <= end; q4 = addDays(q4,1)) if (plan[q4]==='L'){ lDay = q4; break; }
+    var lk = lKm(lDay);
+    document.getElementById('l-meta').textContent = lk+' km · ~'+L_MIN[lk]+' min' + (lDay!==today ? ' · '+br(lDay) : '');
+    document.getElementById('l-km').textContent = 'Até '+lk+' km';
+    document.getElementById('l-long').textContent = lLong(lDay)+' min';
+    ['B','C','L','R'].forEach(function(k){ var sec=document.getElementById('w-'+k); buildChips(sec, +sec.querySelector('.chips').dataset.reps || 0); });
+
+    var gymToday = gymOn(today, t);
+    document.getElementById('dayline').textContent = br(today) + (t ? ' · hoje: '+label(t, today) + (gymToday ? ' + musculação' : '') : '');
+    var firstGym = null; for (var q2 = GYM_FROM; q2 <= end; q2 = addDays(q2,1)) if (gymOn(q2, plan[q2])){ firstGym = q2; break; }
+    var gn = document.getElementById('gymnote'); gn.textContent = '';
+    if (gymToday){
+      gn.appendChild(document.createTextNode('Depois da esteira: musculação' + (today===firstGym ? ' leve (1ª sessão)' : '')));
+      var gs = document.createElement('span'); gs.textContent = 'Ficha da academia. Esteira primeiro, sempre.'; gn.appendChild(gs);
+    }
+    gn.hidden = !gymToday;
+
+    restBtn.hidden = !todayK;
+    if (restBtn.hidden) disarm();
+
+    var ban = document.getElementById('banner'); ban.hidden = true; ban.textContent = '';
+    if (t==='off' || t==='eve' || t==='auto'){
+      var tm = addDays(today,1), np = plan[tm];
+      var st = document.createElement('strong'); st.textContent = 'Descanso';
+      ban.appendChild(st);
+      ban.appendChild(document.createTextNode(t==='eve' ? 'Amanhã é a prova. Nada de esteira hoje.'
+        : (t==='auto' ? '6 dias seguidos de treino. ' : '') + 'Nada de esteira hoje.' + (np ? ' Amanhã: '+label(np, tm)+'.' : '')));
+      if (t==='auto'){
+        var ka=document.createElement('button'); ka.className='mini undo'; ka.id='keep-today'; ka.textContent='Treinar mesmo assim';
+        ka.addEventListener('click', function(){ toggleRest(today); });
+        ban.appendChild(document.createElement('br')); ban.appendChild(ka);
+      }
+      if (rests[today]){
+        var u=document.createElement('button'); u.className='mini undo'; u.id='undo-today'; u.textContent='Desfazer descanso';
+        u.addEventListener('click', function(){ toggleRest(today); });
+        ban.appendChild(document.createElement('br')); ban.appendChild(u);
+      }
+      ban.hidden = false;
+    }
+    if (t==='race'){
+      var r = raceAt(today), st2 = document.createElement('strong'); st2.textContent = 'Dia de prova';
+      ban.appendChild(st2); ban.appendChild(document.createTextNode((r ? r.name+' · '+r.km+'. ' : '')+'Aquecimento à parte: 5 min caminhando + 2 trotes curtos. Na prova: 3 min trotando com pace ~8:00/km, 1:30 de caminhada forte (mais 30 s se a FC estiver acima de 165), teto de 178 no trote. Primeiro bloco mais devagar; no último km, se a FC deixar, corre direto.'));
+      ban.hidden = false;
+    }
+
+    var cal = document.getElementById('cal'); cal.textContent = '';
+    for (var d = today; d <= end; d = addDays(d, 1)){
+      var tt = plan[d], row = document.createElement('div');
+      row.className = 'row' + (d===today ? ' now' : '') + (isRest(tt) ? ' off' : '');
+      var a = document.createElement('span'); a.className='dt'; a.textContent = br(d);
+      var w = document.createElement('span'); w.className='wk'; w.textContent = label(tt, d) + (gymOn(d, tt) ? ' + musculação' : '');
+      row.appendChild(a); row.appendChild(w);
+      if (tt !== 'race' && tt !== 'eve'){
+        var b = document.createElement('button'); b.id = 'rest-'+d;
+        var restNow = rests[d] || tt==='auto';
+        b.className = 'mini' + (restNow ? ' undo' : '');
+        b.textContent = tt==='auto' ? 'Treinar' : (rests[d] ? 'Desfazer' : 'Descansar');
+        b.setAttribute('aria-label', (tt==='auto' ? 'Treinar mesmo assim em ' : rests[d] ? 'Desfazer descanso em ' : 'Marcar descanso em ') + br(d));
+        (function(day){ b.addEventListener('click', function(){ toggleRest(day); }); })(d);
+        row.appendChild(b);
+      } else row.appendChild(document.createElement('span'));
+      cal.appendChild(row);
+    }
+
+    if (!userPicked){
+      var h = (location.hash||'').replace('#','').toUpperCase();
+      var start = /^[ABCLR]$/.test(h) ? h : (todayK || store('tdd-last') || 'B');
+      if (!/^[ABCLR]$/.test(start)) start = 'B';
+      show(start);
+    }
+  }
+
+  function prune(m){ var o = {}, from = addDays(today, -30); Object.keys(m).forEach(function(k){ if (k >= from && m[k]) o[k] = true; }); return o; }
+  function toggleRest(d){
+    var r = prune(rests), kp = prune(keep);
+    var cur = buildPlan(rests, addDays(d, 1))[d];
+    if (cur === 'auto') kp[d] = true;          // train through an automatic rest
+    else if (r[d]) delete r[d];                 // undo a rest you marked
+    else { r[d] = true; delete kp[d]; }         // mark a rest
+    rests = r; keep = kp;
+    store('tdd-rests', JSON.stringify(rests)); store('tdd-keep', JSON.stringify(keep));
+    render(); persist();
+  }
+  function persist(){
+    var body = {days: Object.assign({}, rests), keep: Object.assign({}, keep)};
+    writing = writing.then(function(){
+      if (!db){ setNote('Marcação salva só neste aparelho.'); return; }
+      return db.doc('plan/rests').set(body).then(function(){ setNote(''); }).catch(function(e){
+        setNote(e && e.code==='invalid_argument' ? 'Só o dono da página pode marcar descanso.' : 'Não deu pra salvar agora. A marcação ficou só neste aparelho.');
+      });
+    });
+  }
+
+  // "rest today" needs a second tap, so a sweaty finger can't reschedule the week by accident
+  var armT = null;
+  function disarm(){ clearTimeout(armT); restBtn.classList.remove('armed'); restBtn.textContent = 'Hoje vou descansar'; }
+  restBtn.addEventListener('click', function(){
+    if (!restBtn.classList.contains('armed')){
+      restBtn.classList.add('armed'); restBtn.textContent = 'Toque de novo pra confirmar';
+      armT = setTimeout(disarm, 4000); return;
+    }
+    disarm(); toggleRest(today);
+  });
+
+  tabs.forEach(function(t){ t.addEventListener('click', function(){
+    userPicked = true; show(t.dataset.k);
+    if (location.hash !== '#'+t.dataset.k.toLowerCase()) history.replaceState(null,'','#'+t.dataset.k.toLowerCase());
+  }); });
+  window.addEventListener('hashchange', function(){ var h=(location.hash||'').replace('#','').toUpperCase(); if (/^[ABCLR]$/.test(h)){ userPicked = true; show(h); } });
+
+  // ---------- evolution: each workout compared with earlier ones of the same type ----------
+  // Sessions before this plan: 03 and 05 were the old R with trotes, 08 was an old workout.
+  var HIST = {'2026-11-02':'B','2026-11-03':'X','2026-11-04':'A','2026-11-05':'X','2026-11-06':'B','2026-11-07':'R','2026-11-08':'X'};
+  var stats = {}, mcp = null, syncing = false;
+  function typeOn(date){
+    if (HIST[date]) return HIST[date];
+    if (date < '2026-11-09') return 'X';
+    var p = buildPlan(rests, date)[date];
+    return p==='A3' ? 'A' : (p==='A'||p==='B'||p==='C'||p==='L'||p==='R') ? p : 'X';
+  }
+  function mmss(x){ x = Math.round(x); return Math.floor(x/60)+':'+String(x%60).padStart(2,'0'); }
+  function ddmm(d){ return d.slice(8,10)+'/'+d.slice(5,7); }
+  function avg(a){ var s=0; a.forEach(function(x){ s+=x; }); return s/a.length; }
+  // running stretches: samples at or above `thr` m/s, joined across gaps of up to 15 s
+  function segments(t, v, thr){
+    var segs = [], cur = null;
+    for (var i=0;i<t.length;i++){
+      if ((v[i]||0) < thr) continue;
+      if (cur && t[i]-t[cur.e] <= 15) cur.e = i; else { cur = {s:i, e:i}; segs.push(cur); }
+    }
+    segs.forEach(function(g){ g.dur = t[g.e]-t[g.s]; });
+    return segs;
+  }
+  function peakAfter(t, hr, g, tail){ var m = 0; for (var i=g.s; i<t.length && t[i] <= t[g.e]+tail; i++) if ((hr[i]||0) > m) m = hr[i]; return m; }
+  function analyze(type, st, sum){
+    var t = st.time||[], hr = st.heart_rate||[], v = st.velocity_smooth||[];
+    var out = {km: Math.round((sum.distance||0)/1000), time: Math.round(sum.moving_time||0)};
+    if (!t.length || !hr.length) return out;
+    if (type==='B' || type==='L'){
+      var lim = type==='B' ? 160 : 150;
+      var runs = segments(t, v, 1.75).filter(function(g){ return g.dur >= 40; });
+      out.trotes = runs.length; out.first = null;
+      if (type==='L' && runs.length) out.long = runs[0].dur;
+      if (runs.length){ var g = runs[0]; for (var i=g.s; i<t.length && t[i] <= t[g.e]+30; i++) if (hr[i] >= lim){ out.first = t[i]-t[g.s]; break; } }
+    } else if (type==='A' || type==='C'){
+      var segs = type==='A'
+        ? segments(t, v, 1.75).filter(function(g){ return g.dur >= 60; })
+        : segments(t, v, 2.2).filter(function(g){ return g.dur >= 12 && g.dur <= 75; });
+      var pk = segs.map(function(g){ return peakAfter(t, hr, g, type==='A' ? 25 : 20); });
+      out.reps = segs.length; out.ok = pk.filter(function(p){ return p <= 175; }).length;
+      out.peak = pk.length ? Math.round(avg(pk)) : null;
+    } else if (type==='R'){
+      var xs = []; for (var j=0;j<t.length;j++) if (t[j] >= 180 && hr[j]) xs.push(hr[j]);
+      out.hr = xs.length ? Math.round(avg(xs)) : null;
+    }
+    return out;
+  }
+  // lower is better for every type
+  var SPEC = {
+    B:{val:function(x){ return x.time; }, main:function(x){ return mmss(x.time)+' nos '+x.km+' km'; },
+       sub:function(x){ return x.first!=null ? '1º trote até 160: '+mmss(x.first) : (x.trotes ? '1º trote não chegou a 160' : ''); },
+       group:function(x){ return x.km; }, what:'tempo'},
+    A:{val:function(x){ return x.man ? x.man.hr : x.peak; },
+       main:function(x){ return x.man ? 'FC ao parar (anotada): '+x.man.hr : 'Pico de FC logo depois dos blocos: '+x.peak; },
+       sub:function(x){ return (x.v==='fast' ? 'ensaio a 7,5 · ' : x.v==='light' ? 'leve · ' : '')
+         + (x.man ? 'blocos '+x.man.durs+(x.peak ? ' · Strava: pico '+x.peak : '') : (x.reps ? x.reps+' blocos' : '')); },
+       group:function(x){ return (x.v || 'normal') + (x.man ? '-m' : ''); }, what:'FC dos blocos'},
+    C:{val:function(x){ return x.man ? x.man.hr : x.peak; },
+       main:function(x){ return x.man ? 'FC ao parar (anotada): '+x.man.hr : 'Pico de FC logo depois dos tiros: '+x.peak; },
+       sub:function(x){ return x.man ? 'tiros '+x.man.durs+(x.peak ? ' · Strava: pico '+x.peak : '') : (x.reps ? x.reps+' tiros' : ''); },
+       group:function(x){ return x.man ? 'm' : 0; }, what:'FC dos tiros'},
+    L:{val:function(x){ return x.time; }, main:function(x){ return mmss(x.time)+' nos '+x.km+' km'; },
+       sub:function(x){ return x.manL ? 'trote longo (anotado): '+fmtDur(x.manL.dur)+' · FC '+x.manL.hr : (x.long!=null ? 'trote longo: '+mmss(x.long) : ''); },
+       group:function(x){ return x.km; }, what:'tempo'},
+    R:{val:function(x){ return x.hr; }, main:function(x){ return 'FC média: '+x.hr; },
+       group:function(x){ var e = x.manR || {base:3, peak:7}; return e.base+'/'+e.peak+(e.low ? '-b' : ''); },
+       sub:function(x){ return (x.manR ? rText(x.manR) : 'Inclinação 3% / 7% (padrão)')+' · '+mmss(x.time); }, what:'FC média'}
+  };
+  function setEvoStatus(msg){ document.querySelectorAll('.evo-status').forEach(function(e){ e.textContent = msg; }); }
+  var evoMsg = '';
+  function renderEvo(){
+    ['A','B','C','L','R'].forEach(function(k){
+      var box = document.querySelector('[data-evo="'+k+'"]'), sp = SPEC[k];
+      var list = Object.keys(stats).map(function(id){
+          var o = Object.assign({id:id}, stats[id]);
+          if (k==='A' || k==='C'){
+            var lg = dayLog(k, o.date), ks = Object.keys(lg).sort(function(a,b){ return a-b; });
+            if (ks.length) o.man = {hr: Math.round(avg(ks.map(function(i){ return lg[i].hr; }))), durs: ks.map(function(i){ return fmtDur(lg[i].dur); }).join(' ')};
+          }
+          if (k==='L'){ var ll = dayLog('L', o.date); if (ll[0]) o.manL = ll[0]; }
+          if (k==='R'){ var rr = dayLog('R', o.date); if (rr[0]) o.manR = rr[0]; }
+          return o; })
+        .filter(function(x){ return x.type===k && sp.val(x)!=null; })
+        .sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+      var best = {};
+      list.forEach(function(x){ var g = sp.group(x); if (!best[g] || sp.val(x) < sp.val(best[g])) best[g] = x; });
+      box.textContent = '';
+      var h = document.createElement('h2'); h.className='evo-h'; h.textContent = 'Evolução do '+k; box.appendChild(h);
+      var cap = document.createElement('p'); cap.className='evo-cap'; cap.textContent = 'Compara pela '+sp.what+' (anotada por você, quando houver). Quanto menor, melhor.'; if (k==='B' || k==='L') cap.textContent = 'Compara o tempo entre treinos da mesma distância. Quanto menor, melhor.';
+      if (k==='R') cap.textContent = 'Compara a FC média entre treinos com a mesma inclinação. Quanto menor, melhor.'; box.appendChild(cap);
+      var sum = document.createElement('p'); sum.className='evo-sum';
+      if (!list.length) sum.textContent = 'Ainda sem treinos desse tipo. Depois do próximo, toque em Atualizar.';
+      else {
+        var last = list[0], g = sp.group(last), same = list.filter(function(x){ return sp.group(x)===g; });
+        if (same.length===1) sum.textContent = 'Primeiro registro'+((k==='B'||k==='L') ? ' com '+last.km+' km' : '')+'. O próximo já entra na comparação.';
+        else if (best[g].id===last.id) sum.textContent = 'O último '+k+((k==='B'||k==='L') ? ' de '+last.km+' km' : '')+' foi o melhor até agora.';
+        else sum.textContent = 'Melhor '+k+((k==='B'||k==='L') ? ' de '+last.km+' km' : '')+': '+sp.main(best[g])+', em '+ddmm(best[g].date)+'.';
+      }
+      box.appendChild(sum);
+      list.slice(0,6).forEach(function(x){
+        var r = document.createElement('div'); r.className='erow';
+        var d = document.createElement('span'); d.className='ed'; d.textContent = ddmm(x.date);
+        var m = document.createElement('span'); m.className='em'; m.textContent = sp.main(x);
+        if (best[sp.group(x)] && best[sp.group(x)].id===x.id && list.filter(function(y){ return sp.group(y)===sp.group(x); }).length>1){ var b=document.createElement('span'); b.className='best'; b.textContent='melhor'; m.appendChild(b); }
+        r.appendChild(d); r.appendChild(m);
+        var s2 = sp.sub(x); if (s2){ var e = document.createElement('span'); e.className='es'; e.textContent = s2; r.appendChild(e); }
+        box.appendChild(r);
+      });
+      var foot = document.createElement('div'); foot.className='evo-foot';
+      var btn = document.createElement('button'); btn.className='mini'; btn.id='sync-'+k; btn.textContent='Atualizar com o Strava';
+      btn.addEventListener('click', function(){ sync(); });
+      var stt = document.createElement('span'); stt.className='evo-status'; stt.textContent = evoMsg;
+      foot.appendChild(btn); foot.appendChild(stt); box.appendChild(foot);
+    });
+  }
+  function status(msg){ evoMsg = msg; setEvoStatus(msg); }
+  function mcpMessage(e){
+    var c = e && e.code;
+    if (c==='network') return 'Sem internet agora. Tente de novo.';
+    if (c==='rate_limited') return 'O Strava pediu uma pausa. Tente de novo daqui a alguns minutos.';
+    if (c==='no_session' || c==='needs_reauth') return 'Entre de novo no Recordes pra buscar os treinos.';
+    return 'Não deu pra buscar no Strava agora.';
+  }
+  function payloadOf(r){ return r && (r.payload !== undefined ? r.payload : r); }
+  async function sync(){
+    if (syncing) return;
+    if (!mcp){ status('Esta tela não consegue falar com o Strava.'); return; }
+    syncing = true; status('Buscando treinos no Strava…');
+    try {
+      var res = await mcp.callTool('Strava', 'list_activities', {range_start:'2026-11-02T00:00:00', first:60});
+      var p = payloadOf(res), acts = (p && (p.activities || (p.data && p.data.activities))) || [];
+      var byDay = {};
+      acts.forEach(function(a){
+        var sp = a.sport_type || a.type, sm = a.summary || {};
+        if (['Run','VirtualRun','TrailRun'].indexOf(sp) < 0 || !((sm.distance||0) >= 2000)) return;
+        var d = String(a.start_local || a.start_date_local || '').slice(0,10); if (!d) return;
+        if (!byDay[d] || (sm.distance||0) > (byDay[d].summary.distance||0)) byDay[d] = {id:String(a.id), summary:sm, date:d};
+      });
+      var todo = Object.keys(byDay).map(function(d){ return byDay[d]; }).filter(function(a){ return !stats[a.id]; }).slice(0, 8);
+      for (var i=0;i<todo.length;i++){
+        var a = todo[i], type = typeOn(a.date), doc;
+        if (type==='X') doc = {date:a.date, type:'X'};
+        else {
+          status('Analisando o treino de '+ddmm(a.date)+'…');
+          var sr = await mcp.callTool('Strava', 'get_activity_streams', {activity_id:a.id, streams:['time','heart_rate','velocity_smooth'], resolution:600});
+          var sp2 = payloadOf(sr); if (sp2 && sp2.streams) sp2 = sp2.streams;
+          doc = Object.assign({date:a.date, type:type}, analyze(type, sp2 || {}, a.summary));
+          if (type==='A' && !HIST[a.date]) doc.v = aVariant(a.date, buildPlan(rests, a.date)[a.date]);
+        }
+        stats[a.id] = doc;
+        if (db){ try { await db.doc('stats/'+a.id).set(doc); } catch(e){} }
+      }
+      renderEvo();
+      status(todo.length ? 'Atualizado agora.' : 'Nada novo no Strava.');
+    } catch(e){
+      status(mcpMessage(e));
+    } finally { syncing = false; }
+  }
+
+  render();
+  renderEvo();
+
+  // rests live in the page's shared store, so every device (and Claude) sees the same plan
+  if (window.claude && typeof window.claude.use === 'function'){
+    window.claude.use('db').then(function(d){
+      if (!d) return;
+      db = d;
+      var timer = setTimeout(function(){ setNote('Não deu pra buscar os descansos salvos. Mostrando os deste aparelho.'); }, 10000);
+      db.doc('plan/rests').onSnapshot(function(snap){
+        if (!snap.metadata.fromCache){ clearTimeout(timer); if (note.textContent.indexOf('Não deu pra buscar') === 0) setNote(''); }
+        if (!snap.exists) return;
+        var dd = snap.data() || {}, days = dd.days, kp = dd.keep;
+        if (days && typeof days === 'object'){
+          rests = Object.assign({}, days); keep = kp && typeof kp === 'object' ? Object.assign({}, kp) : {};
+          store('tdd-rests', JSON.stringify(rests)); store('tdd-keep', JSON.stringify(keep)); render();
+        }
+      }, function(){ clearTimeout(timer); });
+      db.collection('log').onSnapshot(function(snap){
+        var next = {}; snap.docs.forEach(function(dc){ next[dc.id] = dc.data(); });
+        Object.keys(logs).forEach(function(d){ if (!next[d]) next[d] = logs[d]; });
+        logs = next; store('tdd-log', JSON.stringify(logs));
+        paintLog('A'); paintLog('C'); paintLog('L'); paintLog('R'); renderEvo();
+      }, function(){});
+      var first = true;
+      db.collection('stats').onSnapshot(function(snap){
+        var next = {}; snap.docs.forEach(function(dc){ next[dc.id] = dc.data(); });
+        Object.keys(stats).forEach(function(id){ if (!next[id]) next[id] = stats[id]; });
+        stats = next; renderEvo();
+        if (first && !snap.metadata.fromCache){ first = false; autoSync(); }
+      }, function(){ autoSync(); });
+    }).catch(function(){});
+    window.claude.use('mcp').then(function(m){ mcp = m; if (!m) status('Esta tela não consegue falar com o Strava.'); }).catch(function(){});
+  }
+  // sync on its own only when Strava is already allowed; otherwise the button asks first
+  var autoDone = false;
+  function autoSync(){
+    if (autoDone) return; autoDone = true;
+    if (!(window.claude && typeof window.claude.use === 'function')) return;
+    window.claude.use('mcp').then(function(m){
+      mcp = m; if (!m) return;
+      return window.claude.use('permissions').then(function(pm){
+        if (!pm) return;
+        return pm.state('mcp:Strava').catch(function(){ return 'unavailable'; }).then(function(st){ if (st==='granted') sync(); });
+      });
+    }).catch(function(){});
+  }
+
+  // keep the screen on during the workout
+  var lockEl = document.getElementById('lock'), wl = null;
+  function lock(){
+    if (!('wakeLock' in navigator) || wl || document.visibilityState!=='visible') return;
+    navigator.wakeLock.request('screen').then(function(l){
+      wl=l; lockEl.textContent='Tela sempre ligada'; lockEl.classList.add('on');
+      l.addEventListener('release', function(){ wl=null; lockEl.textContent='Tela pode apagar'; lockEl.classList.remove('on'); });
+    }).catch(function(){});
+  }
+  lock();
+  document.addEventListener('visibilitychange', lock);
+  document.addEventListener('click', lock);
+})();
+</script>
+
+</body>
+</html>
