@@ -241,6 +241,19 @@ async function weekStatus(aid: number): Promise<{ thisWeek: number; streak: numb
     if ((counts[k] ?? 0) >= 2) streak++;
     else if (!pauses[k]) break;
   }
+  // The 100 days above only see about 14 weeks. The whole streak comes from the summary the app
+  // publishes: its count of completed weeks, walked forward with the weeks counted here. Used when
+  // the summary is recent enough for those weeks to be inside the 100 days.
+  // deno-lint-ignore no-explicit-any
+  const sm: any = (await configDoc(aid, 'summary'))?.data;
+  if (sm && typeof sm.week === 'string' && sm.week <= cur && sm.week >= addDays(cur, -84) && Number.isFinite(Number(sm.streak))) {
+    let s2 = Math.max(0, Number(sm.streak) - ((Number(sm.thisWeek) || 0) >= 2 ? 1 : 0));
+    for (let wk = sm.week; wk < cur; wk = addDays(wk, 7)) {
+      if ((counts[wk] ?? 0) >= 2) s2++;
+      else if (!pauses[wk]) s2 = 0;
+    }
+    streak = s2;
+  }
   return { thisWeek: counts[cur] ?? 0, streak, paused: !!pauses[cur] };
 }
 function reminderText(day: number, thisWeek: number, streak: number): { title: string; body: string } | null {
@@ -272,6 +285,37 @@ function addDays(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
 }
 function tierIdx(v: number, tiers: number[]): number { let t = -1; tiers.forEach((x, i) => { if (v >= x) t = i; }); return t; }
+// Same rule as the app (tiersFrom, kmTiers, daysTiers): gold is the average of the 3 months before,
+// at least 10 km / 8 days; bronze 60%, silver 80%, diamond 140%; days capped at the month minus one rest day a week.
+function tiersFrom(b: number, cap?: number): number[] {
+  const t = [Math.ceil(b * 0.6), Math.ceil(b * 0.8), Math.ceil(b), Math.ceil(b * 1.4)];
+  for (let i = 1; i < t.length; i++) if (t[i] <= t[i - 1]) t[i] = t[i - 1] + 1;
+  if (cap) for (let j = t.length - 1; j >= 0; j--) t[j] = Math.min(t[j], cap - (t.length - 1 - j));
+  return t;
+}
+function prevMonth(m: string): string {
+  const y = Number(m.slice(0, 4)), mo = Number(m.slice(5, 7));
+  return mo === 1 ? (y - 1) + '-12' : y + '-' + String(mo - 1).padStart(2, '0');
+}
+/* After the month turns and before the app is opened: the medals of the new month, with the tiers
+   the app would use (average of the 3 months before, the one that just closed included). Only when
+   it is safe: the summary is from the month that just closed and carries the two months before it
+   (sm.mon, published by the app since 10/11/2026). Otherwise null, and the board shows
+   "aguardando abrir o app". */
+// deno-lint-ignore no-explicit-any
+function newMonthMedals(sm: any, month: string, kmBy: Record<string, number>, daysBy: Record<string, Set<string>>): any {
+  if (sm.month !== prevMonth(month) || !Array.isArray(sm.actDays) || !sm.mon || typeof sm.mon !== 'object') return null;
+  const p2 = prevMonth(sm.month), p3 = prevMonth(p2);
+  const ok = (x: unknown) => Array.isArray(x) && x.length === 2 && x.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0);
+  if (!ok(sm.mon[p2]) || !ok(sm.mon[p3])) return null;
+  const kmAvg = ((kmBy[sm.month] ?? 0) + sm.mon[p2][0] + sm.mon[p3][0]) / 3;
+  const dAvg = ((daysBy[sm.month]?.size ?? 0) + sm.mon[p2][1] + sm.mon[p3][1]) / 3;
+  const dim = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
+  const kmT = tiersFrom(Math.max(10, kmAvg)), dT = tiersFrom(Math.max(8, dAvg), dim - Math.floor(dim / 7));
+  const km = kmBy[month] ?? 0, days = daysBy[month]?.size ?? 0;
+  const kt = tierIdx(km, kmT), dt = tierIdx(days, dT);
+  return { month, kmMonth: Math.round(km * 1000) / 1000, daysMonth: days, kmTier: kt, daysTier: dt, medals: (kt + 1) + (dt + 1), kmT, dT };
+}
 // deno-lint-ignore no-explicit-any
 async function refreshLive(aid: number): Promise<any> {
   const doc = await configDoc(aid, 'summary');
@@ -296,8 +340,12 @@ async function refreshLive(aid: number): Promise<any> {
   const month = today.slice(0, 7);
   const curWeek = weekKey(today);
   const runs: string[] = (sm.runs ?? []).slice();
-  const days = new Set<string>(sm.actDays ?? []);
-  let km = Number(sm.kmMonth) || 0;
+  // Active days and km by month: what the summary already had for its month, plus what arrived since.
+  const daysBy: Record<string, Set<string>> = {};
+  const kmBy: Record<string, number> = {};
+  const dset = (m: string) => (daysBy[m] ??= new Set<string>());
+  (Array.isArray(sm.actDays) ? sm.actDays : []).forEach((d: string) => dset(String(d).slice(0, 7)).add(String(d)));
+  if (typeof sm.month === 'string') kmBy[sm.month] = Number(sm.kmMonth) || 0;
   const weekAdd: Record<string, number> = {};
   let newest = '';
   (Array.isArray(acts) ? acts : []).forEach((a) => {
@@ -306,7 +354,7 @@ async function refreshLive(aid: number): Promise<any> {
     if (!start) return;
     const day = start.slice(0, 10);
     const isRun = RUN_TYPES.includes(t) && a.distance > 0;
-    if (day.slice(0, 7) === month && (isRun || (a.moving_time ?? 0) >= 600)) days.add(day);
+    if (isRun || (a.moving_time ?? 0) >= 600) dset(day.slice(0, 7)).add(day);
     if (!isRun || known.has(start)) return;
     known.add(start);
     // Same tag the app publishes (see runTag in the app): street start rounded to ~1 km, or "i"
@@ -315,7 +363,7 @@ async function refreshLive(aid: number): Promise<any> {
     const indoor = a.trainer === true || t === 'VirtualRun' || /esteira/i.test(String(a.name ?? '')) || !ll;
     runs.push(start + (indoor ? '|i' : '|' + Number(ll[0]).toFixed(2) + ',' + Number(ll[1]).toFixed(2)));
     if (start > newest) newest = start;
-    if (day.slice(0, 7) === month && sm.month === month) km += a.distance / 1000;
+    kmBy[day.slice(0, 7)] = (kmBy[day.slice(0, 7)] ?? 0) + a.distance / 1000;
     if (a.distance >= 1000 || (a.moving_time ?? 0) >= 600) {
       const wk = weekKey(day);
       weekAdd[wk] = (weekAdd[wk] ?? 0) + 1;
@@ -349,8 +397,13 @@ async function refreshLive(aid: number): Promise<any> {
     live.act12 = act;
   }
   if (sm.month === month && Array.isArray(sm.kmT) && Array.isArray(sm.dT)) {
-    const kt = tierIdx(km, sm.kmT), dt = tierIdx(days.size, sm.dT);
-    Object.assign(live, { kmMonth: Math.round(km * 1000) / 1000, daysMonth: days.size, kmTier: kt, daysTier: dt, medals: (kt + 1) + (dt + 1) });
+    const km = kmBy[month] ?? 0, nDays = daysBy[month]?.size ?? 0;
+    const kt = tierIdx(km, sm.kmT), dt = tierIdx(nDays, sm.dT);
+    Object.assign(live, { kmMonth: Math.round(km * 1000) / 1000, daysMonth: nDays, kmTier: kt, daysTier: dt, medals: (kt + 1) + (dt + 1) });
+  } else if (typeof sm.month === 'string' && sm.month < month) {
+    // The month turned and the app wasn't opened yet. The summary's own month fields stay as they are
+    // (they belong to the month that closed); the new month goes apart, in "nm".
+    live.nm = newMonthMedals(sm, month, kmBy, daysBy) ?? { month, wait: 1 };
   }
   const prev = (await configDoc(aid, 'live'))?.data;
   // The time shown as "números de" only moves when the numbers do: equal to the summary, it is the
@@ -367,7 +420,7 @@ async function refreshLive(aid: number): Promise<any> {
   await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'live', data: live, updated_at: new Date().toISOString() });
   return live;
 }
-const LIVE_KEYS = ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals', 'act12'];
+const LIVE_KEYS = ['runs', 'thisWeek', 'streak', 'bestStreak', 'kmMonth', 'daysMonth', 'kmTier', 'daysTier', 'medals', 'act12', 'nm'];
 // deno-lint-ignore no-explicit-any
 function mergeLive(summary: any, live: any) {
   if (!summary || !live || live.base !== summary.at) return { summary, live_at: null };

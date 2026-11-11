@@ -85,7 +85,7 @@ test('ao vivo: treino de esteira entra sem nome (o servidor não lê a descriç�
   assert.ok(r.juntado.runs.includes('2026-11-04T06:00|-9.66,-35.71'));
 });
 
-test('[E17] medalhas deveriam atualizar quando a pessoa salva o treino, também depois da virada do mês', { todo: 'ficou pra depois (decisão de 09/11); a ajuda já avisa' }, async () => {
+test('[E17] medalhas atualizam quando a pessoa salva o treino, também depois da virada do mês', async () => {
   // resumo publicado em 30/10; a pessoa corre de 01 a 05/11 (25 km, 5 dias) e não abre o app
   const r = await cenario({ publicaEm: '2026-10-30T20:00:00', agora: '2026-11-05T12:00:00',
     novos: ['01', '02', '03', '04', '05'].map((d) => par({ start: '2026-11-' + d, km: 5 })) });
@@ -93,6 +93,35 @@ test('[E17] medalhas deveriam atualizar quando a pessoa salva o treino, também 
   const app = loadApp('2026-11-05T12:00:00');
   const noPlacar = app.ev(`linesFor("2026-11").filter(function(L){return L.id==="medals"})[0].get(${JSON.stringify(r.juntado)}, "2026-11")`);
   assert.equal(noPlacar, r.certo.medals, `no placar de novembro a pessoa aparece com ${noPlacar} medalha (mês sem dados) até abrir o app; o certo seria ${r.certo.medals}`);
+  // as faixas do mês novo são as mesmas que o app calcula (média de ago, set e out, já com outubro fechado)
+  assert.deepEqual([r.juntado.nm.kmT, r.juntado.nm.dT], [r.certo.kmT, r.certo.dT]);
+  assert.deepEqual([r.juntado.nm.kmMonth, r.juntado.nm.daysMonth], [r.certo.kmMonth, r.certo.daysMonth]);
+  assert.equal(r.juntado.month, '2026-10', 'os números de outubro do resumo ficam como estão');
+  assert.equal(app.ev(`waitTxt({id:"medals"}, ${JSON.stringify(r.juntado)}, "2026-11")`), '');
+});
+
+test('[E17] treino de outubro salvo depois do último resumo entra na média das faixas de novembro', async () => {
+  const r = await cenario({ publicaEm: '2026-10-28T20:00:00', agora: '2026-11-05T12:00:00',
+    novos: [par({ start: '2026-10-31', km: 12 })].concat(['01', '02', '03'].map((d) => par({ start: '2026-11-' + d, km: 5 }))) });
+  assert.deepEqual([r.juntado.nm.kmT, r.juntado.nm.dT, r.juntado.nm.medals], [r.certo.kmT, r.certo.dT, r.certo.medals]);
+});
+
+test('[E17] sem dados seguros (resumo de app antigo, ou parado há mais de um mês): "aguardando abrir o app", não 0 medalha', async () => {
+  const app = loadApp('2026-11-05T12:00:00');
+  const quer = (m) => app.ev(`waitTxt({id:"medals"}, ${JSON.stringify(m)}, "2026-11")`);
+  // resumo de versão antiga do app, sem os meses anteriores
+  const base = historico();
+  const a0 = loadApp('2026-10-30T20:00:00'); a0.setActivities(base.map((x) => x.app));
+  const sm = a0.json('buildSummary()'); delete sm.mon;
+  const srv = loadServer('2026-11-05T12:00:00-03:00');
+  srv.world.docs[`${AID}|config|summary`] = sm;
+  srv.world.strava[AID] = base.map((x) => x.strava).concat([par({ start: '2026-11-02', km: 5 }).strava]);
+  const m = srv.ev('mergeLive')(sm, await srv.refreshLive(AID)).summary;
+  assert.deepEqual({ ...m.nm }, { month: '2026-11', wait: 1 });
+  assert.equal(quer(m), 'aguardando abrir o app');
+  // resumo de setembro, visto em novembro: dois meses sem abrir
+  const r = await cenario({ publicaEm: '2026-09-20T20:00:00', agora: '2026-11-05T12:00:00', novos: [par({ start: '2026-11-02', km: 5 })] });
+  assert.equal(quer(r.juntado), 'aguardando abrir o app');
 });
 
 test('aviso de quinta a sábado: texto e silêncio', () => {
@@ -117,7 +146,7 @@ test('[E18] aviso "falta 1 treino" enxerga a corrida lançada à mão (overrides
   assert.equal((await srv.weekStatus(AID)).thisWeek, 2);
 });
 
-test('aviso: a sequência do texto deveria ser a mesma do app (o servidor só olha 100 dias, mostra no máximo 13)', { todo: 'não pedido nesta rodada' }, async () => {
+test('aviso: a sequência do texto é a mesma do app, mesmo acima de 13 semanas (vem do resumo publicado)', async () => {
   const srv = loadServer('2026-11-06T18:00:00-03:00');
   const A = [], S = [];
   for (let w = 1; w <= 20; w++) {
@@ -127,5 +156,14 @@ test('aviso: a sequência do texto deveria ser a mesma do app (o servidor só ol
   srv.world.strava[AID] = S;
   const app = loadApp('2026-11-06T18:00:00');
   app.setActivities(A);
-  assert.equal((await srv.weekStatus(AID)).streak, app.json('streakInfo(state.sessions).current'));
+  assert.equal((await srv.weekStatus(AID)).streak, 13, 'sem resumo publicado, o servidor só enxerga os 100 dias');
+  // resumo publicado duas semanas antes; o servidor completa as semanas seguintes com o que lê do Strava
+  const antes = loadApp('2026-10-21T20:00:00');
+  antes.setActivities(A.filter((x) => x.start_local < '2026-10-21T20:00:00'));
+  srv.world.docs[`${AID}|config|summary`] = antes.json('buildSummary()');
+  assert.equal(app.json('streakInfo(state.sessions).current'), 20);
+  assert.equal((await srv.weekStatus(AID)).streak, 20);
+  // uma semana sem corrida e sem pausa depois do resumo zera a sequência
+  srv.world.strava[AID] = S.filter((x) => x.start_date_local.slice(0, 10) < '2026-10-25' || x.start_date_local.slice(0, 10) > '2026-10-31');
+  assert.equal((await srv.weekStatus(AID)).streak, 0);
 });

@@ -987,7 +987,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-10';
+  var APP_VER = '2026-11-10b';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -3312,6 +3312,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       ] }] },
       atualiza: { t: 'Quando o placar atualiza', r: 'Uma parte atualiza sozinha; o resto depende de cada um abrir o app.', g: [{ li: [
         '<strong>Na hora em que a pessoa salva um treino no Strava:</strong> constância, medalhas e treinos juntos na rua.',
+        'Na virada do mês, as medalhas do mês novo também saem sem abrir o app, com as faixas pela média dos 3 meses anteriores. Se o servidor não tiver os dados pra calcular, aparece "aguardando abrir o app".',
         '<strong>Quando a pessoa abre o app:</strong> as outras linhas e os treinos juntos na esteira, que dependem do nome na descrição.',
         'Na virada do mês, as medalhas do mês novo só aparecem depois que a pessoa abrir o app.'
       ] }] },
@@ -4907,7 +4908,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     { id: 'beats', k: 'Metas batidas, últimos 90 dias', w: 2, v: 2, get: function(s){ return s.beats; }, f: numF, sub: function(){ return ''; } },
     { id: 'act', k: 'Constância, últimas 12 semanas', w: 1, v: 8, get: function(s){ return s.act12; },
       f: function(v){ return v == null ? '--' : v + ' de 12'; }, sub: function(){ return 'semanas com 2 corridas ou mais'; } },
-    { id: 'medals', k: 'Medalhas do mês', w: 1, v: 1, get: function(s, ref){ return s.month === ref ? s.medals : 0; }, f: numF,
+    { id: 'medals', k: 'Medalhas do mês', w: 1, v: 1, get: function(s, ref){ return s.month === ref ? s.medals : (s.nm && s.nm.month === ref && s.nm.medals != null ? s.nm.medals : 0); }, f: numF,
       sub: function(s, ref){ return s.month === ref ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
     { id: 'recDays', k: 'Dias com recorde, últimos 90 dias', w: 1, v: 5, get: function(s){ return s.recDays; }, f: numF, sub: function(){ return ''; } }
   ];
@@ -4941,6 +4942,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     });
   })();
   function ptsWord(n){ return n + (n === 1 ? ' ponto' : ' pontos'); }
+  /* The month turned, the person hasn't opened the app and the server couldn't work out the new
+     month's medals safely: the cell says so instead of showing 0. */
+  function waitTxt(L, s, ref){
+    if (L.id !== 'medals' || !s || ref !== mkey(new Date()) || s.month === ref) return '';
+    return s.nm && s.nm.month === ref && s.nm.medals != null ? '' : 'aguardando abrir o app';
+  }
   function lineVal(L, s, ref){ if (!s || !(s.v >= L.v)) return null; var x = L.get(s, ref); return x == null ? null : x; }
   // Someone whose numbers are current but have no value in a line counts as last in it
   // (the app can't tell new from absent). Only a stale summary stays out of the line.
@@ -5078,6 +5085,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       v: 11, app: APP_VER, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, recDaysE: Object.keys(recDayE).length, beatsM: beatsM,
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
+      // km and active days of the 3 months before: with them the server works out the medal tiers of
+      // the next month when it turns before the app is opened (E17)
+      mon: (function(){ var o = {}, st = monthStats(); for (var i = 1; i <= 3; i++) { var pk = prevKey(now, i); o[pk] = [Math.round((st.km[pk] || 0) * 1000) / 1000, st.days[pk] || 0]; } return o; })(),
       actDays: Object.keys(state.activeDays || {}).filter(function(d){ return d.slice(0, 7) === now; }).sort(),
       nextRaces: duoNextRaces(), raceGoals: duoRaceGoals(), pastRaces: duoPastRaces(rua.tables),
       runs: all.filter(function(x){ return x.d && isoOf(x.d) >= isoMinus(120); }).map(runTag),
@@ -5384,7 +5394,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var beat = 0; vals.forEach(function(b){ if (b !== a && a.x != null && b.x != null && a.x > b.x) beat++; });
         var top = a.x != null && vals.every(function(b){ return b === a || b.x == null || a.x > b.x; }) && beat > 0;
         if (!a.ok) { anyNa = true; return '<td class="na"><span class="v">—</span></td>'; }
-        return '<td' + (top ? ' class="win"' : '') + '><span class="v">' + L.f(lineVal(L, a.p.s, ref)) + '</span>' + (beat ? '<span class="p">+' + (beat * L.w) + '</span>' : '') + '</td>';
+        return '<td' + (top ? ' class="win"' : '') + '><span class="v">' + (waitTxt(L, a.p.s, ref) ? '--' : L.f(lineVal(L, a.p.s, ref))) + '</span>' + (waitTxt(L, a.p.s, ref) ? '<span class="t-sub">' + waitTxt(L, a.p.s, ref) + '</span>' : '') + (beat ? '<span class="p">+' + (beat * L.w) + '</span>' : '') + '</td>';
       }).join('');
       var det = vals.map(function(a){ var t = a.ok ? L.sub(a.p.s, ref) : 'ainda não abriu o app desde a última atualização'; return t ? '<b>' + esc(a.p.name) + ':</b> ' + esc(t) : ''; }).filter(Boolean).join('<br>');
       return '<tr class="mx-r" data-mx="' + li + '"><td>' + esc(L.short || L.k) + '<small>' + esc(L.sm ? L.sm + ' · ' : '') + L.w + (L.w === 1 ? ' pt' : ' pts') + '</small></td>' + cells + '</tr>' +
@@ -5490,7 +5500,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var hisOld = !waiting && !(his.v >= L.v);
       var ra = lineRank(L, mine, ref), rb = waiting ? null : lineRank(L, his, ref);
       var wa = ra != null && rb != null && ra > rb, wb = ra != null && rb != null && rb > ra;
-      var sa = L.sub(mine, ref), sb = waiting ? '' : hisOld ? 'quando abrir o app' : L.sub(his, ref);
+      var sa = L.sub(mine, ref), sb = waiting ? '' : hisOld ? 'quando abrir o app' : (waitTxt(L, his, ref) || L.sub(his, ref));
       return '<tr class="duo-k"><th colspan="2">' + L.k + ' <span class="w-pts">· ' + ptsWord(L.w) + '</span></th></tr><tr>' +
         '<td' + (wa ? ' class="win"' : '') + '><span class="v">' + L.f(a) + '</span>' + (sa ? '<span class="t-sub">' + esc(sa) + '</span>' : '') + '</td>' +
         '<td' + (wb ? ' class="win"' : '') + '><span class="v">' + L.f(b) + '</span>' + (sb ? '<span class="t-sub">' + esc(sb) + '</span>' : '') + '</td></tr>';
