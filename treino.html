@@ -393,8 +393,9 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function ddmm(d){ return d.slice(8,10)+'/'+d.slice(5,7); }
   function raceAt(d){ for (var i=0;i<RACES.length;i++) if (RACES[i].d===d) return RACES[i]; return null; }
   function raceKm(r){ return r && r.km ? String(r.km).replace('.',',')+' km' : ''; }
-  // Race weeks scale with the distance: short (under 5 km), 5 km (5 to 9.9) and long (10 km or more).
-  function tier(r){ var k = Number(r && r.km) || 5; return k < 5 ? 'S' : k < 10 ? 'M' : 'L'; }
+  // Race weeks scale with the distance, by how long it takes at this level: short (up to 3 km, ~25 min),
+  // middle (over 3 and under 8 km, like the 4, 5 and 6 km races) and long (8 km or more, over 1 hour).
+  function tier(r){ var k = Number(r && r.km) || 5; return k <= 3 ? 'S' : k < 8 ? 'M' : 'L'; }
   var TIER = {
     S: {before:{'-1':'R'}, after:1, fast:null, b:0, l:0, gym:2},
     M: {before:{'-1':'eve','-2':'R','-3':'A3'}, after:2, fast:[-11,-3], b:5, l:5, gym:6},
