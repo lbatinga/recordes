@@ -929,7 +929,7 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
 
 <div class="coach" id="coach" hidden role="dialog" aria-modal="true" aria-label="Treino do dia">
   <div class="coach-bar"><button type="button" id="coach-close">← Recordes</button><span>Treino do dia</span></div>
-  <iframe id="coach-frame" title="Treino do dia" allow="screen-wake-lock"></iframe>
+  <iframe id="coach-frame" title="Treino do dia" allow="screen-wake-lock; clipboard-write"></iframe>
 </div>
 <button type="button" class="help-fab" id="help-fab" aria-label="Como funciona esta tela"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6"/><circle cx="12" cy="17" r=".7"/></svg></button>
 
@@ -1055,8 +1055,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   var DESC_REREAD_DAYS = 14;
   /* Treino do dia (only for athletes with config/coach.enabled, set by the owner): the workout page
      (treino.html) runs in a full-screen layer and keeps its data here, in config/coachplan
-     (rest days), config/coachlog (blocks written down) and config/coachstats (per-run numbers). */
-  var COACH = false, CZ = { plan: null, log: {}, stats: {} }, czSubs = [];
+     (rest days), config/coachlog (blocks written down), config/coachstats (per-run numbers) and
+     config/coachset (Ajustes, knee marks, steps set by hand). It reads the races of the Provas tab. */
+  var COACH = false, CZ = { plan: null, log: {}, stats: {}, set: null }, czSubs = [];
   var RACES = RACE_INFO;
 
   var session = null, me = null;
@@ -5746,6 +5747,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function saveRaces(){
     putDoc('config', 'races', { races: RACE_INFO.map(function(r){ return Object.assign({}, r); }) });
     flushDocs();
+    czEmit(); // the Treino do dia plan follows the Provas tab
   }
 
   // History saved before months were frozen: every month before the current one stays as stored.
@@ -5758,8 +5760,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function czSnapDoc(v){ return { exists: !!v, data: function(){ return v; }, metadata: { fromCache: false } }; }
   function czSnapCol(map){ return { docs: Object.keys(map).map(function(id){ return { id: id, data: function(){ return map[id]; } }; }), metadata: { fromCache: false } }; }
   function czEmit(){ czSubs.forEach(function(f){ try { f(); } catch (e) {} }); }
+  function czDay(n){ return new Date(Date.now() - 3 * 3600 * 1000 - n * 86400000).toISOString().slice(0, 10); }
   function czSave(id){
-    var body = id === 'coachplan' ? (CZ.plan || { days: {}, keep: {} }) : id === 'coachlog' ? { days: CZ.log } : { acts: CZ.stats };
+    if (id === 'coachstats') {
+      // Runs outside the plan are dropped after 60 days and everything after 400 (the page keeps its progress saved apart).
+      var cut = czDay(60), old = czDay(400);
+      Object.keys(CZ.stats).forEach(function(k){ var x = CZ.stats[k]; if (!x || !x.date || x.date < old || (x.type === 'X' && x.date < cut)) delete CZ.stats[k]; });
+    }
+    var body = id === 'coachplan' ? (CZ.plan || { days: {}, keep: {} }) : id === 'coachlog' ? { days: CZ.log }
+      : id === 'coachset' ? (CZ.set || {}) : { acts: CZ.stats };
     putDoc('config', id, body); flushDocs();
   }
   var czDb = {
@@ -5768,12 +5777,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       return {
         set: function(data){
           if (path === 'plan/rests') { CZ.plan = { days: data.days || {}, keep: data.keep || {} }; czSave('coachplan'); }
+          else if (path === 'plan/settings') { CZ.set = data; czSave('coachset'); }
           else if (parts[0] === 'stats') { CZ.stats[parts[1]] = data; czSave('coachstats'); }
           else if (parts[0] === 'log') { CZ.log[parts[1]] = data; czSave('coachlog'); }
           return Promise.resolve();
         },
         onSnapshot: function(cb){
-          var f = function(){ if (path === 'plan/rests') cb(czSnapDoc(CZ.plan)); };
+          var f = function(){
+            if (path === 'plan/rests') cb(czSnapDoc(CZ.plan));
+            else if (path === 'plan/settings') cb(czSnapDoc(CZ.set));
+            else if (path === 'plan/races') cb(czSnapDoc({ races: RACE_INFO.map(function(r){ return { date: r.date, name: r.name, short: r.short, km: r.km, time: r.time }; }) }));
+          };
           (docsReady || Promise.resolve()).then(function(){ f(); czSubs.push(f); });
           return function(){ czSubs = czSubs.filter(function(x){ return x !== f; }); };
         }
@@ -5857,6 +5871,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         else if (d.col === 'config' && d.id === 'coachplan') CZ.plan = { days: v.days || {}, keep: v.keep || {} };
         else if (d.col === 'config' && d.id === 'coachlog') CZ.log = v.days && typeof v.days === 'object' ? v.days : {};
         else if (d.col === 'config' && d.id === 'coachstats') CZ.stats = v.acts && typeof v.acts === 'object' ? v.acts : {};
+        else if (d.col === 'config' && d.id === 'coachset') CZ.set = v;
       });
       GOAL = getGoal(goalK);
       czEmit();
