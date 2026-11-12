@@ -1574,6 +1574,13 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (WK.done) wkKeep();
     wkSave();
   }
+  // erase only the FC written for one stretch; the stretch and the rest of the workout stay
+  function wkClearHr(idx){
+    var g = WK.segs[idx]; if (!g || !g.log || !g.hr) return;
+    g.hr = 0; saveBlock(g.log[0], g.log[1], null);
+    if (WK.done) wkKeep();
+    wkSave();
+  }
   // the whole session goes with the day's notes: [kind, seconds, FC] for each stretch
   function wkKeep(){
     var day = Object.assign({}, logs[today] || {});
@@ -1608,7 +1615,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     mn.addEventListener('click', function(){ if (wkShift(idx, -5)) out.textContent = tfmt(wkDur(g)); });
     pl.addEventListener('click', function(){ if (wkShift(idx, 5)) out.textContent = tfmt(wkDur(g)); });
     st.appendChild(mn); st.appendChild(out); st.appendChild(pl); p.appendChild(st); p.appendChild(err);
-    var bt = wkEl('div', 'logbtns'); bt.style.gridTemplateColumns = g.log ? '2fr 1fr' : '1fr';
+    var bt = wkEl('div', 'logbtns'); bt.style.gridTemplateColumns = g.log ? (g.hr ? '2fr 1fr 1fr' : '2fr 1fr') : '1fr';
     if (g.log){
       var sv = wkEl('button', 'save', 'Salvar'); sv.id = 'wk-save';
       sv.addEventListener('click', function(){
@@ -1617,8 +1624,9 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         wkSetHr(idx, hr); wkEdit = null; wkRender();
       });
       bt.appendChild(sv);
+      if (g.hr){ var dl = wkEl('button', null, 'Apagar FC'); dl.id = 'wk-del'; dl.addEventListener('click', function(){ wkClearHr(idx); wkEdit = null; wkRender(); }); bt.appendChild(dl); }
     }
-    var cl = wkEl('button', null, g.log ? 'Depois' : 'Pronto'); cl.id = 'wk-ed-close';
+    var cl = wkEl('button', null, g.log ? (g.hr ? 'Fechar' : 'Depois') : 'Pronto'); cl.id = 'wk-ed-close';
     cl.addEventListener('click', function(){ wkEdit = null; wkRender(); });
     bt.appendChild(cl); p.appendChild(bt);
     return p;

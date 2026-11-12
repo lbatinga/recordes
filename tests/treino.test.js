@@ -290,3 +290,13 @@ test('descartar o treino apaga também a FC e o resumo que ele gravou no dia', (
   assert.equal(t.ev('WK'), null);
   assert.equal(t.json('replay("2026-11-12").n.tl || null'), null, 'o teste descartado não conta pra degrau');
 });
+
+test('apagar só a FC de um trecho: o trecho e o resto do treino ficam', () => {
+  const t = semAgenda('2026-11-16T19:00:00');
+  t.ev('wkStart("A")'); t.passa(300); t.ev('wkNext(false)');
+  t.passa(180); t.ev('wkNext(false)'); t.ev('wkSetHr(1, 168)');
+  t.passa(90); t.ev('wkNext(false)'); t.passa(180); t.ev('wkNext(false)'); t.ev('wkSetHr(3, 171)');
+  t.ev('wkClearHr(1)');
+  assert.deepEqual(t.json('logs["2026-11-16"].A'), { 1: { hr: 171, dur: 180 } });
+  assert.equal(t.ev('WK.segs.length'), 4); assert.equal(t.ev('WK.segs[1].hr'), 0);
+});
