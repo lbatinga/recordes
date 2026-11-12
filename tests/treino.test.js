@@ -278,3 +278,15 @@ test('dia de prova: o aviso usa o trote e a caminhada dos Ajustes', () => {
   const u = semAgenda('2026-11-16T19:00:00', { cfg: { sets: [{ d: '2026-11-15', v: { raceRun: 4 } }] } });
   assert.equal(u.json('wkItems("A")[1]').target, 240);
 });
+
+test('descartar o treino apaga também a FC e o resumo que ele gravou no dia', () => {
+  const t = semAgenda('2026-11-12T09:00:00');
+  t.ev('wkStart("L")'); t.passa(300); t.ev('wkNext(false)'); t.passa(300); t.ev('wkNext(false)'); t.ev('wkSetHr(1, 150)');
+  assert.deepEqual(t.json('logs["2026-11-12"].L[0]'), { hr: 150, dur: 300 });
+  t.passa(60); t.ev('wkNext(false)'); t.passa(60); t.ev('wkNext(true)');
+  assert.ok(t.json('logs["2026-11-12"].W'));
+  t.ev('wkDrop()');
+  assert.deepEqual(t.json('logs["2026-11-12"]'), { L: {} });
+  assert.equal(t.ev('WK'), null);
+  assert.equal(t.json('replay("2026-11-12").n.tl || null'), null, 'o teste descartado não conta pra degrau');
+});

@@ -1580,7 +1580,17 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     day.W = {k:WK.k, segs:WK.segs.map(function(g){ return [g.kind, wkDur(g), g.hr || 0]; })};
     logs[today] = day; persistLog(today);
   }
-  function wkDrop(){ WK = null; wkOpen = false; wkEdit = null; wkSave(); wkButtons(); wkRender(); }
+  // discarding also removes what this session wrote in the day's notes
+  function wkDrop(){
+    if (WK && WK.date === today){
+      var day = Object.assign({}, logs[today] || {}), ch = false;
+      WK.segs.forEach(function(g){ if (g.log && g.hr && day[g.log[0]]){ var m = Object.assign({}, day[g.log[0]]); delete m[g.log[1]]; day[g.log[0]] = m; ch = true; } });
+      if (day.W){ delete day.W; ch = true; }
+      if (ch){ logs[today] = day; persistLog(today); }
+    }
+    WK = null; wkOpen = false; wkEdit = null; wkSave();
+    ['A','C','L'].forEach(paintLog); recompute(); render(); renderEvo(); wkRender();
+  }
   function wkClock(ms){ return tfmt(Math.max(0, Math.floor(ms / 1000))); }
   function wkEl(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function wkEditor(idx){
