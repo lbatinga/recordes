@@ -1,6 +1,5 @@
 // Regras do Treino do dia (treino.html), conferidas contra o plano de treinos do projeto Corpo.
-// Os testes marcados com [T1], [T2]... são erros encontrados na revisão de 12/11/2026: ficam como
-// "todo" (não derrubam a suíte) até a correção ser aprovada.
+// Os testes marcados com [T1], [T2]... são erros encontrados na revisão de 12/11/2026, já corrigidos.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -135,23 +134,39 @@ test('fase 2 começa quando um trote longo anotado passa de 5 km', () => {
 });
 
 // ---------- erros encontrados na revisão de 12/11/2026 ----------
-test('[T1] duas provas com 1 ou 2 dias de diferença: a segunda tem que aparecer como prova', { todo: true }, () => {
+test('[T1] duas provas com 1 ou 2 dias de diferença: a segunda tem que aparecer como prova', () => {
   const p = loadTreino(HOJE, { rests: BASE.rests, races: [{ d: '2026-11-21', name: 'S', km: 5 }, { d: '2026-11-23', name: 'X', km: 5 }] }).plan('2026-11-23');
   assert.equal(p['2026-11-23'], 'race', 'o dia 23/11 aparece como ' + p['2026-11-23']);
 });
 
-test('[T2] "a semana da prova não muda": o descanso automático não pode tirar o A leve de 3 dias antes', { todo: true }, () => {
+test('[T2] "a semana da prova não muda": o descanso automático não pode tirar o A leve de 3 dias antes', () => {
   const p = loadTreino(HOJE, { rests: { '2026-11-09': true, '2026-11-11': true } }).plan('2026-11-21');
   assert.equal(p['2026-11-18'], 'A3', 'em 18/11 aparece ' + p['2026-11-18']);
+  assert.equal(p['2026-11-17'], 'auto', 'o descanso do 7º dia vem um dia antes');
 });
 
-test('[T3] joelho anotado no dia do forte: o próximo forte vira R mesmo quando cai 7 dias depois (semana com descanso automático)', { todo: true }, () => {
+test('[T3] joelho anotado no dia do forte: o próximo forte vira R mesmo quando cai 7 dias depois (semana com descanso automático)', () => {
   const p = loadTreino(HOJE, { rests: BASE.rests, cfg: { knee: { '2026-11-28': true } } }).plan('2026-12-05');
   assert.equal(p['2026-12-05'], 'Rk', 'o forte de 05/12 continua ' + p['2026-12-05']);
 });
 
-test('[T4] L de 4,5 km num dia de 5 km não conta como distância completa', { todo: true }, () => {
+test('[T4] L de 4,5 km num dia de 5 km não conta como distância completa', () => {
   const t = loadTreino(HOJE, BASE);
   const r = t.json('analyze("L", {}, {distance: 4500, moving_time: 2800}, "2026-11-12")');
   assert.ok(r.km < 5, 'o Strava marcou 4,5 km e a página guardou ' + r.km + ' km');
+});
+
+test('[T1] véspera da segunda prova é descanso, mesmo dentro da recuperação da primeira', () => {
+  const p = loadTreino(HOJE, { rests: BASE.rests, races: [{ d: '2026-11-21', name: 'S', km: 5 }, { d: '2026-11-23', name: 'X', km: 5 }] }).plan('2026-11-25');
+  assert.equal(linha(p, '2026-11-20', '2026-11-25'), 'eve race eve race R R');
+});
+
+test('[T3] joelho antigo (mais de 14 dias) não mexe mais na agenda', () => {
+  const p = loadTreino(HOJE, { rests: BASE.rests, cfg: { knee: { '2026-11-12': true } } }).plan('2026-11-28');
+  assert.equal(p['2026-11-28'], 'C');
+});
+
+test('[T4] L de 4,9 km num dia de 5 km conta; 5,4 km continua 5', () => {
+  const t = loadTreino(HOJE, BASE), km = (m) => t.json('analyze("L", {}, {distance: ' + m + '}, "2026-11-12")').km;
+  assert.deepEqual([km(4900), km(4899), km(5400), km(5000)], [5, 4, 5, 5]);
 });

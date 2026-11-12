@@ -402,11 +402,13 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     L: {before:{'-1':'eve','-2':'R','-3':'R','-4':'A3'}, after:3, fast:[-14,-4], b:7, l:7, gym:7}
   };
   function fixedAt(d){
-    for (var i=0;i<RACES.length;i++){ var r=RACES[i].d, T = TIER[tier(RACES[i])], n = daysBetween(r, d);
+    // With two races close together: the race day and the rest on its eve come first, then the recovery of the earlier one.
+    var i, T, n, eve = false, rec = false, bef = null;
+    for (i=0;i<RACES.length;i++){ T = TIER[tier(RACES[i])]; n = daysBetween(RACES[i].d, d);
       if (n === 0) return 'race';
-      if (n < 0 && T.before[String(n)]) return T.before[String(n)];
-      if (n > 0 && n <= T.after) return 'R'; }
-    return null;
+      if (n < 0 && T.before[String(n)]){ if (T.before[String(n)] === 'eve') eve = true; else if (!bef) bef = T.before[String(n)]; }
+      if (n > 0 && n <= T.after) rec = true; }
+    return eve ? 'eve' : rec ? 'R' : bef;
   }
   function hard(t){ return t==='A'||t==='B'||t==='C'||t==='L'||t==='A3'||t==='race'; }
   // the race whose rehearsal window (11 to 4 days before it) contains d
@@ -458,16 +460,17 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function buildPlan(rests, until){
     // qi starts on the strong slot: the first session of this plan was the A rehearsal of 10/11.
     var out = {}, prev = START_TYPE, qi = 2, nextF = 'C', streak = START_STREAK, d = addDays(PLAN_START, 1);
-    // knee: a mark turns the next strong session (A or C) of the following 6 days into an R
+    // knee: a mark turns the next strong session (A or C) into an R, as long as it comes within 14 days
     var kd = Object.keys(CFG.knee || {}).filter(function(k){ return CFG.knee[k]; }).sort(), kq = 0, kneeTill = null;
     out[PLAN_START] = START_TYPE;
     while (d <= until){
-      while (kq < kd.length && kd[kq] < d){ kneeTill = addDays(kd[kq], 6); kq++; }
+      while (kq < kd.length && kd[kq] < d){ kneeTill = addDays(kd[kq], 14); kq++; }
       var f = fixedAt(d), nxt = addDays(d, 1), t;
       if (f === 'race') t = 'race';
       else if (f === 'eve') t = 'eve';
       else if (rests[d]) t = 'off';
-      else if (streak >= MAX_STREAK && !keep[d]) t = 'auto';
+      else if (streak >= MAX_STREAK && !keep[d] && f !== 'A3') t = 'auto';
+      else if (fixedAt(nxt) === 'A3' && !rests[nxt] && streak + 1 >= MAX_STREAK && !keep[d]) t = 'auto'; // the 7th day would fall on the light A: rest one day earlier
       else if (f) t = f;
       else if (hard(prev)) t = 'R';
       else if (fixedAt(nxt) === 'A3' && !rests[nxt]) t = 'R';
@@ -1005,7 +1008,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     kneeBtn.classList.toggle('undo', !!CFG.knee[today]);
     var kn = document.getElementById('kneenote'), k = kneeOn(today); kn.textContent = '';
     if (!k){ kn.hidden = true; return; }
-    var rk = null; for (var q = k; q <= addDays(k, 7) && q <= end; q = addDays(q, 1)) if (plan[q] === 'Rk'){ rk = q; break; }
+    var rk = null; for (var q = k; q <= addDays(k, 14) && q <= end; q = addDays(q, 1)) if (plan[q] === 'Rk'){ rk = q; break; }
     var marks = Object.keys(CFG.knee).filter(function(x){ return CFG.knee[x] && x <= today && x >= addDays(today, -13); }).length;
     kn.appendChild(document.createTextNode('Joelho anotado em '+ddmm(k)+'. Até '+ddmm(addDays(k, 6))+' nada sobe de degrau'+(rk ? ', e o forte de '+br(rk)+' virou R.' : '.')));
     var sp = document.createElement('span');
@@ -1220,7 +1223,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function analyze(type, st, sum, date){
     var S = setAt(date);
     var t = st.time||[], hr = st.heart_rate||[], v = st.velocity_smooth||[];
-    var out = {km: Math.round((sum.distance||0)/1000), time: Math.round(sum.moving_time||0)};
+    var out = {km: Math.floor(((sum.distance||0) + 100) / 1000 + 1e-9), time: Math.round(sum.moving_time||0)};
     if (!t.length || !hr.length) return out;
     if (type==='B' || type==='L'){
       var lim = type==='B' ? S.bTop : S.lTop;
@@ -1431,6 +1434,9 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   }
   lock();
   document.addEventListener('visibilitychange', lock);
+  // The day changed while the page was open (app left in the background): start again on the right day.
+  function dayCheck(){ if (!document.hidden && iso(new Date()) !== today) location.reload(); }
+  document.addEventListener('visibilitychange', dayCheck); window.addEventListener('focus', dayCheck); window.addEventListener('pageshow', dayCheck);
   document.addEventListener('click', lock);
 })();
 </script>
