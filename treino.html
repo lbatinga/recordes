@@ -373,7 +373,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <div class="adj" id="adj"></div>
   </details>
 
-  <p class="foot">Plano de treinos do projeto Corpo · dados salvos no Recordes · atualizado em 11/11/2026</p>
+  <p class="foot">Plano de treinos do projeto Corpo · dados salvos no Recordes · atualizado em 12/11/2026</p>
 </div>
 
 <script>
@@ -525,9 +525,10 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function setNote(s){ note.textContent = s; note.hidden = !s; }
 
   function horizon(){
-    var nr = null; RACES.forEach(function(r){ if (r.d >= today && (!nr || r.d < nr.d)) nr = r; });
+    // up to the last race in the next 30 days (so two race weeks close together show at once), at least 7 days
+    var far = null, lim = addDays(today, 30); RACES.forEach(function(r){ if (r.d >= today && r.d <= lim && (!far || r.d > far)) far = r.d; });
     var min = addDays(today, 6);
-    return nr ? (nr.d > min && nr.d <= addDays(today, 30) ? nr.d : (nr.d > min ? addDays(today, 13) : min)) : addDays(today, 13);
+    return far ? (far > min ? far : min) : addDays(today, 13);
   }
 
   // ---------- progress: replays every session since the plan started (or since the saved base) ----------

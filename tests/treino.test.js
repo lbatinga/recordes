@@ -179,3 +179,13 @@ test('descanso automático não cai colado na véspera de prova: o R de 2 dias a
   let seg = 0;
   Object.keys(p).sort().filter((d) => d > '2026-11-11').forEach((d) => { seg = /^(off|auto|eve)$/.test(p[d]) ? 0 : seg + 1; assert.ok(seg <= 7, d); });
 });
+
+test('Próximos dias vai até a última prova dos próximos 30 dias; sem prova perto, 14 dias', () => {
+  const duas = [{ d: '2026-11-21', name: 'Santander', km: 5 }, { d: '2026-11-29', name: 'Sest Senat', km: 5 }];
+  const h = (races) => loadTreino('2026-11-12T08:00:00', { races }).ev('horizon()');
+  assert.equal(h(duas), '2026-11-29');
+  assert.equal(h([duas[0]]), '2026-11-21');
+  assert.equal(h([{ d: '2026-11-14', name: 'X', km: 5 }]), '2026-11-18');
+  assert.equal(h([{ d: '2027-01-20', name: 'Longe', km: 5 }]), '2026-11-25');
+  assert.equal(h([]), '2026-11-25');
+});
