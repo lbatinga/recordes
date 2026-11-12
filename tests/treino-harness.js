@@ -39,6 +39,7 @@ function loadTreino(nowIso, o) {
     'tdd-races': JSON.stringify(o.races || SANTANDER), 'tdd-rests': JSON.stringify(o.rests || {}), 'tdd-keep': JSON.stringify(o.keep || {}),
     'tdd-cfg': JSON.stringify(o.cfg || {}), 'tdd-log': JSON.stringify(o.logs || {}),
   };
+  Object.assign(store, o.extra || {});
   const sandbox = {
     console, setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, clearInterval: () => {}, JSON, Math, Promise,
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } },
@@ -47,14 +48,15 @@ function loadTreino(nowIso, o) {
   };
   sandbox.window = sandbox; sandbox.globalThis = sandbox;
   const ctx = vm.createContext(sandbox);
-  const FIX = new Date(nowIso).getTime();
-  vm.runInContext(`(function(){ var R = Date; function D(a){ var x = arguments.length ? new R(a) : new R(${FIX}); Object.setPrototypeOf(x, D.prototype); return x; }
-    D.prototype = Object.create(R.prototype); D.prototype.constructor = D; D.now = function(){ return ${FIX}; }; Date = D; })()`, ctx);
+  vm.runInContext(`var __FIX = ${new Date(nowIso).getTime()}; (function(){ var R = Date; function D(a){ var x = arguments.length ? new R(a) : new R(__FIX); Object.setPrototypeOf(x, D.prototype); return x; }
+    D.prototype = Object.create(R.prototype); D.prototype.constructor = D; D.now = function(){ return __FIX; }; Date = D; })()`, ctx);
   vm.runInContext(src, ctx, { filename: 'treino.html(script)' });
   const ev = (c) => ctx.__ev(c);
   const json = (c) => JSON.parse(ev('JSON.stringify(' + c + ')'));
   return {
     ev, json,
+    // avança o relógio em segundos (pro modo treino)
+    passa(seg) { vm.runInContext('__FIX += ' + (seg * 1000), ctx); },
     plan: (ate) => json('buildPlan(rests, ' + JSON.stringify(ate) + ')'),
     // Treinos feitos: stats = { id: {date, type, km, hr, v} } (o que vem do Strava) e logs = { dia: {A:{0:{hr,dur}}, L:{0:{hr,dur}}} } (o que a pessoa anota).
     feitos(logs, stats) { ctx.__l = JSON.stringify(logs || {}); ctx.__s = JSON.stringify(stats || {}); ev('window.__tdd.inject(JSON.parse(__l), JSON.parse(__s))'); },

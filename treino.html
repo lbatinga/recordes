@@ -198,6 +198,46 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .sumtxt{width:100%; min-height:180px; font:13px/1.4 ui-monospace,Menlo,Consolas,monospace; border-radius:12px; border:2px solid var(--line); background:var(--bg); color:var(--fg); padding:10px}
 .astep button:focus-visible,.abtns button:focus-visible,.copybtn:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
 @media (max-width:360px){ .v{font-size:56px} .head h1{font-size:38px} .tab b{font-size:32px} }
+/* steps numbered in the order they are done */
+.steps{counter-reset:stp}
+.steps > .step, .steps > .rep{counter-increment:stp}
+.steps > .step > .lbl::before, .steps > .rep > .rep-h > span::before{content:counter(stp) " · "}
+.startbtn{appearance:none; width:100%; min-height:60px; border-radius:16px; border:2px solid var(--acc); background:var(--acc); color:var(--on-acc); font-family:var(--font-num); font-weight:800; font-size:26px; cursor:pointer}
+.startbtn.quiet{background:transparent; color:var(--fg)}
+.startbtn:focus-visible,.wk button:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+.yday{display:flex; flex-direction:column; gap:8px; align-items:flex-start}
+/* workout mode: one step on the whole screen */
+.wk{position:fixed; inset:0; z-index:20; background:var(--bg); display:flex; flex-direction:column; gap:10px; overflow:auto; padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.wk > *{width:100%; max-width:560px; align-self:center; flex-shrink:0}
+.wk-top{display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:12px; font-weight:700; color:var(--muted); font-size:14px; font-variant-numeric:tabular-nums}
+.wk-top b{color:var(--acc); font-family:var(--font-num); font-size:24px; font-weight:800}
+.wk-main{flex:1 0 auto; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:6px; padding-block:8px}
+.wk-lbl{font-size:16px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--acc)}
+.wk-spd{font-family:var(--font-num); font-weight:800; font-size:104px; line-height:.95}
+.wk-spd small{font-size:28px; color:var(--muted); margin-left:4px}
+.wk-cond{font-family:var(--font-num); font-size:34px; line-height:1.05; font-weight:800; text-wrap:balance}
+.wk-note{margin:0; font-size:14px; color:var(--muted); font-weight:600; text-wrap:balance; max-width:38ch}
+.wk-clock{font-family:var(--font-num); font-weight:800; font-size:76px; line-height:1; font-variant-numeric:tabular-nums; margin-top:10px}
+.wk-clock.due,.wk-sub.due{color:var(--hr)}
+.wk-sub{font-size:15px; color:var(--muted); font-weight:700; font-variant-numeric:tabular-nums}
+.wk-next{font-size:14px; color:var(--muted); font-weight:600; margin-top:8px; text-wrap:balance}
+.wk-go{appearance:none; border:0; min-height:88px; border-radius:20px; background:var(--acc); color:var(--on-acc); font-family:var(--font-num); font-weight:800; font-size:36px; cursor:pointer}
+.wk-alt{appearance:none; font:inherit; min-height:56px; border-radius:16px; border:2px solid var(--acc); background:transparent; color:var(--fg); font-weight:700; font-size:17px; cursor:pointer}
+.wk-foot{display:grid; grid-template-columns:1fr 1.4fr; gap:8px}
+.wk-foot button,.wk-x{appearance:none; font:inherit; min-height:48px; border-radius:12px; border:2px solid var(--line); background:transparent; color:var(--fg); font-weight:700; font-size:14px; cursor:pointer; padding:4px 10px}
+.wk-foot button:disabled{opacity:.4}
+.wk > .lock{text-align:right; margin-top:-6px}
+.wk.editing .wk-spd{font-size:64px} .wk.editing .wk-clock{font-size:52px; margin-top:2px} .wk.editing .wk-note,.wk.editing .wk-next,.wk.editing .wk-sub{display:none}
+.wk-list{display:flex; flex-direction:column}
+.wk-done{font-family:var(--font-num); font-weight:800; font-size:40px; color:var(--acc)}
+.wk-list .wk-note{max-width:none; margin:2px 0 10px}
+.wk-row{appearance:none; font:inherit; color:var(--fg); background:transparent; border:0; border-top:1px solid var(--line); display:grid; grid-template-columns:minmax(0,1fr) auto 64px; gap:10px; align-items:center; min-height:48px; font-weight:600; text-align:left; cursor:pointer; padding:0}
+.wk-row span:nth-child(2){font-family:var(--font-num); font-weight:800; font-size:20px; font-variant-numeric:tabular-nums}
+.wk-row span:nth-child(3){font-size:13px; font-weight:700; color:var(--muted); text-align:right}
+.wk-row .miss{color:var(--hr)}
+.wk-ed{background:var(--surface); border:2px solid var(--acc); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px}
+.wk-ed h3{margin:0; font-family:var(--font-num); font-weight:800; font-size:26px}
+.wk-ed label{font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 @media (prefers-reduced-motion:no-preference){ .tab,.chip{transition:background-color .12s, border-color .12s} }
 </style>
 </head>
@@ -373,8 +413,11 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <div class="adj" id="adj"></div>
   </details>
 
+  <div class="yday"><button class="mini" id="ydaybtn">Anotar treino de ontem</button><p class="note" id="ydaynote" hidden></p></div>
+
   <p class="foot">Plano de treinos do projeto Corpo · dados salvos no Recordes · atualizado em 12/11/2026</p>
 </div>
+<div class="wk" id="wk" hidden role="dialog" aria-modal="true" aria-label="Modo treino"></div>
 
 <script>
 (function(){
@@ -418,7 +461,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function raceSoon(d, key){ for (var i=0;i<RACES.length;i++){ var r=RACES[i].d, n = TIER[tier(RACES[i])][key]; if (n && d < r && d >= addDays(r,-n)) return RACES[i]; } return null; }
 
   // ---------- settings (Ajustes): speeds and HR limits, kept with the date they started to count ----------
-  var DEF = {walk:5.0, trote:6.5, race:7.5, walkHr:140, bTop:160, bBack:145, lTop:150, longTop:160, top:175, upHr:170, raceTop:178, rUp:150};
+  var DEF = {walk:5.0, trote:6.5, race:7.5, walkHr:140, bTop:160, bBack:145, lTop:150, longTop:160, top:175, upHr:170, raceTop:178, rUp:150, raceRun:3, raceWalk:90};
   // plan/settings: sets [{d, v}], knee {date: true}, ovr [{d, k, v}] (steps set by hand), base {d, st} (progress saved up to d)
   var CFG = {sets:[], knee:{}, ovr:[], base:null};
   function setAt(d){ var v = null; (CFG.sets||[]).forEach(function(x){ if (x && x.d && x.d <= d && x.v) v = x.v; }); return Object.assign({}, DEF, v || {}); }
@@ -666,10 +709,11 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function durs(k){
     if (k==='C') return [30,20,15];
     var pt = buildPlan(rests, today)[today], v = aVariant(today, pt === 'A3' ? 'A3' : 'A');
-    var full = v === 'normal' ? A_ST[(stFor(today) || START).a][1]*60 : 180;
+    var full = v === 'normal' ? A_ST[(stFor(today) || START).a][1]*60 : setAt(today).raceRun*60;
     return [full, full-30, full-60, full-90, full-120];
   }
-  function dayLog(k, date){ var d = logs[date || today]; return (d && d[k]) || {}; }
+  var logDay = today; // the day the notes go to: today, or yesterday when asked
+  function dayLog(k, date){ var d = logs[date || logDay]; return (d && d[k]) || {}; }
   function fmtDur(x){ return tfmt(x); }
   function persistLog(date){
     var body = Object.assign({}, logs[date] || {});
@@ -680,9 +724,9 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     });
   }
   function saveBlock(k, i, entry){
-    var day = Object.assign({}, logs[today] || {}), m = Object.assign({}, day[k] || {});
+    var day = Object.assign({}, logs[logDay] || {}), m = Object.assign({}, day[k] || {});
     if (entry) m[i] = entry; else delete m[i];
-    day[k] = m; logs[today] = day; persistLog(today);
+    day[k] = m; logs[logDay] = day; persistLog(logDay);
     paintLog(k); recompute(); render(); renderEvo();
   }
   function paintLog(k){
@@ -844,7 +888,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 
     // A
     var aDay = firstOf(plan, end, function(x){ return x==='A' || x==='A3'; }), stA = stFor(aDay), av = aVariant(aDay, plan[aDay]);
-    var aSt = A_ST[stA.a], aSpd = av === 'normal' ? aSt[0] : S.race, aMin = av === 'normal' ? aSt[1] : 3, aN = plan[aDay]==='A3' ? 3 : 5;
+    var aSt = A_ST[stA.a], aSpd = av === 'normal' ? aSt[0] : S.race, aMin = av === 'normal' ? aSt[1] : S.raceRun, aN = plan[aDay]==='A3' ? 3 : 5;
     var aSh = aShape(aN, aSpd, aMin, S), pr = av === 'fast' ? preRace(aDay) : raceSoon(aDay, 'b');
     setV('a-warm', kmh(S.walk), 'km/h');
     setV('a-trote', kmh(aSpd), av==='light' ? 'km/h · 1%' : 'km/h');
@@ -927,7 +971,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (t==='race'){
       var r = raceAt(today), st2 = document.createElement('strong'); st2.textContent = 'Dia de prova';
       ban.appendChild(st2); ban.appendChild(document.createTextNode((r ? r.name+(r.km ? ' · '+raceKm(r) : '')+(r.time ? ', largada '+r.time : '')+'. ' : '')
-        +'Aquecimento à parte: 5 min caminhando + 2 trotes curtos. Na prova: 3 min trotando com pace ~'+pace(S.race)+' por km, 1min30s de caminhada forte (mais 30 s se a FC estiver acima de '+(S.raceTop-13)+'), teto de '+S.raceTop+' no trote. Primeiro bloco mais devagar; no último km, se a FC deixar, corre direto.'));
+        +'Aquecimento à parte: 5 min caminhando + 2 trotes curtos. Na prova: '+S.raceRun+' min trotando com pace ~'+pace(S.race)+' por km, '+tfmt(S.raceWalk)+' de caminhada forte (mais 30 s se a FC estiver acima de '+(S.raceTop-13)+'), teto de '+S.raceTop+' no trote. Primeiro bloco mais devagar; no último km, se a FC deixar, corre direto.'));
       ban.hidden = false;
     }
     if (t==='Rk'){
@@ -954,7 +998,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       } else row.appendChild(document.createElement('span'));
       cal.appendChild(row);
     }
-    renderProg();
+    renderProg(); wkButtons();
     if (document.getElementById('ajustes').open && !adjDirty) renderAdj();
 
     if (!userPicked){
@@ -1134,6 +1178,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     ['walk', 'Caminhada', 'km/h', 0.1, 4, 6.5],
     ['trote', 'Trote', 'km/h', 0.1, 5.5, 9],
     ['race', 'Prova', 'km/h · pace na prova', 0.1, 6, 12],
+    ['raceRun', 'Prova: trote por bloco', 'também no ensaio (A)', 1, 1, 30],
+    ['raceWalk', 'Prova: caminhada', 'por bloco', 15, 30, 300],
     ['Limites de FC', null],
     ['walkHr', 'Caminhada', 'aquecimento, volta no L e R', 1, 120, 160],
     ['bTop', 'B: trote até', '', 1, 140, 185],
@@ -1155,6 +1201,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function adjShow(k, v){
     if (k === 'tl' || k === 'l' || k === 'a' || k === 'c') return stepName(k, v).replace('5 × ', '5×').replace(' tiros a ', '× ').replace(' min a ', 'min a ');
     if (k === 'r') return v+'% / '+(v+4)+'%';
+    if (k === 'raceRun') return v+' min';
+    if (k === 'raceWalk') return tfmt(v);
     return (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : String(v);
   }
   function renderAdj(){
@@ -1169,7 +1217,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var k = a[0], row = document.createElement('div'); row.className = 'arow';
       var lab = document.createElement('span'); lab.textContent = a[1];
       var sm = document.createElement('small'); sm.id = 'adj-sub-'+k; lab.appendChild(sm);
-      var stp = document.createElement('div'); stp.className = 'astep' + ((k === 'a' || k === 'c' || k === 'r') ? ' wide' : '');
+      var stp = document.createElement('div'); stp.className = 'astep' + ((k === 'a' || k === 'c' || k === 'r' || k === 'raceWalk') ? ' wide' : '');
       var mn = document.createElement('button'); mn.textContent = '−'; mn.id = 'adj-'+k+'-minus'; mn.setAttribute('aria-label', a[1]+': menos');
       var out = document.createElement('output'); out.id = 'adj-'+k;
       var pl = document.createElement('button'); pl.textContent = '+'; pl.id = 'adj-'+k+'-plus'; pl.setAttribute('aria-label', a[1]+': mais');
@@ -1429,13 +1477,259 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     }).catch(function(){});
   }
 
+  // ---------- workout mode: one step at a time on a full screen; each tap keeps the clock time, so durations come by themselves ----------
+  var WK = null, wkOpen = false, wkEdit = null, wkTick = null, wkVib = '';
+  function wkLoad(){ try { var o = JSON.parse(store('tdd-wk') || 'null'); return o && o.date === today && Array.isArray(o.items) && Array.isArray(o.segs) ? o : null; } catch(e){ return null; } }
+  function wkSave(){ store('tdd-wk', WK ? JSON.stringify(WK) : 'null'); }
+  function wkItems(k){
+    var S = setAt(today), st = stFor(today) || START, plan = buildPlan(rests, today)[today], it = [], i;
+    function one(lbl, kind, spd, cond, o){ it.push(Object.assign({t:'one', lbl:lbl, kind:kind, spd:spd, cond:cond}, o || {})); }
+    if (k === 'A'){
+      var av = aVariant(today, plan === 'A3' ? 'A3' : 'A'), sp = av === 'normal' ? A_ST[st.a][0] : S.race, mn = av === 'normal' ? A_ST[st.a][1] : S.raceRun, n = plan === 'A3' ? 3 : 5;
+      one('Aquecimento', 'w', S.walk, '5 min', {target:300});
+      for (i=0;i<n;i++){
+        one('Bloco '+(i+1)+' de '+n+' · trote', 'r', sp, mn+' min'+(av === 'light' ? ' · 1% de inclinação' : ''), {target:mn*60, log:['A', i], note:'Teto de FC '+S.top+'. Passou? Encerre o bloco e caminhe.'});
+        if (i < n-1) one('Caminhada', 'w', S.walk, '1min30s', {target:90});
+      }
+      one('Final', 'w', S.walk, 'até '+aShape(n, sp, mn, S).km+' km', {end:1});
+    } else if (k === 'B'){
+      var km = bKm(today);
+      one('Aquecimento', 'w', S.walk, '5 min', {target:300, note:'FC acima de '+S.walkHr+' no fim? Mais 3 min. Ainda acima? Hoje é só caminhada.'});
+      it.push({t:'loop', until:'dist', exit:'Fechei os '+km+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:'até FC '+S.bTop}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:'até FC '+S.bBack+' ou 3 min', target:180, note:'Ainda acima de '+(S.bTop-5)+'? Mais 1 min.'}});
+    } else if (k === 'C'){
+      var cs = C_ST[st.c];
+      it.push({t:'loop', until:'time', limit:600, exit:'Deu 10 min: ir pros tiros', a:{lbl:'Primeiros 10 min · trote', kind:'r', spd:S.trote, cond:'até FC '+S.bTop}, b:{lbl:'Primeiros 10 min · caminhada', kind:'w', spd:S.walk, cond:'até FC '+S.bBack}});
+      for (i=0;i<cs[0];i++){
+        one('Tiro '+(i+1)+' de '+cs[0], 'r', cs[1], '30 s', {target:30, log:['C', i], note:'Teto de FC '+S.top+'. Passou? Corte o tiro.'});
+        if (i < cs[0]-1) one('Caminhada', 'w', S.walk, '1min30s', {target:90});
+      }
+      one('Final', 'w', S.walk, 'até '+cShape(cs[0], cs[1], S).km+' km', {end:1});
+    } else if (k === 'L'){
+      var lk = lPlanKm(today, st.l), lm = Math.min(TL[st.tl], wholeMin(lk, S));
+      one('Aquecimento', 'w', S.walk, '5 min', {target:300});
+      one('Trote longo', 'r', S.trote, lm+' min ou FC '+S.longTop, {target:lm*60, log:['L', 0], note:'O que vier antes. Parou? Toque em Terminei e anote a FC.'});
+      one('Caminhada', 'w', S.walk, 'até FC '+S.walkHr);
+      it.push({t:'loop', until:'dist', exit:'Fechei os '+lk+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:'até FC '+S.lTop}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:'até FC '+S.walkHr+' ou 3 min', target:180, note:'Ainda em '+S.lTop+' ou mais? Mais 1 min.'}});
+    } else if (k === 'R'){
+      var rb = st.r;
+      one('Base', 'w', S.walk, rb+'% · até o minuto 7', {target:420, note:'FC acima de '+S.walkHr+'? Baixe a base pra '+Math.max(1, rb-1)+'%.'});
+      for (i=1;i<=4;i++){
+        one('Subida '+i+' de 4', 'w', S.walk, (rb+4)+'% · 1 min', {target:60, note:'FC acima de '+S.rUp+'? Volte pra '+rb+'% na hora.'});
+        if (i < 4) one('Base', 'w', S.walk, rb+'% · até o minuto '+(7*(i+1)), {target:360});
+      }
+      one('Final', 'w', S.walk, rb+'% · até 3 km', {end:1, note:'Sem segurar no corrimão.'});
+    }
+    return it;
+  }
+  // the step at a position: a plain one, or the trote/walk half of a part that repeats
+  function wkAt(i, sub, n){
+    var it = WK.items[i]; if (!it) return null;
+    if (it.t !== 'loop') return it;
+    var h = sub ? it.b : it.a;
+    return Object.assign({}, h, {lbl: h.lbl + (sub ? '' : ' '+(n+1)), loop: it});
+  }
+  function wkStepOf(){ return wkAt(WK.i, WK.sub, WK.n); }
+  function wkAfter(exit){
+    var it = WK.items[WK.i];
+    if (it && it.t === 'loop' && !exit) return WK.sub ? {i:WK.i, sub:0, n:WK.n+1} : {i:WK.i, sub:1, n:WK.n};
+    return {i:WK.i+1, sub:0, n:0};
+  }
+  function wkStart(k){
+    if (logDay !== today) setLogDay(today);
+    var now = Date.now();
+    WK = {k:k, date:today, t0:now, i:0, sub:0, n:0, s:now, segs:[], items:wkItems(k), done:false};
+    wkOpen = true; wkEdit = null; wkSave(); wkButtons(); wkRender();
+  }
+  function wkNext(exit){
+    if (!WK || WK.done) return;
+    var now = Date.now(), cur = wkStepOf(), nx = wkAfter(exit);
+    WK.segs.push({lbl:cur.lbl, kind:cur.kind, s:WK.s, e:now, i:WK.i, sub:WK.sub, n:WK.n, log:cur.log || null, hr:0});
+    WK.i = nx.i; WK.sub = nx.sub; WK.n = nx.n; WK.s = now;
+    if (WK.i >= WK.items.length){ WK.done = true; WK.e = now; wkKeep(); }
+    wkEdit = cur.log ? WK.segs.length - 1 : null;
+    wkSave(); wkButtons(); wkRender();
+  }
+  // a wrong tap: the last stretch goes back to being the current one, with the clock where it would be
+  function wkUndo(){
+    if (!WK || !WK.segs.length) return;
+    var g = WK.segs.pop();
+    if (g.log && g.hr) saveBlock(g.log[0], g.log[1], null);
+    WK.i = g.i; WK.sub = g.sub; WK.n = g.n; WK.s = g.s; WK.done = false; delete WK.e; wkEdit = null;
+    wkSave(); wkButtons(); wkRender();
+  }
+  function wkDur(g){ return Math.round((g.e - g.s) / 1000); }
+  // a late or early tap: move the end of a stretch (and the start of the next one) by d seconds
+  function wkShift(idx, d){
+    var g = WK.segs[idx]; if (!g) return false;
+    var nx = WK.segs[idx+1], e = g.e + d*1000, max = nx ? nx.e - 1000 : (WK.done ? WK.e : Date.now());
+    if (e < g.s + 1000 || e > max) return false;
+    g.e = e; if (nx) nx.s = e; else if (!WK.done) WK.s = e;
+    if (g.log && g.hr) saveBlock(g.log[0], g.log[1], {hr:g.hr, dur:wkDur(g)});
+    if (WK.done) wkKeep();
+    wkSave(); return true;
+  }
+  function wkSetHr(idx, hr){
+    var g = WK.segs[idx]; if (!g || !g.log) return;
+    g.hr = hr; saveBlock(g.log[0], g.log[1], {hr:hr, dur:wkDur(g)});
+    if (WK.done) wkKeep();
+    wkSave();
+  }
+  // the whole session goes with the day's notes: [kind, seconds, FC] for each stretch
+  function wkKeep(){
+    var day = Object.assign({}, logs[today] || {});
+    day.W = {k:WK.k, segs:WK.segs.map(function(g){ return [g.kind, wkDur(g), g.hr || 0]; })};
+    logs[today] = day; persistLog(today);
+  }
+  function wkDrop(){ WK = null; wkOpen = false; wkEdit = null; wkSave(); wkButtons(); wkRender(); }
+  function wkClock(ms){ return tfmt(Math.max(0, Math.floor(ms / 1000))); }
+  function wkEl(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function wkEditor(idx){
+    var g = WK.segs[idx], p = wkEl('div', 'wk-ed');
+    p.appendChild(wkEl('h3', null, g.lbl));
+    var inp = null, err = wkEl('p', 'logerr'); err.hidden = true;
+    if (g.log){
+      var lb = wkEl('label', null, 'FC no relógio quando parou'); lb.setAttribute('for', 'wk-hr'); p.appendChild(lb);
+      inp = wkEl('input', 'hrin'); inp.id = 'wk-hr'; inp.type = 'text'; inp.setAttribute('inputmode', 'numeric'); inp.setAttribute('pattern', '[0-9]*'); inp.maxLength = 3; inp.autocomplete = 'off';
+      inp.value = g.hr ? String(g.hr) : ''; inp.addEventListener('input', function(){ err.hidden = true; }); p.appendChild(inp);
+    }
+    p.appendChild(wkEl('label', null, 'Duração (o cronômetro do passo seguinte acompanha)'));
+    var st = wkEl('div', 'stepper'), mn = wkEl('button', 'dur', '−5 s'), out = wkEl('output', null, tfmt(wkDur(g))), pl = wkEl('button', 'dur', '+5 s');
+    mn.id = 'wk-minus'; pl.id = 'wk-plus'; out.id = 'wk-dur';
+    mn.addEventListener('click', function(){ if (wkShift(idx, -5)) out.textContent = tfmt(wkDur(g)); });
+    pl.addEventListener('click', function(){ if (wkShift(idx, 5)) out.textContent = tfmt(wkDur(g)); });
+    st.appendChild(mn); st.appendChild(out); st.appendChild(pl); p.appendChild(st); p.appendChild(err);
+    var bt = wkEl('div', 'logbtns'); bt.style.gridTemplateColumns = g.log ? '2fr 1fr' : '1fr';
+    if (g.log){
+      var sv = wkEl('button', 'save', 'Salvar'); sv.id = 'wk-save';
+      sv.addEventListener('click', function(){
+        var hr = parseInt(inp.value, 10);
+        if (!(hr >= 80 && hr <= 220)){ err.textContent = 'Digite a FC que o relógio mostrava, entre 80 e 220.'; err.hidden = false; return; }
+        wkSetHr(idx, hr); wkEdit = null; wkRender();
+      });
+      bt.appendChild(sv);
+    }
+    var cl = wkEl('button', null, g.log ? 'Depois' : 'Pronto'); cl.id = 'wk-ed-close';
+    cl.addEventListener('click', function(){ wkEdit = null; wkRender(); });
+    bt.appendChild(cl); p.appendChild(bt);
+    return p;
+  }
+  function wkPaintClock(){
+    if (!WK || !wkOpen) return;
+    var now = Date.now(), tot = document.getElementById('wk-total'), ck = document.getElementById('wk-clock');
+    if (tot) tot.textContent = 'total '+wkClock((WK.done ? WK.e : now) - WK.t0);
+    if (!ck || WK.done) return;
+    var cur = wkStepOf(), el = now - WK.s;
+    ck.textContent = wkClock(el);
+    var due = cur.target && el >= cur.target*1000, key = WK.i+'-'+WK.sub+'-'+WK.n;
+    ck.classList.toggle('due', !!due);
+    if (due && wkVib !== key){ wkVib = key; try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch(e){} }
+    var part = document.getElementById('wk-part');
+    if (part && cur.loop && cur.loop.until === 'time'){
+      var first = null; WK.segs.forEach(function(g){ if (g.i === WK.i && first == null) first = g.s; });
+      var pe = now - (first == null ? WK.s : first);
+      part.textContent = 'parte: '+wkClock(pe)+' de '+tfmt(cur.loop.limit); part.classList.toggle('due', pe >= cur.loop.limit*1000);
+    }
+  }
+  function wkRender(){
+    var el = document.getElementById('wk');
+    if (!WK || !wkOpen){ el.hidden = true; el.textContent = ''; clearInterval(wkTick); wkTick = null; document.body.style.overflow = ''; return; }
+    el.hidden = false; el.dataset.k = WK.k; el.textContent = ''; document.body.style.overflow = 'hidden';
+    var top = wkEl('div', 'wk-top'); top.appendChild(wkEl('b', null, NAMES[WK.k]));
+    var tot = wkEl('span', null, ''); tot.id = 'wk-total'; top.appendChild(tot);
+    var x = wkEl('button', 'wk-x', WK.done ? 'Fechar' : 'Sair'); x.id = 'wk-exit'; x.addEventListener('click', function(){ wkOpen = false; wkEdit = null; wkButtons(); wkRender(); }); top.appendChild(x);
+    el.appendChild(top);
+    var lk = wkEl('div', 'lock' + (wl ? ' on' : ''), wl ? 'Tela sempre ligada' : 'Tela pode apagar'); lk.id = 'wk-lock'; el.appendChild(lk);
+    el.classList.toggle('editing', wkEdit != null && !!WK.segs[wkEdit]);
+    if (wkEdit != null && WK.segs[wkEdit]) el.appendChild(wkEditor(wkEdit));
+    var last = WK.segs[WK.segs.length - 1];
+    if (WK.done){
+      var box = wkEl('div', 'wk-list');
+      box.appendChild(wkEl('div', 'wk-done', 'Treino concluído'));
+      box.appendChild(wkEl('p', 'wk-note', 'Confira a distância no painel e ajuste no relógio antes de salvar. Toque num trecho pra corrigir.'));
+      WK.segs.forEach(function(g, idx){
+        var r = wkEl('button', 'wk-row'); r.id = 'wk-row-'+idx;
+        r.appendChild(wkEl('span', null, g.lbl)); r.appendChild(wkEl('span', null, tfmt(wkDur(g))));
+        r.appendChild(wkEl('span', g.log && !g.hr ? 'miss' : null, g.log ? (g.hr ? 'FC '+g.hr : 'sem FC') : ''));
+        r.addEventListener('click', function(){ wkEdit = idx; wkRender(); el.scrollTop = 0; });
+        box.appendChild(r);
+      });
+      el.appendChild(box);
+      if (WK.k === 'R'){ var rp = wkEl('button', 'wk-alt', 'Anotar inclinação usada'); rp.id = 'wk-r'; rp.addEventListener('click', function(){ wkOpen = false; wkButtons(); wkRender(); show('R'); openRPanel(); }); el.appendChild(rp); }
+      var ft = wkEl('div', 'wk-foot'), un = wkEl('button', null, 'Voltar ao último passo'); un.id = 'wk-undo'; un.addEventListener('click', wkUndo); ft.appendChild(un);
+      var ok = wkEl('button', null, 'Fechar'); ok.addEventListener('click', function(){ wkOpen = false; wkButtons(); wkRender(); }); ft.appendChild(ok);
+      el.appendChild(ft);
+    } else {
+      var cur = wkStepOf(), main = wkEl('div', 'wk-main');
+      main.appendChild(wkEl('div', 'wk-lbl', cur.lbl));
+      var sp = wkEl('div', 'wk-spd', kmh(cur.spd)); sp.appendChild(wkEl('small', null, 'km/h')); main.appendChild(sp);
+      main.appendChild(wkEl('div', 'wk-cond', cur.cond));
+      if (cur.note) main.appendChild(wkEl('div', 'wk-note', cur.note));
+      var ck = wkEl('div', 'wk-clock', ''); ck.id = 'wk-clock'; main.appendChild(ck);
+      if (cur.target) main.appendChild(wkEl('div', 'wk-sub', 'de '+tfmt(cur.target)));
+      if (cur.loop && cur.loop.until === 'time'){ var pt = wkEl('div', 'wk-sub', ''); pt.id = 'wk-part'; main.appendChild(pt); }
+      var nx = wkAfter(false), nxt = wkAt(nx.i, nx.sub, nx.n);
+      main.appendChild(wkEl('div', 'wk-next', nxt ? 'Depois: '+nxt.lbl+' · '+kmh(nxt.spd)+' km/h · '+nxt.cond : 'Depois: fim do treino'));
+      el.appendChild(main);
+      var go = wkEl('button', 'wk-go', cur.end ? 'Terminei o treino' : cur.loop ? (WK.sub ? 'Terminei a caminhada' : 'Terminei o trote') : 'Terminei'); go.id = 'wk-go';
+      go.addEventListener('click', function(){ wkNext(false); }); el.appendChild(go);
+      if (cur.loop){ var alt = wkEl('button', 'wk-alt', cur.loop.exit); alt.id = 'wk-alt'; alt.addEventListener('click', function(){ wkNext(true); }); el.appendChild(alt); }
+      var f2 = wkEl('div', 'wk-foot'), u2 = wkEl('button', null, 'Desfazer toque'); u2.id = 'wk-undo'; u2.disabled = !last; u2.addEventListener('click', wkUndo); f2.appendChild(u2);
+      var aj = wkEl('button', null, last ? 'Ajustar: '+last.lbl+' · '+tfmt(wkDur(last)) : 'Ajustar último'); aj.id = 'wk-adjust'; aj.disabled = !last;
+      aj.addEventListener('click', function(){ wkEdit = WK.segs.length - 1; wkRender(); }); f2.appendChild(aj);
+      el.appendChild(f2);
+    }
+    wkPaintClock();
+    if (!wkTick) wkTick = setInterval(wkPaintClock, 500);
+    if (wkEdit != null){ var hi = document.getElementById('wk-hr'); if (hi && !hi.value) try { hi.focus(); } catch(e){} }
+    lock();
+  }
+  function wkLockPaint(){ var e = document.getElementById('wk-lock'); if (e){ e.textContent = wl ? 'Tela sempre ligada' : 'Tela pode apagar'; e.classList.toggle('on', !!wl); } }
+  // "Começar treino" at the top of each workout
+  var wkArmT = null;
+  function wkButtons(){
+    ['A','B','C','L','R'].forEach(function(k){
+      var sec = document.getElementById('w-'+k), b = document.getElementById('wk-start-'+k);
+      if (!b){
+        var head = sec.querySelector('.head'); if (!head || !head.parentNode) return;
+        b = wkEl('button', 'startbtn', ''); b.id = 'wk-start-'+k;
+        b.addEventListener('click', function(){
+          if (WK && !WK.done){ wkOpen = true; wkRender(); }
+          else if (WK && WK.done && WK.k === k){ wkOpen = true; wkRender(); }
+          else wkStart(k);
+        });
+        var d = wkEl('button', 'mini', 'Descartar treino'); d.id = 'wk-drop-'+k; d.hidden = true;
+        d.addEventListener('click', function(){
+          if (d.dataset.armed){ clearTimeout(wkArmT); delete d.dataset.armed; wkDrop(); return; }
+          d.dataset.armed = '1'; d.textContent = 'Toque de novo pra descartar';
+          wkArmT = setTimeout(function(){ delete d.dataset.armed; d.textContent = 'Descartar treino'; }, 4000);
+        });
+        head.parentNode.insertBefore(b, head.nextSibling); b.parentNode.insertBefore(d, b.nextSibling);
+      }
+      var on = WK && !WK.done, dn = WK && WK.done;
+      b.textContent = on ? (WK.k === k ? 'Continuar treino' : 'Treino '+WK.k+' em andamento: continuar') : (dn && WK.k === k ? 'Ver o treino de hoje' : 'Começar treino');
+      b.classList.toggle('quiet', !!(dn && WK.k === k));
+      var dd = document.getElementById('wk-drop-'+k); if (dd){ dd.hidden = !WK; if (!dd.dataset.armed) dd.textContent = 'Descartar treino'; }
+    });
+  }
+  // notes for yesterday's workout, for when it was not written down on the day
+  function setLogDay(d){
+    logDay = d;
+    var b = document.getElementById('ydaybtn'), n = document.getElementById('ydaynote'), y = logDay !== today;
+    b.textContent = y ? 'Voltar pra hoje' : 'Anotar treino de ontem'; b.classList.toggle('undo', y);
+    n.textContent = y ? 'Anotando o treino de ontem ('+br(logDay)+'). Abra a aba do treino que você fez e anote; o que você salvar agora vai pra ontem.' : ''; n.hidden = !y;
+    ['A','C','L','R'].forEach(function(k){ var s = document.getElementById('w-'+k), w = s.querySelector('.logp-wrap'); if (w) w.textContent = ''; paintLog(k); });
+  }
+  document.getElementById('ydaybtn').addEventListener('click', function(){ setLogDay(logDay === today ? addDays(today, -1) : today); });
+  WK = wkLoad(); wkOpen = !!(WK && !WK.done);
+  wkButtons(); wkRender();
+
   // keep the screen on during the workout
   var lockEl = document.getElementById('lock'), wl = null;
   function lock(){
     if (!('wakeLock' in navigator) || wl || document.visibilityState!=='visible') return;
     navigator.wakeLock.request('screen').then(function(l){
-      wl=l; lockEl.textContent='Tela sempre ligada'; lockEl.classList.add('on');
-      l.addEventListener('release', function(){ wl=null; lockEl.textContent='Tela pode apagar'; lockEl.classList.remove('on'); });
+      wl=l; lockEl.textContent='Tela sempre ligada'; lockEl.classList.add('on'); wkLockPaint();
+      l.addEventListener('release', function(){ wl=null; lockEl.textContent='Tela pode apagar'; lockEl.classList.remove('on'); wkLockPaint(); lock(); });
     }).catch(function(){});
   }
   lock();

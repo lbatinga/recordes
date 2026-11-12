@@ -189,3 +189,92 @@ test('Próximos dias vai até a última prova dos próximos 30 dias; sem prova p
   assert.equal(h([{ d: '2027-01-20', name: 'Longe', km: 5 }]), '2026-11-25');
   assert.equal(h([]), '2026-11-25');
 });
+
+// ---------- modo treino ----------
+const semAgenda = (hoje, extra) => loadTreino(hoje, Object.assign({ rests: { '2026-11-09': true, '2026-11-11': true }, races: [{ d: '2026-11-21', name: 'Santander', km: 5 }, { d: '2026-11-29', name: 'Sest Senat', km: 5 }] }, extra || {}));
+
+test('modo treino: os passos de cada treino saem do plano do dia', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  const n = (k) => t.json(`wkItems("${k}").map(function(x){ return x.t === "loop" ? "loop:" + x.until : x.lbl; })`);
+  assert.deepEqual(n('L'), ['Aquecimento', 'Trote longo', 'Caminhada', 'loop:dist']);
+  assert.deepEqual(n('B'), ['Aquecimento', 'loop:dist']);
+  assert.equal(n('R').length, 9);
+  assert.equal(n('C').length, 1 + 6 + 5 + 1);
+  assert.equal(t.json('wkItems("L")[1]').target, 300);
+  // A de 16/11 é ensaio: 5 blocos de 3 min a 7,5
+  const u = semAgenda('2026-11-16T19:00:00'), a = u.json('wkItems("A")');
+  assert.equal(a.length, 1 + 5 + 4 + 1);
+  assert.deepEqual([a[1].spd, a[1].target, a[1].log], [7.5, 180, ['A', 0]]);
+});
+
+test('modo treino no L: cada toque guarda a duração exata, e a FC do trote longo vai pra anotação do dia', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  t.ev('wkStart("L")');
+  t.passa(300); t.ev('wkNext(false)');            // aquecimento
+  t.passa(283); t.ev('wkNext(false)');            // trote longo: 4min43s
+  assert.equal(t.ev('wkEdit'), 1, 'pede a FC do trote longo');
+  t.passa(20); t.ev('wkSetHr(1, 158)');
+  assert.deepEqual(t.json('logs["2026-11-12"].L[0]'), { hr: 158, dur: 283 });
+  assert.equal(t.json('replay("2026-11-12").n.tl').bad, 1, '4min43s fica 2 s abaixo da tolerância (4min45s): incompleto');
+  t.passa(100); t.ev('wkNext(false)');            // caminhada até 140 (2 min no total)
+  assert.equal(t.ev('wkStepOf().lbl'), 'Trote 1');
+  t.passa(60); t.ev('wkNext(false)');
+  assert.equal(t.ev('wkStepOf().lbl'), 'Caminhada');
+  t.passa(180); t.ev('wkNext(false)');
+  assert.equal(t.ev('wkStepOf().lbl'), 'Trote 2');
+  t.passa(50); t.ev('wkNext(true)');              // fechou os 5 km no meio do trote 2
+  assert.equal(t.ev('WK.done'), true);
+  assert.deepEqual(t.json('logs["2026-11-12"].W'), { k: 'L', segs: [['w', 300, 0], ['r', 283, 158], ['w', 120, 0], ['r', 60, 0], ['w', 180, 0], ['r', 50, 0]] });
+});
+
+test('modo treino: desfazer um toque errado devolve o passo com o cronômetro onde estaria', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  t.ev('wkStart("L")'); const t0 = t.ev('WK.s');
+  t.passa(300); t.ev('wkNext(false)');
+  t.passa(40); t.ev('wkNext(false)');             // toque sem querer no meio do trote longo
+  t.passa(5); t.ev('wkUndo()');
+  assert.equal(t.ev('wkStepOf().lbl'), 'Trote longo');
+  assert.equal(t.ev('Date.now() - WK.s'), 45000, 'o trote longo segue contando desde o começo dele');
+  assert.equal(t.ev('WK.segs.length'), 1);
+  assert.equal(t.ev('WK.segs[0].s'), t0);
+});
+
+test('modo treino: ajustar a duração de um trecho move o começo do seguinte, sem mexer no relógio', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  t.ev('wkStart("L")');
+  t.passa(300); t.ev('wkNext(false)');
+  t.passa(290); t.ev('wkNext(false)');            // tocou 10 s atrasado
+  t.ev('wkSetHr(1, 160)');
+  t.passa(30);
+  assert.equal(t.ev('wkShift(1, -5)'), true); assert.equal(t.ev('wkShift(1, -5)'), true);
+  assert.equal(t.ev('wkDur(WK.segs[1])'), 280);
+  assert.equal(t.ev('Date.now() - WK.s'), 40000, 'a caminhada ganhou os 10 s');
+  assert.deepEqual(t.json('logs["2026-11-12"].L[0]'), { hr: 160, dur: 280 });
+  assert.equal(t.ev('wkShift(1, 60)'), false, 'não deixa passar da hora atual');
+});
+
+test('modo treino: o andamento sobrevive a recarregar a página; no dia seguinte não volta', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  t.ev('wkStart("B")'); t.passa(300); t.ev('wkNext(false)');
+  const salvo = t.ev('store("tdd-wk")');
+  const u = semAgenda('2026-11-12T19:06:00', { extra: { 'tdd-wk': salvo } });
+  assert.equal(u.ev('WK && WK.k'), 'B'); assert.equal(u.ev('wkStepOf().lbl'), 'Trote 1'); assert.equal(u.ev('wkOpen'), true);
+  const v = semAgenda('2026-11-13T06:00:00', { extra: { 'tdd-wk': salvo } });
+  assert.equal(v.ev('WK'), null);
+});
+
+test('anotar o treino de ontem: a anotação vai pro dia anterior', () => {
+  const t = semAgenda('2026-11-13T07:00:00');
+  t.ev('setLogDay(addDays(today, -1))');
+  t.ev('saveBlock("L", 0, {hr: 155, dur: 300})');
+  assert.deepEqual(t.json('logs["2026-11-12"].L[0]'), { hr: 155, dur: 300 });
+  assert.equal(t.json('logs["2026-11-13"] || null'), null);
+});
+
+test('dia de prova: o aviso usa o trote e a caminhada dos Ajustes', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  assert.deepEqual(t.json('[DEF.raceRun, DEF.raceWalk]'), [3, 90]);
+  assert.equal(t.json('setAt("2026-11-12").raceRun'), 3);
+  const u = semAgenda('2026-11-16T19:00:00', { cfg: { sets: [{ d: '2026-11-15', v: { raceRun: 4 } }] } });
+  assert.equal(u.json('wkItems("A")[1]').target, 240);
+});
