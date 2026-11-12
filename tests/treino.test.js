@@ -170,3 +170,12 @@ test('[T4] L de 4,9 km num dia de 5 km conta; 5,4 km continua 5', () => {
   const t = loadTreino(HOJE, BASE), km = (m) => t.json('analyze("L", {}, {distance: ' + m + '}, "2026-11-12")').km;
   assert.deepEqual([km(4900), km(4899), km(5400), km(5000)], [5, 4, 5, 5]);
 });
+
+test('descanso automático não cai colado na véspera de prova: o R de 2 dias antes fica (no máximo 7 dias seguidos)', () => {
+  const races = [{ d: '2026-11-21', name: 'Santander', km: 5 }, { d: '2026-11-29', name: 'Sest Senat', km: 5 }];
+  const p = loadTreino('2026-11-12T08:00:00', { rests: { '2026-11-09': true, '2026-11-11': true }, races }).plan('2026-12-06');
+  assert.equal(linha(p, '2026-11-16', '2026-11-29'), 'A auto A3 R eve race R R L R A3 R eve race');
+  assert.equal(linha(p, '2026-11-30', '2026-12-06'), 'R R L R B auto C');
+  let seg = 0;
+  Object.keys(p).sort().filter((d) => d > '2026-11-11').forEach((d) => { seg = /^(off|auto|eve)$/.test(p[d]) ? 0 : seg + 1; assert.ok(seg <= 7, d); });
+});

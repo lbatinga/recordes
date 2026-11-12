@@ -471,7 +471,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       if (f === 'race') t = 'race';
       else if (f === 'eve') t = 'eve';
       else if (rests[d]) t = 'off';
-      else if (streak >= MAX_STREAK && !keep[d] && f !== 'A3') t = 'auto';
+      else if (streak >= MAX_STREAK && !keep[d] && f !== 'A3' && fixedAt(nxt) !== 'eve') t = 'auto'; // no automatic rest right before the rest on the eve of a race
       else if (fixedAt(nxt) === 'A3' && !rests[nxt] && streak + 1 >= MAX_STREAK && !keep[d]) t = 'auto'; // the 7th day would fall on the light A: rest one day earlier
       else if (f) t = f;
       else if (hard(prev)) t = 'R';
