@@ -190,7 +190,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .astep{display:grid; grid-template-columns:44px 74px 44px; gap:4px; align-items:center}
 .astep button{appearance:none; font:inherit; font-family:var(--font-num); font-weight:800; font-size:22px; height:44px; border-radius:10px; border:2px solid var(--line); background:var(--bg); color:var(--fg); cursor:pointer}
 .astep output{font-family:var(--font-num); font-weight:800; font-size:22px; text-align:center; font-variant-numeric:tabular-nums}
-.astep.wide{grid-template-columns:44px 104px 44px}
+.astep.wide{grid-template-columns:44px 124px 44px}
 .ahead{margin:6px 0 0; font-family:var(--font-num); font-weight:800; font-size:22px}
 .abtns{display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-top:4px}
 .abtns button,.copybtn{appearance:none; font:inherit; font-weight:700; font-size:16px; min-height:52px; border-radius:12px; border:2px solid var(--line); background:transparent; color:var(--fg); cursor:pointer}
@@ -1152,7 +1152,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   ];
   var adjDirty = false, draft = null;
   function adjShow(k, v){
-    if (k === 'tl' || k === 'l' || k === 'a' || k === 'c') return stepName(k, v).replace('5 × ', '5×').replace(' tiros a ', '× ').replace(' min a ', ' min a ');
+    if (k === 'tl' || k === 'l' || k === 'a' || k === 'c') return stepName(k, v).replace('5 × ', '5×').replace(' tiros a ', '× ').replace(' min a ', 'min a ');
     if (k === 'r') return v+'% / '+(v+4)+'%';
     return (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : String(v);
   }
