@@ -1006,7 +1006,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-12i';
+  var APP_VER = '2026-11-12j';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -4498,20 +4498,26 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     } catch(e) {}
   }
   function daysFromToday(iso){ return Math.round((parseIso(iso) - dayOnly(new Date())) / 86400000); }
-  function wxGet(key, url, pick){
-    var v = wx[key];
-    if (v && !v.miss) return v;
-    if ((v && v.miss && Date.now() - v.miss < 6 * 3600000) || wxPending[key]) return null;
+  // maxAge: for a day that has not passed yet the saved forecast gets old; ask again after that long,
+  // showing the saved one meanwhile. Weather of a day that already passed is kept for good.
+  var WX_FRESH = 3 * 3600000;
+  function wxGet(key, url, pick, maxAge){
+    var v = wx[key], old = !!(v && !v.miss && maxAge && (!v.at || Date.now() - v.at > maxAge));
+    if (v && !v.miss && !old) return v;
+    if (wxPending[key]) return old ? v : null;
+    if (v && v.miss && Date.now() - v.miss < 6 * 3600000) return null;
     wxPending[key] = true;
     fetch(url).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; }).then(function(j){
       var out = null;
       try { out = j ? pick(j) : null; } catch(e) { out = null; }
-      wx[key] = out || { miss: Date.now() };
+      if (out) { out.at = Date.now(); wx[key] = out; }
+      else if (old) v.at = Date.now() - maxAge + 30 * 60000; // keep the saved one and try again in half an hour
+      else wx[key] = { miss: Date.now() };
       wxSave();
       delete wxPending[key];
       if (out) { clearTimeout(wxTimer); wxTimer = setTimeout(function(){ if (session) render(); }, 200); }
     });
-    return null;
+    return old ? v : null;
   }
   function llOf(ll){ ll = ll || WX_HOME; return [ll[0].toFixed(2), ll[1].toFixed(2)]; }
   function wxAt(dateIso, hour, ll){
@@ -4526,7 +4532,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (i < 0 || h.temperature_2m[i] == null) return null;
       return { t: h.temperature_2m[i], rh: h.relative_humidity_2m[i], f: h.apparent_temperature[i],
                p: h.precipitation_probability ? h.precipitation_probability[i] : null };
-    });
+    }, ago <= 0 ? WX_FRESH : 0);
   }
   function wxDay(dateIso, ll){
     var c = llOf(ll);
@@ -4536,7 +4542,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var d = j.daily;
       if (!d || !d.time || !d.time.length || d.temperature_2m_max[0] == null) return null;
       return { max: d.temperature_2m_max[0], min: d.temperature_2m_min[0], p: d.precipitation_probability_max[0] };
-    });
+    }, daysFromToday(dateIso) >= 0 ? WX_FRESH : 0);
   }
   function fmtWx(w){
     return Math.round(w.t) + '°C, umidade ' + Math.round(w.rh) + '%' + (w.f - w.t >= 2 ? ', sensação ' + Math.round(w.f) + '°C' : '') +
@@ -4553,16 +4559,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var w = wxOfSession(s);
     return w ? '<p class="bib-note wx">' + WX_ICON + fmtWx(w) + '</p>' : '';
   }
+  // when the forecast on screen was fetched: "hoje às 12h40" or "em 10/11"
+  function wxWhen(at){
+    if (!at) return '';
+    var d = new Date(at), same = isoOf(d) === isoOf(new Date());
+    return ' · atualizada ' + (same ? 'hoje às ' + pad(d.getHours()) + 'h' + pad(d.getMinutes()) : 'em ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1));
+  }
   function raceForecast(r, days){
     if (days < 0 || days > 15) return '';
     if (r.time) {
       var hh = +r.time.slice(0, 2) + (+r.time.slice(3, 5) >= 30 ? 1 : 0);
       if (hh > 23) hh = 23;
       var w = wxAt(r.date, hh, null);
-      return w ? fmtWx(w) : '';
+      return w ? fmtWx(w) + wxWhen(w.at) : '';
     }
     var dd = wxDay(r.date, null);
-    return dd ? Math.round(dd.min) + '°C a ' + Math.round(dd.max) + '°C' + (dd.p != null ? ', chuva ' + Math.round(dd.p) + '%' : '') : '';
+    return dd ? Math.round(dd.min) + '°C a ' + Math.round(dd.max) + '°C' + (dd.p != null ? ', chuva ' + Math.round(dd.p) + '%' : '') + wxWhen(dd.at) : '';
   }
 
   /* ---------- streak reminders (Web Push) ---------- */
