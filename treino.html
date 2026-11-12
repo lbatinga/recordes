@@ -138,8 +138,8 @@ summary::after{content:"+"; font-family:var(--font-num); font-size:28px; line-he
 details[open] summary::after{content:"–"}
 details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:column; gap:8px; font-size:15px}
 .cal{display:flex; flex-direction:column; margin:0 0 10px; font-size:15px; font-variant-numeric:tabular-nums}
-.row{display:grid; grid-template-columns:90px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:52px; border-top:1px solid var(--line)}
-.row .dt{color:var(--muted); font-weight:600; white-space:nowrap}
+.row{display:grid; grid-template-columns:72px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:52px; border-top:1px solid var(--line)}
+.row .dt{color:var(--muted); font-weight:600; font-size:13px; white-space:nowrap}
 .row .wk{font-weight:700; min-width:0}
 .row.now .wk{color:var(--acc-today, var(--fg))}
 .row.now .dt::before{content:"▸ "}
