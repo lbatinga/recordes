@@ -309,7 +309,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         <div class="rep-h"><b id="l-km">Até 5 km</b><span>Depois, repete</span></div>
         <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="lTop">150</span></span></div></div>
         <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="walkHr">140</span></span></div>
-          <div class="note">Máx. 3 min. O que conta aqui é a distância, não a velocidade.</div></div>
+          <div class="note">Máx. 3 min. Ainda em <b><span data-s="lTop">150</span> ou mais</b>? Mais 1 min. Se repetir em vários trotes, termine caminhando. O que conta aqui é a distância, não a velocidade.</div></div>
         <div class="chips-cap">Toque no trote que terminou</div>
         <div class="chips" data-reps="12"></div>
       </div>
@@ -351,7 +351,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   <details id="calendar">
     <summary>Próximos dias</summary>
     <div class="cal" id="cal"></div>
-    <p class="note" style="margin:0 0 14px">Marcou descanso? O dia conta como R e os treinos seguintes se reorganizam. Depois de 6 dias seguidos de treino, o 7º vira descanso sozinho. As provas vêm da aba Provas do Recordes, e a semana da prova não muda.</p>
+    <p class="note" style="margin:0 0 14px">Marcou descanso? O dia conta como R e os treinos seguintes se reorganizam. Depois de 6 dias seguidos de treino, o 7º vira descanso sozinho (antes do A leve ele vem um dia antes; colado na véspera de prova ele não entra). As provas vêm da aba Provas do Recordes, e a semana da prova não muda.</p>
   </details>
 
   <details id="rules">
@@ -715,11 +715,11 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     var lb2 = document.createElement('label'); lb2.textContent = 'Duração'; p.appendChild(lb2);
     if (k==='L'){
       var st = document.createElement('div'); st.className = 'stepper';
-      var mn = document.createElement('button'); mn.className = 'dur'; mn.id = 'dur-L-minus'; mn.textContent = '−30 s';
+      var mn = document.createElement('button'); mn.className = 'dur'; mn.id = 'dur-L-minus'; mn.textContent = '−15 s';
       var out = document.createElement('output'); out.id = 'dur-L-val'; out.textContent = fmtDur(dur);
-      var pl = document.createElement('button'); pl.className = 'dur'; pl.id = 'dur-L-plus'; pl.textContent = '+30 s';
-      mn.addEventListener('click', function(){ dur = Math.max(30, dur-30); out.textContent = fmtDur(dur); });
-      pl.addEventListener('click', function(){ dur = Math.min(9000, dur+30); out.textContent = fmtDur(dur); });
+      var pl = document.createElement('button'); pl.className = 'dur'; pl.id = 'dur-L-plus'; pl.textContent = '+15 s';
+      mn.addEventListener('click', function(){ dur = Math.max(15, dur-15); out.textContent = fmtDur(dur); });
+      pl.addEventListener('click', function(){ dur = Math.min(9000, dur+15); out.textContent = fmtDur(dur); });
       st.appendChild(mn); st.appendChild(out); st.appendChild(pl); p.appendChild(st);
     }
     var ds = document.createElement('div'); ds.className = 'durs' + (DS.length===3 ? ' c3' : ' t5');
