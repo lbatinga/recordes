@@ -4501,8 +4501,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   // maxAge: for a day that has not passed yet the saved forecast gets old; ask again after that long,
   // showing the saved one meanwhile. Weather of a day that already passed is kept for good.
   var WX_FRESH = 3 * 3600000;
-  function wxGet(key, url, pick, maxAge){
-    var v = wx[key], old = !!(v && !v.miss && maxAge && (!v.at || Date.now() - v.at > maxAge));
+  // after: something saved before that moment was still a forecast; once the moment passes, ask once more for what really happened.
+  function wxGet(key, url, pick, maxAge, after){
+    var v = wx[key], old = !!(v && !v.miss && ((maxAge && (!v.at || Date.now() - v.at > maxAge)) || (after && v.at && v.at < after && Date.now() > after)) && !(v.retry && Date.now() - v.retry < 30 * 60000));
     if (v && !v.miss && !old) return v;
     if (wxPending[key]) return old ? v : null;
     if (v && v.miss && Date.now() - v.miss < 6 * 3600000) return null;
@@ -4511,7 +4512,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       var out = null;
       try { out = j ? pick(j) : null; } catch(e) { out = null; }
       if (out) { out.at = Date.now(); wx[key] = out; }
-      else if (old) v.at = Date.now() - maxAge + 30 * 60000; // keep the saved one and try again in half an hour
+      else if (old) v.retry = Date.now(); // keep the saved one and try again in half an hour
       else wx[key] = { miss: Date.now() };
       wxSave();
       delete wxPending[key];
@@ -4532,7 +4533,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (i < 0 || h.temperature_2m[i] == null) return null;
       return { t: h.temperature_2m[i], rh: h.relative_humidity_2m[i], f: h.apparent_temperature[i],
                p: h.precipitation_probability ? h.precipitation_probability[i] : null };
-    }, ago <= 0 ? WX_FRESH : 0);
+    }, ago <= 0 ? WX_FRESH : 0, parseIso(dateIso).getTime() + (hour + 1) * 3600000);
   }
   function wxDay(dateIso, ll){
     var c = llOf(ll);

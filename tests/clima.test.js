@@ -51,3 +51,16 @@ test('a previsão só aparece a partir de 15 dias antes da prova', () => {
   const app = loadApp('2026-11-12T12:00:00');
   assert.equal(app.ev('raceForecast({date:"2026-11-28", time:"06:00"}, 16)'), '');
 });
+
+test('previsão guardada antes da largada é trocada pelo que aconteceu, depois que a prova passa', async () => {
+  const antes = new Date('2026-11-21T15:00:00-03:00').getTime();
+  const app = loadApp('2026-11-23T08:00:00');
+  comRede(app, 28);
+  app.ev('wx["h|2026-11-21|20|-9.67,-35.74"] = { t: 31, rh: 70, f: 31, p: 40, at: ' + antes + ' }');
+  assert.equal(app.json('wxAt("2026-11-21", 20, null)').t, 31);
+  await espera(); await espera();
+  assert.equal(app.json('wxAt("2026-11-21", 20, null)').t, 28);
+  assert.equal(app.ev('__pedidos'), 1);
+  app.json('wxAt("2026-11-21", 20, null)');
+  assert.equal(app.ev('__pedidos'), 1, 'buscado depois da prova: não pergunta mais');
+});
