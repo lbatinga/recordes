@@ -162,6 +162,7 @@ body.login .help-fab,body.login #logout{display:none}
 .bnav-in{max-width:780px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .bnav button{border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 9px;min-height:60px;font-size:12px;font-weight:700;cursor:pointer;position:relative}
 .bnav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.bnav button[hidden]{display:none}
 .bnav button[aria-current="page"]{color:var(--ink)}
 .bnav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--ink)}
 h2.first{margin-top:22px}
@@ -1005,7 +1006,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-12h';
+  var APP_VER = '2026-11-12i';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -3668,7 +3669,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     try { await flushDocs(); } catch(e) {}
     try { await apiFetch('/logout', { method: 'POST', body: {} }); } catch(e) {}
     try {
-      ['rc-session', 'rc-me', lsKey('recordes-metas'), lsKey('recordes-meta-k')].forEach(function(k){ localStorage.removeItem(k); });
+      ['rc-session', 'rc-me', 'rc-duo', lsKey('recordes-metas'), lsKey('recordes-meta-k')].forEach(function(k){ localStorage.removeItem(k); });
     } catch(e) {}
     location.replace(APP_URL);
   }
@@ -5233,9 +5234,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function syncDuoNav(){
     var b = document.querySelector('.bnav [data-view="dupla"]');
     if (!b) return;
-    b.hidden = !partner;
-    var lbl = b.querySelector('span'); if (lbl) lbl.textContent = group.length > 1 ? 'Grupo' : 'Dupla';
-    document.querySelector('.bnav-in').classList.toggle('six', !!partner);
+    // Until the group loads, the bar keeps the shape it had on the last visit, so it does not jump.
+    var known = ''; try { known = localStorage.getItem('rc-duo') || ''; } catch(e) {}
+    if (partnerLoaded) {
+      var cur = partner ? (group.length > 1 ? 'g' : 'd') : '';
+      if (cur !== known) { try { localStorage.setItem('rc-duo', cur); } catch(e) {} }
+      known = cur;
+    }
+    b.hidden = !known;
+    var lbl = b.querySelector('span'); if (lbl) lbl.textContent = known === 'g' ? 'Grupo' : 'Dupla';
+    document.querySelector('.bnav-in').classList.toggle('six', !!known);
     if (partnerLoaded && !partner && view === 'dupla') { view = 'inicio'; }
   }
 
