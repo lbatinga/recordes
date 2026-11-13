@@ -342,22 +342,23 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   <section class="w" data-k="L" id="w-L" hidden>
     <div class="head"><h1>L · Longão leve</h1><span class="meta" id="l-meta">5 km · ~52 min</span></div>
     <div class="limit">
-      <div class="lim"><span>Trote até</span><b data-s="lTop">150</b><i>No trote longo, <span data-s="longTop">160</span></i></div>
-      <div class="lim"><span>Caminha até</span><b data-s="walkHr">140</b><i>ou 3 min</i></div>
+      <div class="lim"><span>Teto no trote</span><b data-s="lTop">160</b><i>Bateu? Caminha na hora</i></div>
+      <div class="lim"><span>Caminhada</span><b data-s="lWalk">2min</b><i>Acima de <span data-s="lBack">150</span>? Mais 1 min</i></div>
     </div>
     <div class="steps">
       <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">5 min</span></div></div>
       <div class="step run"><span class="lbl">Trote longo · 1º trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" id="l-long">5 min</span></div>
-        <div class="note" id="l-long-note">Ou até a FC chegar a <b><span data-s="longTop">160</span></b>, o que vier antes. Depois, caminhada até <span data-s="walkHr">140</span> e segue o resto.</div>
+        <div class="note" id="l-long-note">Ou até a FC chegar a <b><span data-s="longTop">160</span></b>, o que vier antes. Depois, caminhada de <span data-s="lWalk">2min</span> e segue o resto.</div>
         <p class="lvl" id="lvl-L" hidden></p>
         <button class="mini" id="log-L" style="margin-top:10px">Anotar trote longo</button></div>
       <div class="logp-wrap"></div>
       <div class="loglist"></div>
       <div class="rep" id="l-rep">
         <div class="rep-h"><b id="l-km">Até 5 km</b><span>Depois, repete</span></div>
-        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="lTop">150</span></span></div></div>
-        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="walkHr">140</span></span></div>
-          <div class="note">Máx. 3 min. Ainda em <b><span data-s="lTop">150</span> ou mais</b>? Mais 1 min. Se repetir em vários trotes, termine caminhando. O que conta aqui é a distância, não a velocidade.</div></div>
+        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" data-s="lRun">2min</span></div>
+          <div class="note">Se a FC chegar a <b><span data-s="lTop">160</span></b> antes, caminhe na hora.</div></div>
+        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" data-s="lWalk">2min</span></div>
+          <div class="note">Ainda acima de <b><span data-s="lBack">150</span></b> no fim? Mais 1 min. O trote também treina joelho, tendão e passada; a FC é só o teto.</div></div>
         <div class="chips-cap">Toque no trote que terminou</div>
         <div class="chips" data-reps="12"></div>
       </div>
@@ -469,7 +470,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function raceSoon(d, key){ for (var i=0;i<RACES.length;i++){ var r=RACES[i].d, n = TIER[tier(RACES[i])][key]; if (n && d < r && d >= addDays(r,-n)) return RACES[i]; } return null; }
 
   // ---------- settings (Ajustes): speeds and HR limits, kept with the date they started to count ----------
-  var DEF = {walk:5.0, trote:6.5, race:7.5, walkHr:140, bTop:160, bBack:145, lTop:150, longTop:160, top:175, upHr:170, raceTop:178, rUp:150, raceRun:3, raceWalk:90};
+  var DEF = {walk:5.0, trote:6.5, race:7.5, walkHr:140, bTop:160, bBack:145, lTop:160, lRun:120, lWalk:120, lBack:150, longTop:160, top:175, upHr:170, raceTop:178, rUp:150, raceRun:3, raceWalk:90};
   // plan/settings: sets [{d, v}], knee {date: true}, ovr [{d, k, v}] (steps set by hand), base {d, st} (progress saved up to d)
   var CFG = {sets:[], knee:{}, ovr:[], base:null};
   function setAt(d){ var v = null; (CFG.sets||[]).forEach(function(x){ if (x && x.d && x.d <= d && x.v) v = x.v; }); return Object.assign({}, DEF, v || {}); }
@@ -859,7 +860,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function applySettings(S){
     document.querySelectorAll('[data-s]').forEach(function(e){
       var k = e.dataset.s, v = k === 'bMid' ? S.bTop - 5 : S[k];
-      e.textContent = (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : String(v);
+      e.textContent = (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : (k === 'lRun' || k === 'lWalk') ? tfmt(v) : String(v);
     });
   }
   function firstOf(plan, end, test){ for (var q = today; q <= end; q = addDays(q,1)) if (test(plan[q])) return q; return today; }
@@ -935,7 +936,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     var ln = document.getElementById('l-long-note'); ln.textContent = '';
     ln.appendChild(document.createTextNode(lm >= lWhole ? 'É o L inteiro trotando. Se a FC chegar a ' : 'Ou até a FC chegar a '));
     var lb = document.createElement('b'); lb.textContent = String(S.longTop); ln.appendChild(lb);
-    ln.appendChild(document.createTextNode(lm >= lWhole ? ', caminha até '+S.walkHr+' e volta a trotar.' : ', o que vier antes. Depois, caminhada até '+S.walkHr+' e segue o resto.'));
+    ln.appendChild(document.createTextNode(lm >= lWhole ? ', caminha '+tfmt(S.lWalk)+' e volta a trotar.' : ', o que vier antes. Depois, caminhada de '+tfmt(S.lWalk)+' e segue o resto.'));
     // R
     var rDay = firstOf(plan, end, function(x){ return x==='R' || x==='Rk'; }), rb = stFor(rDay).r;
     txt('r-base', rb+'%'); txt('r-peak', (rb+4)+'%');
@@ -1138,7 +1139,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     out.push('Resumo do Treino do dia (app Recordes), '+ddmm(today)+'/'+today.slice(0,4));
     out.push('Atleta: corredor iniciante, treina na esteira. Objetivos: correr 5 km sem caminhar, depois chegar aos 10 km e baixar o tempo dos 5 km, sempre protegendo os joelhos.');
     out.push('');
-    out.push('Ajustes: caminhada '+kmh(S.walk)+' km/h, trote '+kmh(S.trote)+' km/h, prova '+kmh(S.race)+' km/h (pace '+pace(S.race)+' por km). FC: caminhada até '+S.walkHr+'; B trote até '+S.bTop+' e caminha até '+S.bBack+'; L trote até '+S.lTop+'; trote longo até '+S.longTop+'; teto do A e do C '+S.top+'; sobe de degrau com FC até '+S.upHr+'; prova '+S.raceTop+'; subida do R '+S.rUp+'.');
+    out.push('Ajustes: caminhada '+kmh(S.walk)+' km/h, trote '+kmh(S.trote)+' km/h, prova '+kmh(S.race)+' km/h (pace '+pace(S.race)+' por km). FC: caminhada até '+S.walkHr+'; B trote até '+S.bTop+' e caminha até '+S.bBack+'; L trote '+tfmt(S.lRun)+' com teto '+S.lTop+' e caminhada '+tfmt(S.lWalk)+' (mais 1 min se acima de '+S.lBack+'); trote longo até '+S.longTop+'; teto do A e do C '+S.top+'; sobe de degrau com FC até '+S.upHr+'; prova '+S.raceTop+'; subida do R '+S.rUp+'.');
     out.push('Fase '+(st.p2 ? '2 (mais longe e mais rápido)' : '1 (correr 5 km direto)')+'. Maior trote sem parar anotado: '+kmFmt(st.best)+' km.');
     out.push('Degraus: trote longo '+TL[st.tl]+' min; longão '+st.l+' km; A '+stepName('a', st.a)+'; C '+stepName('c', st.c)+' (30 s cada); R base '+st.r+'% e subidas '+(st.r+4)+'%.');
     out.push('Regras: ciclo L → B → forte (A e C alternando) com R ou descanso entre eles; no máximo 6 dias seguidos de treino. Degrau sobe com 2 treinos seguidos completos e anotados com a FC no limite (R: 3 seguidos com FC média até '+(S.walkHr-15)+'), desce com 2 falhas seguidas. Joelho anotado: o próximo forte vira R e nada sobe por 7 dias.');
@@ -1188,11 +1189,14 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     ['race', 'Prova', 'km/h · pace na prova', 0.1, 6, 12],
     ['raceRun', 'Prova: trote por bloco', 'também no ensaio (A)', 1, 1, 30],
     ['raceWalk', 'Prova: caminhada', 'por bloco', 15, 30, 300],
+    ['lRun', 'L: trote por bloco', '', 15, 30, 600],
+    ['lWalk', 'L: caminhada por bloco', '', 15, 60, 300],
     ['Limites de FC', null],
-    ['walkHr', 'Caminhada', 'aquecimento, volta no L e R', 1, 120, 160],
+    ['walkHr', 'Caminhada', 'aquecimento e R', 1, 120, 160],
     ['bTop', 'B: trote até', '', 1, 140, 185],
     ['bBack', 'B: caminha até', '', 1, 120, 170],
-    ['lTop', 'L: trote até', '', 1, 130, 180],
+    ['lTop', 'L: teto no trote', '', 1, 130, 185],
+    ['lBack', 'L: mais 1 min se acima de', 'no fim da caminhada', 1, 130, 175],
     ['longTop', 'Trote longo até', '', 1, 140, 185],
     ['top', 'Teto do A e do C', '', 1, 150, 195],
     ['upHr', 'Sobe de degrau com FC até', 'A e C', 1, 140, 195],
@@ -1210,7 +1214,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (k === 'tl' || k === 'l' || k === 'a' || k === 'c') return stepName(k, v).replace('5 × ', '5×').replace(' tiros a ', '× ').replace(' min a ', 'min a ');
     if (k === 'r') return v+'% / '+(v+4)+'%';
     if (k === 'raceRun') return v+' min';
-    if (k === 'raceWalk') return tfmt(v);
+    if (k === 'raceWalk' || k === 'lRun' || k === 'lWalk') return tfmt(v);
     return (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : String(v);
   }
   function renderAdj(){
@@ -1225,7 +1229,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var k = a[0], row = document.createElement('div'); row.className = 'arow';
       var lab = document.createElement('span'); lab.textContent = a[1];
       var sm = document.createElement('small'); sm.id = 'adj-sub-'+k; lab.appendChild(sm);
-      var stp = document.createElement('div'); stp.className = 'astep' + ((k === 'a' || k === 'c' || k === 'r' || k === 'raceWalk') ? ' wide' : '');
+      var stp = document.createElement('div'); stp.className = 'astep' + ((k === 'a' || k === 'c' || k === 'r' || k === 'raceWalk' || k === 'lRun' || k === 'lWalk') ? ' wide' : '');
       var mn = document.createElement('button'); mn.textContent = '−'; mn.id = 'adj-'+k+'-minus'; mn.setAttribute('aria-label', a[1]+': menos');
       var out = document.createElement('output'); out.id = 'adj-'+k;
       var pl = document.createElement('button'); pl.textContent = '+'; pl.id = 'adj-'+k+'-plus'; pl.setAttribute('aria-label', a[1]+': mais');
@@ -1516,8 +1520,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var lk = lPlanKm(today, st.l), lm = Math.min(TL[st.tl], wholeMin(lk, S));
       one('Aquecimento', 'w', S.walk, '5 min', {target:300});
       one('Trote longo', 'r', S.trote, lm+' min ou FC '+S.longTop, {target:lm*60, log:['L', 0], note:'O que vier antes. Parou? Toque em Terminei e anote a FC.'});
-      one('Caminhada', 'w', S.walk, 'até FC '+S.walkHr);
-      it.push({t:'loop', until:'dist', exit:'Fechei os '+lk+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:'até FC '+S.lTop}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:'até FC '+S.walkHr+' ou 3 min', target:180, note:'Ainda em '+S.lTop+' ou mais? Mais 1 min.'}});
+      one('Caminhada', 'w', S.walk, tfmt(S.lWalk), {target:S.lWalk, note:'Ainda acima de '+S.lBack+'? Mais 1 min.'});
+      it.push({t:'loop', until:'dist', exit:'Fechei os '+lk+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:tfmt(S.lRun)+' · teto FC '+S.lTop, target:S.lRun, note:'Bateu '+S.lTop+'? Caminhe na hora.'}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:tfmt(S.lWalk), target:S.lWalk, note:'Ainda acima de '+S.lBack+'? Mais 1 min.'}});
     } else if (k === 'R'){
       var rb = st.r;
       one('Base', 'w', S.walk, rb+'% · até o minuto 7', {target:420, note:'FC acima de '+S.walkHr+'? Baixe a base pra '+Math.max(1, rb-1)+'%.'});

@@ -314,3 +314,12 @@ test('modo treino: um segundo toque em menos de 5 s é ignorado; depois de 5 s v
   t.ev('wkUndo()'); t.passa(1); t.ev('wkNext(false)');
   assert.equal(t.ev('WK.segs.length'), 2);
 });
+
+test('L por tempo: trote de 2 min com teto 160, caminhada de 2 min (mais 1 se acima de 150)', () => {
+  const t = semAgenda('2026-11-24T19:00:00');
+  const it = t.json('wkItems("L")');
+  assert.deepEqual([it[2].lbl, it[2].target], ['Caminhada', 120]);
+  const lp = it[3];
+  assert.deepEqual([lp.a.target, lp.a.cond, lp.b.target, lp.b.cond], [120, '2min · teto FC 160', 120, '2min']);
+  assert.deepEqual(t.json('[DEF.lTop, DEF.lRun, DEF.lWalk, DEF.lBack, DEF.longTop]'), [160, 120, 120, 150, 160]);
+});
