@@ -1387,6 +1387,11 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     return 'Não deu pra buscar no Strava agora.';
   }
   function payloadOf(r){ return r && (r.payload !== undefined ? r.payload : r); }
+  // a run counts as a workout with 2 km or 20 min: a loose warm-up does not, but a treadmill session
+  // whose distance the watch got wrong (an R of 34 min marked as 1,39 km) still does
+  function isWorkout(sp, sm){
+    return ['Run','VirtualRun','TrailRun'].indexOf(sp) >= 0 && ((sm.distance||0) >= 2000 || (sm.moving_time||0) >= 1200);
+  }
   async function sync(){
     if (syncing) return;
     if (!mcp){ status('Esta tela não consegue falar com o Strava.'); return; }
@@ -1397,7 +1402,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var byDay = {}, oldest = addDays(today, -45);
       acts.forEach(function(a){
         var sp = a.sport_type || a.type, sm = a.summary || {};
-        if (['Run','VirtualRun','TrailRun'].indexOf(sp) < 0 || !((sm.distance||0) >= 2000)) return;
+        if (!isWorkout(sp, sm)) return;
         var d = String(a.start_local || a.start_date_local || '').slice(0,10); if (!d || d < '2026-11-02' || d < oldest) return;
         if (!byDay[d] || (sm.distance||0) > (byDay[d].summary.distance||0)) byDay[d] = {id:String(a.id), summary:sm, date:d};
       });

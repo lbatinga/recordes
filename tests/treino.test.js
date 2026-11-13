@@ -333,3 +333,11 @@ test('busca no Strava de novo sozinha ao voltar pra página, no máximo a cada 1
   t.passa(6 * 60); t.ev('autoAgain()'); assert.equal(t.ev('__n'), 1, '11 min depois: busca');
   t.ev('autoAgain()'); assert.equal(t.ev('__n'), 1, 'logo em seguida: não repete');
 });
+
+test('treino conta com 2 km ou 20 min: R de 34 min com a distância errada no relógio entra; aquecimento solto não', () => {
+  const t = semAgenda('2026-11-13T20:00:00');
+  assert.equal(t.ev('isWorkout("Run", {distance: 1390, moving_time: 2059})'), true);
+  assert.equal(t.ev('isWorkout("Run", {distance: 2100, moving_time: 900})'), true);
+  assert.equal(t.ev('isWorkout("Run", {distance: 800, moving_time: 420})'), false);
+  assert.equal(t.ev('isWorkout("Walk", {distance: 3000, moving_time: 2400})'), false);
+});
