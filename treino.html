@@ -140,10 +140,10 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .cal{display:flex; flex-direction:column; margin:0 0 10px; font-size:15px; font-variant-numeric:tabular-nums}
 .row{display:grid; grid-template-columns:72px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:52px; border-top:1px solid var(--line)}
 .row .dt{color:var(--muted); font-weight:600; font-size:13px; white-space:nowrap}
-.row .wk{font-weight:700; min-width:0}
-.row.now .wk{color:var(--acc-today, var(--fg))}
+.row .what{font-weight:700; min-width:0}
+.row.now .what{color:var(--acc-today, var(--fg))}
 .row.now .dt::before{content:"▸ "}
-.row.off .wk{color:var(--muted)}
+.row.off .what{color:var(--muted)}
 .mini{appearance:none; font:inherit; font-size:14px; font-weight:700; border:2px solid var(--line); background:transparent; color:var(--fg); border-radius:10px; padding:6px 12px; min-height:40px; cursor:pointer; white-space:nowrap}
 .mini.undo{border-color:var(--fg)}
 .restbtn{appearance:none; font:inherit; width:100%; min-height:52px; border-radius:14px; border:2px solid var(--line); background:transparent; color:var(--fg); font-weight:700; font-size:16px; cursor:pointer}
@@ -207,7 +207,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .startbtn:focus-visible,.wk button:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
 .yday{display:flex; flex-direction:column; gap:8px; align-items:flex-start}
 /* workout mode: one step on the whole screen */
-.wk{position:fixed; inset:0; z-index:20; background:var(--bg); display:flex; flex-direction:column; gap:10px; overflow:auto; padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+#wk{position:fixed; inset:0; z-index:20; background:var(--bg); display:flex; flex-direction:column; gap:10px; overflow:auto; padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
 .wk > *{width:100%; max-width:560px; align-self:center; flex-shrink:0}
 .wk-top{display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:12px; font-weight:700; color:var(--muted); font-size:14px; font-variant-numeric:tabular-nums}
 .wk-top b{color:var(--acc); font-family:var(--font-num); font-size:24px; font-weight:800}
@@ -994,7 +994,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var tt = plan[d], row = document.createElement('div');
       row.className = 'row' + (d===today ? ' now' : '') + (isRest(tt) ? ' off' : '');
       var a = document.createElement('span'); a.className='dt'; a.textContent = br(d);
-      var w = document.createElement('span'); w.className='wk'; w.textContent = label(tt, d, stFor(d)) + (gymOn(d, tt) ? ' + musculação' : '');
+      var w = document.createElement('span'); w.className='what'; w.textContent = label(tt, d, stFor(d)) + (gymOn(d, tt) ? ' + musculação' : '');
       row.appendChild(a); row.appendChild(w);
       if (tt !== 'race' && tt !== 'eve'){
         var b = document.createElement('button'); b.id = 'rest-'+d;
