@@ -199,7 +199,7 @@ test('modo treino: os passos de cada treino saem do plano do dia', () => {
   assert.deepEqual(n('L'), ['Aquecimento', 'Trote longo', 'Caminhada', 'loop:dist']);
   assert.deepEqual(n('B'), ['Aquecimento', 'loop:dist']);
   assert.equal(n('R').length, 9);
-  assert.equal(n('C').length, 1 + 6 + 5 + 1);
+  assert.equal(n('C').length, 4 + 6 + 5 + 1);
   assert.equal(t.json('wkItems("L")[1]').target, 300);
   // A de 16/11 é ensaio: 5 blocos de 3 min a 7,5
   const u = semAgenda('2026-11-16T19:00:00'), a = u.json('wkItems("A")');
@@ -315,13 +315,14 @@ test('modo treino: um segundo toque em menos de 5 s é ignorado; depois de 5 s v
   assert.equal(t.ev('WK.segs.length'), 2);
 });
 
-test('L por tempo: trote de 2 min com teto 160, caminhada de 2 min (mais 1 se acima de 150)', () => {
+test('L por tempo: trote de 2 min com teto 160, caminhada de 2 min fixos', () => {
   const t = semAgenda('2026-11-24T19:00:00');
   const it = t.json('wkItems("L")');
   assert.deepEqual([it[2].lbl, it[2].target], ['Caminhada', 120]);
   const lp = it[3];
   assert.deepEqual([lp.a.target, lp.a.cond, lp.b.target, lp.b.cond], [120, '2min · teto FC 160', 120, '2min']);
-  assert.deepEqual(t.json('[DEF.lTop, DEF.lRun, DEF.lWalk, DEF.lBack, DEF.longTop]'), [160, 120, 120, 150, 160]);
+  assert.deepEqual(t.json('[DEF.lTop, DEF.lRun, DEF.lWalk, DEF.longTop]'), [160, 120, 120, 160]);
+  assert.equal(lp.b.note, 'Tempo fixo.');
 });
 
 test('busca no Strava de novo sozinha ao voltar pra página, no máximo a cada 10 min, e só se a busca automática já era permitida', () => {
@@ -340,4 +341,22 @@ test('treino conta com 2 km ou 20 min: R de 34 min com a distância errada no re
   assert.equal(t.ev('isWorkout("Run", {distance: 2100, moving_time: 900})'), true);
   assert.equal(t.ev('isWorkout("Run", {distance: 800, moving_time: 420})'), false);
   assert.equal(t.ev('isWorkout("Walk", {distance: 3000, moving_time: 2400})'), false);
+});
+
+test('B por tempo: 3 min de trote com teto 165 e 2 min de caminhada, até 5 km (4 km nos 5 dias antes de prova)', () => {
+  const t = semAgenda('2026-11-14T08:00:00');
+  const it = t.json('wkItems("B")');
+  assert.equal(it.length, 2);
+  assert.equal(it[0].note, 'Velocidade fixa.');
+  assert.deepEqual([it[1].a.target, it[1].a.cond, it[1].b.target, it[1].b.cond, it[1].exit], [180, '3min · teto FC 165', 120, '2min', 'Fechei os 5 km']);
+  assert.equal(semAgenda('2026-11-16T08:00:00').json('wkItems("B")')[1].exit, 'Fechei os 4 km');
+});
+
+test('C: aquecimento são 2 blocos do B; R: o alarme é o mesmo número nas duas orientações', () => {
+  const t = semAgenda('2026-12-06T08:00:00');
+  const c = t.json('wkItems("C")');
+  assert.deepEqual(c.slice(0, 4).map((x) => [x.target, x.kind]), [[180, 'r'], [120, 'w'], [180, 'r'], [120, 'w']]);
+  const r = t.json('wkItems("R")');
+  assert.match(r[0].note, /^Vibrou \(150\)\? Baixe a base/);
+  assert.match(r[1].note, /^Vibrou \(150\)\? Volte pra/);
 });

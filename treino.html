@@ -236,6 +236,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .wk-foot button:disabled{opacity:.4}
 .wk > .lock{text-align:right; margin-top:-6px}
 .wk.editing .wk-spd{font-size:64px} .wk.editing .wk-clock{font-size:52px; margin-top:2px} .wk.editing .wk-note,.wk.editing .wk-next,.wk.editing .wk-sub{display:none}
+.lim em{font-style:normal}
 .wk-list{display:flex; flex-direction:column}
 .wk-done{font-family:var(--font-num); font-weight:800; font-size:40px; color:var(--acc)}
 .wk-list .wk-note{max-width:none; margin:2px 0 10px}
@@ -290,7 +291,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       </div>
       <div class="step"><span class="lbl">Final</span><div class="big"><span class="v" id="a-final">5,0<span class="u">km/h</span></span><span class="d" id="a-final-d">até 3 km</span></div></div>
     </div>
-    <div class="watch" id="a-watch">⌚ Guia de zona: <b>desligado</b> · teto de FC 175</div>
+    <div class="watch" id="a-watch">⌚ Guia de zona: <b>avisa acima de 175</b> · não precisa olhar</div>
       <div class="evo" data-evo="A"></div>
   </section>
 
@@ -298,22 +299,23 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   <section class="w" data-k="B" id="w-B" hidden>
     <div class="head"><h1>B · Resistência</h1><span class="meta" id="b-meta">5 km · ~51 min</span></div>
     <div class="limit">
-      <div class="lim"><span>Trote até</span><b data-s="bTop">160</b><i>Também no último</i></div>
-      <div class="lim"><span>Caminha até</span><b data-s="bBack">145</b><i>ou 3 min</i></div>
+      <div class="lim"><span>Teto no trote</span><b data-s="bTop">165</b><i>Bateu? Caminha na hora</i></div>
+      <div class="lim"><span>Trote por bloco</span><b data-s="bRun">3min</b><i>e <em data-s="bWalk">2min</em> caminhando</i></div>
     </div>
     <div class="steps">
       <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">5 min</span></div>
-        <div class="note">FC <b>acima de <span data-s="walkHr">140</span></b> no fim? Mais 3 min. Ainda acima? Hoje é <b>só caminhada</b>.</div></div>
+        <div class="note">Velocidade fixa.</div></div>
       <div class="rep">
         <div class="rep-h"><b id="b-km">Até 5 km</b><span>Repete</span></div>
-        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="bTop">160</span></span></div></div>
-        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="bBack">145</span></span></div>
-          <div class="note">Máx. 3 min. Ainda <b>acima de <span data-s="bMid">155</span></b>? Mais 1 min.</div></div>
+        <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" data-s="bRun">3min</span></div>
+          <div class="note">Se o relógio avisar <b><span data-s="bTop">165</span></b> antes, caminhe na hora.</div></div>
+        <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" data-s="bWalk">2min</span></div>
+          <div class="note">Tempo fixo. O próximo trote começa no horário, mesmo que o anterior tenha sido cortado.</div></div>
         <div class="chips-cap">Toque no trote que terminou</div>
         <div class="chips" data-reps="10"></div>
       </div>
     </div>
-    <div class="watch">⌚ Guia de zona: <b>ligado, <span data-s="bBack">145</span>–<span data-s="bTop">160</span></b></div>
+    <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="bTop">165</span></b> · não precisa olhar</div>
       <div class="evo" data-evo="B"></div>
   </section>
 
@@ -322,8 +324,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <div class="head"><h1>C · Velocidade</h1><span class="meta" id="c-meta">3 km · ~30 min</span></div>
     <div class="limit"><div class="lim"><span>Teto de FC</span><b data-s="top">175</b><i>Passou? Corta o tiro</i></div></div>
     <div class="steps">
-      <div class="step"><span class="lbl">Primeiros 10 min · igual ao B</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d hr">FC <span data-s="bTop">160</span></span></div>
-        <div class="note">Trote até <span data-s="bTop">160</span>, caminha a <b><span data-s="walk">5,0</span></b> até <span data-s="bBack">145</span>.</div></div>
+      <div class="step"><span class="lbl">Primeiros 10 min · igual ao B</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d">2 blocos</span></div>
+        <div class="note"><span data-s="bRun">3min</span> de trote e <span data-s="bWalk">2min</span> caminhando a <b><span data-s="walk">5,0</span></b>, duas vezes. Teto <span data-s="bTop">165</span> no trote.</div></div>
       <div class="rep">
         <div class="rep-h"><b id="c-reps">6×</b><span>Tiros</span></div>
         <p class="lvl" id="lvl-C" hidden></p>
@@ -334,7 +336,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       </div>
       <div class="step"><span class="lbl">Final</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" id="c-final-d">até 3 km</span></div></div>
     </div>
-    <div class="watch">⌚ Guia de zona: <b>desligado</b> · teto de FC <span data-s="top">175</span></div>
+    <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="top">175</span></b> · não precisa olhar</div>
       <div class="evo" data-evo="C"></div>
   </section>
 
@@ -343,7 +345,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <div class="head"><h1>L · Longão leve</h1><span class="meta" id="l-meta">5 km · ~52 min</span></div>
     <div class="limit">
       <div class="lim"><span>Teto no trote</span><b data-s="lTop">160</b><i>Bateu? Caminha na hora</i></div>
-      <div class="lim"><span>Caminhada</span><b data-s="lWalk">2min</b><i>Acima de <span data-s="lBack">150</span>? Mais 1 min</i></div>
+      <div class="lim"><span>Trote por bloco</span><b data-s="lRun">2min</b><i>e <em data-s="lWalk">2min</em> caminhando</i></div>
     </div>
     <div class="steps">
       <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">5 min</span></div></div>
@@ -358,12 +360,12 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" data-s="lRun">2min</span></div>
           <div class="note">Se a FC chegar a <b><span data-s="lTop">160</span></b> antes, caminhe na hora.</div></div>
         <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" data-s="lWalk">2min</span></div>
-          <div class="note">Ainda acima de <b><span data-s="lBack">150</span></b> no fim? Mais 1 min. O trote também treina joelho, tendão e passada; a FC é só o teto.</div></div>
+          <div class="note">Tempo fixo. O próximo trote começa no horário, mesmo que o anterior tenha sido cortado.</div></div>
         <div class="chips-cap">Toque no trote que terminou</div>
         <div class="chips" data-reps="12"></div>
       </div>
     </div>
-    <div class="watch">⌚ Guia de zona: <b>desligado</b> · olhe a FC</div>
+    <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="lTop">160</span></b> · não precisa olhar</div>
     <div class="evo" data-evo="L"></div>
   </section>
 
@@ -371,8 +373,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   <section class="w" data-k="R" id="w-R" hidden>
     <div class="head"><h1>R · Regenerativo</h1><span class="meta">3 km · ~36 min</span></div>
     <div class="limit">
-      <div class="lim"><span>Caminhando</span><b data-s="walkHr">140</b><i id="r-low-i">Passou? Base 2%</i></div>
-      <div class="lim"><span>Na subida</span><b data-s="rUp">150</b><i id="r-up-i">Passou? Volta 3%</i></div>
+      <div class="lim"><span>Alarme</span><b data-s="rUp">150</b><i id="r-up-i">Na subida: volta 3%</i></div>
+      <div class="lim"><span>Vibrou na base?</span><b id="r-low-b">2%</b><i id="r-low-i">Baixa a base</i></div>
     </div>
     <div class="steps">
       <div class="step"><span class="lbl">O treino todo</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" id="r-base">3%</span></div>
@@ -388,7 +390,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       <div class="logp-wrap"></div>
       <div class="loglist"></div>
     </div>
-    <div class="watch">⌚ Guia de zona: <b>desligado</b></div>
+    <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="rUp">150</span></b> · não precisa olhar</div>
       <div class="evo" data-evo="R"></div>
   </section>
 
@@ -470,7 +472,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function raceSoon(d, key){ for (var i=0;i<RACES.length;i++){ var r=RACES[i].d, n = TIER[tier(RACES[i])][key]; if (n && d < r && d >= addDays(r,-n)) return RACES[i]; } return null; }
 
   // ---------- settings (Ajustes): speeds and HR limits, kept with the date they started to count ----------
-  var DEF = {walk:5.0, trote:6.5, race:7.5, walkHr:140, bTop:160, bBack:145, lTop:160, lRun:120, lWalk:120, lBack:150, longTop:160, top:175, upHr:170, raceTop:178, rUp:150, raceRun:3, raceWalk:90};
+  var DEF = {walk:5.0, trote:6.5, race:7.5, walkHr:140, bTop:165, bRun:180, bWalk:120, lTop:160, lRun:120, lWalk:120, longTop:160, top:175, upHr:170, raceTop:178, rUp:150, raceRun:3, raceWalk:90};
   // plan/settings: sets [{d, v}], knee {date: true}, ovr [{d, k, v}] (steps set by hand), base {d, st} (progress saved up to d)
   var CFG = {sets:[], knee:{}, ovr:[], base:null};
   function setAt(d){ var v = null; (CFG.sets||[]).forEach(function(x){ if (x && x.d && x.d <= d && x.v) v = x.v; }); return Object.assign({}, DEF, v || {}); }
@@ -859,8 +861,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function setV(id, v, u){ var e=document.getElementById(id); e.textContent=v; if (u){ var su=document.createElement('span'); su.className='u'; su.textContent=u; e.appendChild(su); } }
   function applySettings(S){
     document.querySelectorAll('[data-s]').forEach(function(e){
-      var k = e.dataset.s, v = k === 'bMid' ? S.bTop - 5 : S[k];
-      e.textContent = (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : (k === 'lRun' || k === 'lWalk') ? tfmt(v) : String(v);
+      var k = e.dataset.s, v = S[k];
+      e.textContent = (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : (k === 'lRun' || k === 'lWalk' || k === 'bRun' || k === 'bWalk') ? tfmt(v) : String(v);
     });
   }
   function firstOf(plan, end, test){ for (var q = today; q <= end; q = addDays(q,1)) if (test(plan[q])) return q; return today; }
@@ -913,7 +915,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         : 'Trote a '+kmh(S.race)+': é o pace planejado pra '+(pr ? pr.name : 'prova')+' ('+pace(S.race)+' por km). Teto de '+S.top+' continua valendo.'));
     }
     an.hidden = av==='normal';
-    document.getElementById('a-watch').innerHTML = '⌚ Guia de zona: <b>desligado</b> · teto de FC '+S.top;
+    document.getElementById('a-watch').innerHTML = '⌚ Guia de zona: <b>avisa acima de '+S.top+'</b> · não precisa olhar';
     var secA = document.getElementById('w-A');
     secA.querySelector('.reps-n').textContent = aN+'×';
     secA.querySelector('.meta').textContent = aSh.km+' km · ~'+aSh.min+' min'+(plan[aDay]==='A3' ? ' · leve' : '') + (aDay!==today ? ' · '+br(aDay) : '');
@@ -940,7 +942,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     // R
     var rDay = firstOf(plan, end, function(x){ return x==='R' || x==='Rk'; }), rb = stFor(rDay).r;
     txt('r-base', rb+'%'); txt('r-peak', (rb+4)+'%');
-    txt('r-low-i', 'Passou? Base '+Math.max(1, rb-1)+'%'); txt('r-up-i', 'Passou? Volta '+rb+'%');
+    txt('r-low-b', Math.max(1, rb-1)+'%'); txt('r-up-i', 'Na subida: volta '+rb+'%');
     ['B','C','L','R'].forEach(function(k){ var sec=document.getElementById('w-'+k); buildChips(sec, +sec.querySelector('.chips').dataset.reps || 0); });
     renderLevels();
 
@@ -1139,7 +1141,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     out.push('Resumo do Treino do dia (app Recordes), '+ddmm(today)+'/'+today.slice(0,4));
     out.push('Atleta: corredor iniciante, treina na esteira. Objetivos: correr 5 km sem caminhar, depois chegar aos 10 km e baixar o tempo dos 5 km, sempre protegendo os joelhos.');
     out.push('');
-    out.push('Ajustes: caminhada '+kmh(S.walk)+' km/h, trote '+kmh(S.trote)+' km/h, prova '+kmh(S.race)+' km/h (pace '+pace(S.race)+' por km). FC: caminhada até '+S.walkHr+'; B trote até '+S.bTop+' e caminha até '+S.bBack+'; L trote '+tfmt(S.lRun)+' com teto '+S.lTop+' e caminhada '+tfmt(S.lWalk)+' (mais 1 min se acima de '+S.lBack+'); trote longo até '+S.longTop+'; teto do A e do C '+S.top+'; sobe de degrau com FC até '+S.upHr+'; prova '+S.raceTop+'; subida do R '+S.rUp+'.');
+    out.push('Ajustes: caminhada '+kmh(S.walk)+' km/h, trote '+kmh(S.trote)+' km/h, prova '+kmh(S.race)+' km/h (pace '+pace(S.race)+' por km). Treinos por tempo, a FC é só alarme (vibrou no trote, caminha na hora): B '+tfmt(S.bRun)+' de trote e '+tfmt(S.bWalk)+' caminhando, teto '+S.bTop+'; L '+tfmt(S.lRun)+' e '+tfmt(S.lWalk)+', teto '+S.lTop+'; trote longo até '+S.longTop+'; teto do A e do C '+S.top+'; sobe de degrau com FC até '+S.upHr+'; prova '+S.raceTop+'; alarme do R '+S.rUp+' (FC média do R pra evolução: até '+(S.walkHr-15)+' sobe, acima de '+S.walkHr+' desce).');
     out.push('Fase '+(st.p2 ? '2 (mais longe e mais rápido)' : '1 (correr 5 km direto)')+'. Maior trote sem parar anotado: '+kmFmt(st.best)+' km.');
     out.push('Degraus: trote longo '+TL[st.tl]+' min; longão '+st.l+' km; A '+stepName('a', st.a)+'; C '+stepName('c', st.c)+' (30 s cada); R base '+st.r+'% e subidas '+(st.r+4)+'%.');
     out.push('Regras: ciclo L → B → forte (A e C alternando) com R ou descanso entre eles; no máximo 6 dias seguidos de treino. Degrau sobe com 2 treinos seguidos completos e anotados com a FC no limite (R: 3 seguidos com FC média até '+(S.walkHr-15)+'), desce com 2 falhas seguidas. Joelho anotado: o próximo forte vira R e nada sobe por 7 dias.');
@@ -1189,19 +1191,19 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     ['race', 'Prova', 'km/h · pace na prova', 0.1, 6, 12],
     ['raceRun', 'Prova: trote por bloco', 'também no ensaio (A)', 1, 1, 30],
     ['raceWalk', 'Prova: caminhada', 'por bloco', 15, 30, 300],
+    ['bRun', 'B: trote por bloco', '', 15, 30, 600],
+    ['bWalk', 'B: caminhada por bloco', '', 15, 60, 300],
     ['lRun', 'L: trote por bloco', '', 15, 30, 600],
     ['lWalk', 'L: caminhada por bloco', '', 15, 60, 300],
     ['Limites de FC', null],
-    ['walkHr', 'Caminhada', 'aquecimento e R', 1, 120, 160],
-    ['bTop', 'B: trote até', '', 1, 140, 185],
-    ['bBack', 'B: caminha até', '', 1, 120, 170],
+    ['walkHr', 'R: FC média', 'pra evolução da inclinação', 1, 120, 160],
+    ['bTop', 'B: teto no trote', '', 1, 140, 185],
     ['lTop', 'L: teto no trote', '', 1, 130, 185],
-    ['lBack', 'L: mais 1 min se acima de', 'no fim da caminhada', 1, 130, 175],
     ['longTop', 'Trote longo até', '', 1, 140, 185],
     ['top', 'Teto do A e do C', '', 1, 150, 195],
     ['upHr', 'Sobe de degrau com FC até', 'A e C', 1, 140, 195],
     ['raceTop', 'Teto na prova', '', 1, 150, 200],
-    ['rUp', 'R: na subida', '', 1, 130, 180],
+    ['rUp', 'R: alarme', '', 1, 130, 180],
     ['Degraus agora', null],
     ['tl', 'Trote longo', '', 1, 0, TL.length-1],
     ['l', 'Longão', '', 1, L_MIN_KM, L_MAX2],
@@ -1214,7 +1216,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (k === 'tl' || k === 'l' || k === 'a' || k === 'c') return stepName(k, v).replace('5 × ', '5×').replace(' tiros a ', '× ').replace(' min a ', 'min a ');
     if (k === 'r') return v+'% / '+(v+4)+'%';
     if (k === 'raceRun') return v+' min';
-    if (k === 'raceWalk' || k === 'lRun' || k === 'lWalk') return tfmt(v);
+    if (k === 'raceWalk' || k === 'lRun' || k === 'lWalk' || k === 'bRun' || k === 'bWalk') return tfmt(v);
     return (k === 'walk' || k === 'trote' || k === 'race') ? kmh(v) : String(v);
   }
   function renderAdj(){
@@ -1229,7 +1231,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var k = a[0], row = document.createElement('div'); row.className = 'arow';
       var lab = document.createElement('span'); lab.textContent = a[1];
       var sm = document.createElement('small'); sm.id = 'adj-sub-'+k; lab.appendChild(sm);
-      var stp = document.createElement('div'); stp.className = 'astep' + ((k === 'a' || k === 'c' || k === 'r' || k === 'raceWalk' || k === 'lRun' || k === 'lWalk') ? ' wide' : '');
+      var stp = document.createElement('div'); stp.className = 'astep' + ((k === 'a' || k === 'c' || k === 'r' || k === 'raceWalk' || k === 'lRun' || k === 'lWalk' || k === 'bRun' || k === 'bWalk') ? ' wide' : '');
       var mn = document.createElement('button'); mn.textContent = '−'; mn.id = 'adj-'+k+'-minus'; mn.setAttribute('aria-label', a[1]+': menos');
       var out = document.createElement('output'); out.id = 'adj-'+k;
       var pl = document.createElement('button'); pl.textContent = '+'; pl.id = 'adj-'+k+'-plus'; pl.setAttribute('aria-label', a[1]+': mais');
@@ -1521,11 +1523,14 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       one('Final', 'w', S.walk, 'até '+aShape(n, sp, mn, S).km+' km', {end:1});
     } else if (k === 'B'){
       var km = bKm(today);
-      one('Aquecimento', 'w', S.walk, '5 min', {target:300, note:'FC acima de '+S.walkHr+' no fim? Mais 3 min. Ainda acima? Hoje é só caminhada.'});
-      it.push({t:'loop', until:'dist', exit:'Fechei os '+km+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:'até FC '+S.bTop}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:'até FC '+S.bBack+' ou 3 min', target:180, note:'Ainda acima de '+(S.bTop-5)+'? Mais 1 min.'}});
+      one('Aquecimento', 'w', S.walk, '5 min', {target:300, note:'Velocidade fixa.'});
+      it.push({t:'loop', until:'dist', exit:'Fechei os '+km+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:tfmt(S.bRun)+' · teto FC '+S.bTop, target:S.bRun, note:'Vibrou? Caminhe na hora.'}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:tfmt(S.bWalk), target:S.bWalk, note:'Tempo fixo.'}});
     } else if (k === 'C'){
       var cs = C_ST[st.c];
-      it.push({t:'loop', until:'time', limit:600, exit:'Deu 10 min: ir pros tiros', a:{lbl:'Primeiros 10 min · trote', kind:'r', spd:S.trote, cond:'até FC '+S.bTop}, b:{lbl:'Primeiros 10 min · caminhada', kind:'w', spd:S.walk, cond:'até FC '+S.bBack}});
+      for (i=0;i<2;i++){
+        one('Aquecimento '+(i+1)+' de 2 · trote', 'r', S.trote, tfmt(S.bRun)+' · teto FC '+S.bTop, {target:S.bRun, note:'Vibrou? Caminhe na hora.'});
+        one('Aquecimento '+(i+1)+' de 2 · caminhada', 'w', S.walk, tfmt(S.bWalk), {target:S.bWalk});
+      }
       for (i=0;i<cs[0];i++){
         one('Tiro '+(i+1)+' de '+cs[0], 'r', cs[1], '30 s', {target:30, log:['C', i], note:'Teto de FC '+S.top+'. Passou? Corte o tiro.'});
         if (i < cs[0]-1) one('Caminhada', 'w', S.walk, '1min30s', {target:90});
@@ -1535,13 +1540,13 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var lk = lPlanKm(today, st.l), lm = Math.min(TL[st.tl], wholeMin(lk, S));
       one('Aquecimento', 'w', S.walk, '5 min', {target:300});
       one('Trote longo', 'r', S.trote, lm+' min ou FC '+S.longTop, {target:lm*60, log:['L', 0], note:'O que vier antes. Parou? Toque em Terminei e anote a FC.'});
-      one('Caminhada', 'w', S.walk, tfmt(S.lWalk), {target:S.lWalk, note:'Ainda acima de '+S.lBack+'? Mais 1 min.'});
-      it.push({t:'loop', until:'dist', exit:'Fechei os '+lk+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:tfmt(S.lRun)+' · teto FC '+S.lTop, target:S.lRun, note:'Bateu '+S.lTop+'? Caminhe na hora.'}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:tfmt(S.lWalk), target:S.lWalk, note:'Ainda acima de '+S.lBack+'? Mais 1 min.'}});
+      one('Caminhada', 'w', S.walk, tfmt(S.lWalk), {target:S.lWalk, note:'Tempo fixo.'});
+      it.push({t:'loop', until:'dist', exit:'Fechei os '+lk+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:tfmt(S.lRun)+' · teto FC '+S.lTop, target:S.lRun, note:'Vibrou? Caminhe na hora.'}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:tfmt(S.lWalk), target:S.lWalk, note:'Tempo fixo.'}});
     } else if (k === 'R'){
       var rb = st.r;
-      one('Base', 'w', S.walk, rb+'% · até o minuto 7', {target:420, note:'FC acima de '+S.walkHr+'? Baixe a base pra '+Math.max(1, rb-1)+'%.'});
+      one('Base', 'w', S.walk, rb+'% · até o minuto 7', {target:420, note:'Vibrou ('+S.rUp+')? Baixe a base pra '+Math.max(1, rb-1)+'%.'});
       for (i=1;i<=4;i++){
-        one('Subida '+i+' de 4', 'w', S.walk, (rb+4)+'% · 1 min', {target:60, note:'FC acima de '+S.rUp+'? Volte pra '+rb+'% na hora.'});
+        one('Subida '+i+' de 4', 'w', S.walk, (rb+4)+'% · 1 min', {target:60, note:'Vibrou ('+S.rUp+')? Volte pra '+rb+'% na hora.'});
         if (i < 4) one('Base', 'w', S.walk, rb+'% · até o minuto '+(7*(i+1)), {target:360});
       }
       one('Final', 'w', S.walk, rb+'% · até 3 km', {end:1, note:'Sem segurar no corrimão.'});
