@@ -323,3 +323,13 @@ test('L por tempo: trote de 2 min com teto 160, caminhada de 2 min (mais 1 se ac
   assert.deepEqual([lp.a.target, lp.a.cond, lp.b.target, lp.b.cond], [120, '2min · teto FC 160', 120, '2min']);
   assert.deepEqual(t.json('[DEF.lTop, DEF.lRun, DEF.lWalk, DEF.lBack, DEF.longTop]'), [160, 120, 120, 150, 160]);
 });
+
+test('busca no Strava de novo sozinha ao voltar pra página, no máximo a cada 10 min, e só se a busca automática já era permitida', () => {
+  const t = semAgenda('2026-11-12T20:00:00');
+  t.ev('globalThis.__n = 0; mcp = {}; sync = function(){ globalThis.__n++; lastSyncAt = Date.now(); }');
+  t.ev('autoAgain()'); assert.equal(t.ev('__n'), 0, 'sem a permissão confirmada na abertura, não busca');
+  t.ev('autoOk = true; lastSyncAt = Date.now()');
+  t.passa(5 * 60); t.ev('autoAgain()'); assert.equal(t.ev('__n'), 0, '5 min depois: ainda não');
+  t.passa(6 * 60); t.ev('autoAgain()'); assert.equal(t.ev('__n'), 1, '11 min depois: busca');
+  t.ev('autoAgain()'); assert.equal(t.ev('__n'), 1, 'logo em seguida: não repete');
+});

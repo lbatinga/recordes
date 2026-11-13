@@ -585,7 +585,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 
   // ---------- progress: replays every session since the plan started (or since the saved base) ----------
   var logs = loadMap('tdd-log'), logWriting = Promise.resolve();
-  var stats = {}, mcp = null, syncing = false;
+  var stats = {}, mcp = null, syncing = false, lastSyncAt = 0, autoOk = false;
   function keysOf(m){ return Object.keys(m || {}).sort(function(a,b){ return a-b; }); }
   function cnt(st, k, r){
     var n = st.n[k] || (st.n[k] = {ok:0, bad:0});
@@ -1390,7 +1390,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   async function sync(){
     if (syncing) return;
     if (!mcp){ status('Esta tela não consegue falar com o Strava.'); return; }
-    syncing = true; status('Buscando treinos no Strava…');
+    syncing = true; lastSyncAt = Date.now(); status('Buscando treinos no Strava…');
     try {
       var res = await mcp.callTool('Strava', 'list_activities', {range_start:'2026-11-02T00:00:00', first:60});
       var p = payloadOf(res), acts = (p && (p.activities || (p.data && p.data.activities))) || [];
@@ -1484,10 +1484,20 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       mcp = m; if (!m) return;
       return window.claude.use('permissions').then(function(pm){
         if (!pm) return;
-        return pm.state('mcp:Strava').catch(function(){ return 'unavailable'; }).then(function(st){ if (st==='granted') sync(); });
+        return pm.state('mcp:Strava').catch(function(){ return 'unavailable'; }).then(function(st){ if (st==='granted'){ autoOk = true; sync(); } });
       });
     }).catch(function(){});
   }
+
+  // back to the page after a while (or out of the workout mode): look for new workouts again, since the
+  // watch only sends a workout to Strava some minutes after it ends. At most once every 10 minutes.
+  var AUTO_GAP = 10 * 60000;
+  function autoAgain(){
+    if (!autoOk || !mcp || syncing || document.hidden || Date.now() - lastSyncAt < AUTO_GAP) return;
+    sync();
+  }
+  document.addEventListener('visibilitychange', autoAgain);
+  window.addEventListener('focus', autoAgain);
 
   // ---------- workout mode: one step at a time on a full screen; each tap keeps the clock time, so durations come by themselves ----------
   var WK = null, wkOpen = false, wkEdit = null, wkTick = null, wkVib = '';
@@ -1678,7 +1688,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   }
   function wkRender(){
     var el = document.getElementById('wk');
-    if (!WK || !wkOpen){ el.hidden = true; el.textContent = ''; clearInterval(wkTick); wkTick = null; document.body.style.overflow = ''; return; }
+    if (!WK || !wkOpen){ var was = !el.hidden; el.hidden = true; el.textContent = ''; clearInterval(wkTick); wkTick = null; document.body.style.overflow = ''; if (was) autoAgain(); return; }
     el.hidden = false; el.dataset.k = WK.k; el.textContent = ''; document.body.style.overflow = 'hidden';
     var top = wkEl('div', 'wk-top'); top.appendChild(wkEl('b', null, NAMES[WK.k]));
     var tot = wkEl('span', null, ''); tot.id = 'wk-total'; top.appendChild(tot);
