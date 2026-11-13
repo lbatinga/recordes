@@ -211,13 +211,21 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .wk > *{width:100%; max-width:560px; align-self:center; flex-shrink:0}
 .wk-top{display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:12px; font-weight:700; color:var(--muted); font-size:14px; font-variant-numeric:tabular-nums}
 .wk-top b{color:var(--acc); font-family:var(--font-num); font-size:24px; font-weight:800}
-.wk-main{flex:1 0 auto; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:6px; padding-block:8px}
-.wk-lbl{font-size:16px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--acc)}
-.wk-spd{font-family:var(--font-num); font-weight:800; font-size:104px; line-height:.95}
+.wk-main{flex:1 0 auto; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:4px; padding-block:4px}
+.wk-lbl{font-size:20px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--acc)}
+.wk-spd{font-family:var(--font-num); font-weight:800; font-size:64px; line-height:.95}
 .wk-spd small{font-size:28px; color:var(--muted); margin-left:4px}
-.wk-cond{font-family:var(--font-num); font-size:34px; line-height:1.05; font-weight:800; text-wrap:balance}
+.wk-cond{font-family:var(--font-num); font-size:34px; line-height:1.05; font-weight:800; text-wrap:balance; display:flex; flex-direction:column; align-items:center; gap:2px}
+/* the FC limit is what gets read from far away, without glasses: huge, with an arrow and its own colour */
+.wk-fc{display:flex; align-items:center; gap:12px; line-height:.9}
+.wk-fc i{font-style:normal; font-size:34px; display:flex; flex-direction:column; align-items:center; line-height:1}
+.wk-fc i span{font-size:44px}
+.wk-fc b{font-size:128px; font-weight:800; letter-spacing:.02em}
+.wk-fc.up{color:var(--hr)} .wk-fc.down{color:var(--b)}
+.wk.editing .wk-fc b{font-size:72px} .wk.editing .wk-fc i span{font-size:28px}
+.wk-go.wait,.wk-alt.wait{opacity:.45}
 .wk-note{margin:0; font-size:14px; color:var(--muted); font-weight:600; text-wrap:balance; max-width:38ch}
-.wk-clock{font-family:var(--font-num); font-weight:800; font-size:76px; line-height:1; font-variant-numeric:tabular-nums; margin-top:10px}
+.wk-clock{font-family:var(--font-num); font-weight:800; font-size:68px; line-height:1; font-variant-numeric:tabular-nums; margin-top:6px}
 .wk-clock.due,.wk-sub.due{color:var(--hr)}
 .wk-sub{font-size:15px; color:var(--muted); font-weight:700; font-variant-numeric:tabular-nums}
 .wk-next{font-size:14px; color:var(--muted); font-weight:600; margin-top:8px; text-wrap:balance}
@@ -1540,9 +1548,13 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     WK = {k:k, date:today, t0:now, i:0, sub:0, n:0, s:now, segs:[], items:wkItems(k), done:false};
     wkOpen = true; wkEdit = null; wkSave(); wkButtons(); wkRender();
   }
+  // a second tap within 5 s of the last one is taken as the same tap
+  var WK_GAP = 5000, wkLastTap = 0;
   function wkNext(exit){
     if (!WK || WK.done) return;
     var now = Date.now(), cur = wkStepOf(), nx = wkAfter(exit);
+    if (now - wkLastTap < WK_GAP) return;
+    wkLastTap = now;
     WK.segs.push({lbl:cur.lbl, kind:cur.kind, s:WK.s, e:now, i:WK.i, sub:WK.sub, n:WK.n, log:cur.log || null, hr:0});
     WK.i = nx.i; WK.sub = nx.sub; WK.n = nx.n; WK.s = now;
     if (WK.i >= WK.items.length){ WK.done = true; WK.e = now; wkKeep(); }
@@ -1554,7 +1566,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (!WK || !WK.segs.length) return;
     var g = WK.segs.pop();
     if (g.log && g.hr) saveBlock(g.log[0], g.log[1], null);
-    WK.i = g.i; WK.sub = g.sub; WK.n = g.n; WK.s = g.s; WK.done = false; delete WK.e; wkEdit = null;
+    WK.i = g.i; WK.sub = g.sub; WK.n = g.n; WK.s = g.s; WK.done = false; delete WK.e; wkEdit = null; wkLastTap = 0;
     wkSave(); wkButtons(); wkRender();
   }
   function wkDur(g){ return Math.round((g.e - g.s) / 1000); }
@@ -1631,6 +1643,18 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     bt.appendChild(cl); p.appendChild(bt);
     return p;
   }
+  // "até FC 150" → the words small and the number huge; ▲ red when the trote stops as the FC goes up to it, ▼ blue when the walk ends as it comes down
+  function wkCondEl(cur){
+    var box = wkEl('div', 'wk-cond');
+    String(cur.cond).split(/(FC \d+)/).forEach(function(part){
+      var m = /^FC (\d+)$/.exec(part), txt = part.replace(/^\s+|\s+$/g, '');
+      if (!m){ if (txt) box.appendChild(wkEl('span', null, txt)); return; }
+      var up = cur.kind === 'r', fc = wkEl('span', 'wk-fc ' + (up ? 'up' : 'down')), i = wkEl('i');
+      i.appendChild(wkEl('span', null, up ? '▲' : '▼')); i.appendChild(document.createTextNode('FC'));
+      fc.appendChild(i); fc.appendChild(wkEl('b', null, m[1])); box.appendChild(fc);
+    });
+    return box;
+  }
   function wkPaintClock(){
     if (!WK || !wkOpen) return;
     var now = Date.now(), tot = document.getElementById('wk-total'), ck = document.getElementById('wk-clock');
@@ -1680,7 +1704,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var cur = wkStepOf(), main = wkEl('div', 'wk-main');
       main.appendChild(wkEl('div', 'wk-lbl', cur.lbl));
       var sp = wkEl('div', 'wk-spd', kmh(cur.spd)); sp.appendChild(wkEl('small', null, 'km/h')); main.appendChild(sp);
-      main.appendChild(wkEl('div', 'wk-cond', cur.cond));
+      main.appendChild(wkCondEl(cur));
       if (cur.note) main.appendChild(wkEl('div', 'wk-note', cur.note));
       var ck = wkEl('div', 'wk-clock', ''); ck.id = 'wk-clock'; main.appendChild(ck);
       if (cur.target) main.appendChild(wkEl('div', 'wk-sub', 'de '+tfmt(cur.target)));
@@ -1691,6 +1715,13 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var go = wkEl('button', 'wk-go', cur.end ? 'Terminei o treino' : cur.loop ? (WK.sub ? 'Terminei a caminhada' : 'Terminei o trote') : 'Terminei'); go.id = 'wk-go';
       go.addEventListener('click', function(){ wkNext(false); }); el.appendChild(go);
       if (cur.loop){ var alt = wkEl('button', 'wk-alt', cur.loop.exit); alt.id = 'wk-alt'; alt.addEventListener('click', function(){ wkNext(true); }); el.appendChild(alt); }
+      // right after a tap the buttons rest for 5 s, so one tap never counts twice
+      var left = WK_GAP - (Date.now() - wkLastTap);
+      if (left > 0){
+        var lbl = go.textContent, al = document.getElementById('wk-alt');
+        go.classList.add('wait'); go.textContent = 'Registrado'; if (al) al.classList.add('wait');
+        setTimeout(function(){ if (go.isConnected){ go.classList.remove('wait'); go.textContent = lbl; } if (al && al.isConnected) al.classList.remove('wait'); }, left);
+      }
       var f2 = wkEl('div', 'wk-foot'), u2 = wkEl('button', null, 'Desfazer toque'); u2.id = 'wk-undo'; u2.disabled = !last; u2.addEventListener('click', wkUndo); f2.appendChild(u2);
       var aj = wkEl('button', null, last ? 'Ajustar: '+last.lbl+' · '+tfmt(wkDur(last)) : 'Ajustar último'); aj.id = 'wk-adjust'; aj.disabled = !last;
       aj.addEventListener('click', function(){ wkEdit = WK.segs.length - 1; wkRender(); }); f2.appendChild(aj);

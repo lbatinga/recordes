@@ -300,3 +300,17 @@ test('apagar só a FC de um trecho: o trecho e o resto do treino ficam', () => {
   assert.deepEqual(t.json('logs["2026-11-16"].A'), { 1: { hr: 171, dur: 180 } });
   assert.equal(t.ev('WK.segs.length'), 4); assert.equal(t.ev('WK.segs[1].hr'), 0);
 });
+
+test('modo treino: um segundo toque em menos de 5 s é ignorado; depois de 5 s vale', () => {
+  const t = semAgenda('2026-11-12T19:00:00');
+  t.ev('wkStart("L")'); t.passa(300); t.ev('wkNext(false)');
+  t.passa(2); t.ev('wkNext(false)');
+  assert.equal(t.ev('WK.segs.length'), 1, 'o toque duplo não fechou o trote longo');
+  assert.equal(t.ev('wkStepOf().lbl'), 'Trote longo');
+  t.passa(4); t.ev('wkNext(false)');
+  assert.equal(t.ev('WK.segs.length'), 2);
+  assert.equal(t.ev('wkDur(WK.segs[1])'), 6);
+  // desfazer libera o botão na hora
+  t.ev('wkUndo()'); t.passa(1); t.ev('wkNext(false)');
+  assert.equal(t.ev('WK.segs.length'), 2);
+});
