@@ -237,6 +237,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .wk > .lock{text-align:right; margin-top:-6px}
 .wk.editing .wk-spd{font-size:64px} .wk.editing .wk-clock{font-size:52px; margin-top:2px} .wk.editing .wk-note,.wk.editing .wk-next,.wk.editing .wk-sub{display:none}
 .lim em{font-style:normal}
+.pre{margin:0; font-size:15px; line-height:1.4; color:var(--muted); font-weight:600}
+.pre b{color:var(--fg)}
 .wk-list{display:flex; flex-direction:column}
 .wk-done{font-family:var(--font-num); font-weight:800; font-size:40px; color:var(--acc)}
 .wk-list .wk-note{max-width:none; margin:2px 0 10px}
@@ -280,7 +282,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <div class="limit"><div class="lim"><span>Teto de FC</span><b data-s="top">175</b><i>Passou? Encerra o bloco e caminha</i></div></div>
     <div class="banner" id="a-note" hidden></div>
     <div class="steps">
-      <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v" id="a-warm">5,0<span class="u">km/h</span></span><span class="d">5 min</span></div></div>
+      <p class="pre"><b>Antes:</b> veio andando? Mobilidade e começa direto no trote. Veio de bike? 5min a 5,0 numa atividade separada no relógio; depois pare e zere a esteira e comece o treino.</p>
       <div class="rep">
         <div class="rep-h"><b class="reps-n">5×</b><span>Blocos</span></div>
         <p class="lvl" id="lvl-A" hidden></p>
@@ -303,8 +305,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       <div class="lim"><span>Trote por bloco</span><b data-s="bRun">3min</b><i>e <em data-s="bWalk">2min</em> caminhando</i></div>
     </div>
     <div class="steps">
-      <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">5 min</span></div>
-        <div class="note">Velocidade fixa.</div></div>
+      <p class="pre"><b>Antes:</b> veio andando? Mobilidade e começa direto no trote. Veio de bike? 5min a 5,0 numa atividade separada no relógio; depois pare e zere a esteira e comece o treino.</p>
       <div class="rep">
         <div class="rep-h"><b id="b-km">Até 5 km</b><span>Repete</span></div>
         <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" data-s="bRun">3min</span></div>
@@ -348,7 +349,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       <div class="lim"><span>Trote por bloco</span><b data-s="lRun">2min</b><i>e <em data-s="lWalk">2min</em> caminhando</i></div>
     </div>
     <div class="steps">
-      <div class="step"><span class="lbl">Aquecimento</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">5 min</span></div></div>
+      <p class="pre"><b>Antes:</b> veio andando? Mobilidade e começa direto no trote. Veio de bike? 5min a 5,0 numa atividade separada no relógio; depois pare e zere a esteira e comece o treino.</p>
       <div class="step run"><span class="lbl">Trote longo · 1º trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" id="l-long">5 min</span></div>
         <div class="note" id="l-long-note">Ou até a FC chegar a <b><span data-s="longTop">160</span></b>, o que vier antes. Depois, caminhada de <span data-s="lWalk">2min</span> e segue o resto.</div>
         <p class="lvl" id="lvl-L" hidden></p>
@@ -487,20 +488,20 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   var C_ST = [[6,9.0],[7,9.0],[8,9.0],[6,9.5],[7,9.5],[8,9.5],[6,10.0],[7,10.0],[8,10.0]];   // [sprints, km/h], 30 s each
   var R_MIN = 2, R_MAX = 4, L_MIN_KM = 4, L_MAX1 = 8, L_MAX2 = 10;
   var START = {tl:2, l:5, a:0, c:0, r:3, p2:false, best:0};
-  function wholeMin(lkm, S){ return Math.max(1, Math.floor((lkm - S.walk*5/60) / S.trote * 60)); }
+  function wholeMin(lkm, S){ return Math.max(1, Math.floor(lkm / S.trote * 60)); }
   // L distance: the step, but at most 5 km in the 5 days before a race
   function lPlanKm(d, lkm){ var r = raceSoon(d, 'l'); return r ? Math.min(lkm, tier(r) === 'L' ? 6 : 5) : lkm; }
-  function lEst(lkm, lm, S){ var run = lm * S.trote / 60, rest = Math.max(0, lkm - S.walk*5/60 - run); return Math.round(5 + lm + rest / ((S.trote + S.walk) / 2) * 60); }
+  function lEst(lkm, lm, S){ var run = lm * S.trote / 60, rest = Math.max(0, lkm - run); return Math.round(lm + rest / ((S.trote + S.walk) / 2) * 60); }
   // B distance: 4 km in the 5 days before a race, 5 km otherwise.
   function bKm(d){ return raceSoon(d, 'b') ? 4 : 5; }
-  function bEst(km){ return Math.round(km / 5.85 * 60); }
+  function bEst(km){ return Math.round(km / 5.9 * 60); }
   function aVariant(d, t){
     if (t==='A3') return 'light';
     if (t!=='A') return 'normal';
     return preRace(d) ? 'fast' : 'normal';
   }
   // distance and time of an A or C: warm-up, blocks with 1:30 walking, then walking up to a whole km (at least 3)
-  function aShape(n, spd, min, S){ var dist = S.walk*5/60 + n*(spd*min/60 + S.walk*1.5/60), km = Math.max(3, Math.ceil(dist - 0.05)); return {km:km, min:Math.round(5 + n*(min+1.5) + Math.max(0, km-dist)/S.walk*60)}; }
+  function aShape(n, spd, min, S){ var dist = n*(spd*min/60 + S.walk*1.5/60), km = Math.max(3, Math.ceil(dist - 0.05)); return {km:km, min:Math.round(n*(min+1.5) + Math.max(0, km-dist)/S.walk*60)}; }
   function cShape(n, spd, S){ var dist = 10*(S.trote+S.walk)/2/60 + n*(spd*0.5/60 + S.walk*1.5/60), km = Math.max(3, Math.ceil(dist - 0.05)); return {km:km, min:Math.round(10 + n*2 + Math.max(0, km-dist)/S.walk*60)}; }
 
   // Strength: after the run on B and C days (the next day is always R), never after A or L; no legs in the 6 days before a race.
@@ -901,7 +902,6 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     var aDay = firstOf(plan, end, function(x){ return x==='A' || x==='A3'; }), stA = stFor(aDay), av = aVariant(aDay, plan[aDay]);
     var aSt = A_ST[stA.a], aSpd = av === 'normal' ? aSt[0] : S.race, aMin = av === 'normal' ? aSt[1] : S.raceRun, aN = plan[aDay]==='A3' ? 3 : 5;
     var aSh = aShape(aN, aSpd, aMin, S), pr = av === 'fast' ? preRace(aDay) : raceSoon(aDay, 'b');
-    setV('a-warm', kmh(S.walk), 'km/h');
     setV('a-trote', kmh(aSpd), av==='light' ? 'km/h · 1%' : 'km/h');
     setV('a-walk', kmh(S.walk), 'km/h');
     setV('a-final', kmh(S.walk), 'km/h');
@@ -1515,7 +1515,6 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     function one(lbl, kind, spd, cond, o){ it.push(Object.assign({t:'one', lbl:lbl, kind:kind, spd:spd, cond:cond}, o || {})); }
     if (k === 'A'){
       var av = aVariant(today, plan === 'A3' ? 'A3' : 'A'), sp = av === 'normal' ? A_ST[st.a][0] : S.race, mn = av === 'normal' ? A_ST[st.a][1] : S.raceRun, n = plan === 'A3' ? 3 : 5;
-      one('Aquecimento', 'w', S.walk, '5 min', {target:300});
       for (i=0;i<n;i++){
         one('Bloco '+(i+1)+' de '+n+' · trote', 'r', sp, mn+' min'+(av === 'light' ? ' · 1% de inclinação' : ''), {target:mn*60, log:['A', i], note:'Teto de FC '+S.top+'. Passou? Encerre o bloco e caminhe.'});
         if (i < n-1) one('Caminhada', 'w', S.walk, '1min30s', {target:90});
@@ -1523,7 +1522,6 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       one('Final', 'w', S.walk, 'até '+aShape(n, sp, mn, S).km+' km', {end:1});
     } else if (k === 'B'){
       var km = bKm(today);
-      one('Aquecimento', 'w', S.walk, '5 min', {target:300, note:'Velocidade fixa.'});
       it.push({t:'loop', until:'dist', exit:'Fechei os '+km+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:tfmt(S.bRun)+' · teto FC '+S.bTop, target:S.bRun, note:'Vibrou? Caminhe na hora.'}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:tfmt(S.bWalk), target:S.bWalk, note:'Tempo fixo.'}});
     } else if (k === 'C'){
       var cs = C_ST[st.c];
@@ -1538,7 +1536,6 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       one('Final', 'w', S.walk, 'até '+cShape(cs[0], cs[1], S).km+' km', {end:1});
     } else if (k === 'L'){
       var lk = lPlanKm(today, st.l), lm = Math.min(TL[st.tl], wholeMin(lk, S));
-      one('Aquecimento', 'w', S.walk, '5 min', {target:300});
       one('Trote longo', 'r', S.trote, lm+' min ou FC '+S.longTop, {target:lm*60, log:['L', 0], note:'O que vier antes. Parou? Toque em Terminei e anote a FC.'});
       one('Caminhada', 'w', S.walk, tfmt(S.lWalk), {target:S.lWalk, note:'Tempo fixo.'});
       it.push({t:'loop', until:'dist', exit:'Fechei os '+lk+' km', a:{lbl:'Trote', kind:'r', spd:S.trote, cond:tfmt(S.lRun)+' · teto FC '+S.lTop, target:S.lRun, note:'Vibrou? Caminhe na hora.'}, b:{lbl:'Caminhada', kind:'w', spd:S.walk, cond:tfmt(S.lWalk), target:S.lWalk, note:'Tempo fixo.'}});
@@ -1566,10 +1563,23 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (it && it.t === 'loop' && !exit) return WK.sub ? {i:WK.i, sub:0, n:WK.n+1} : {i:WK.i, sub:1, n:WK.n};
     return {i:WK.i+1, sub:0, n:0};
   }
-  function wkStart(k){
+  // A, B and L ask first how he got to the gym: walking is already the warm-up; by e-bike, 5 min on the
+  // treadmill as a separate activity, then the treadmill is stopped and zeroed and the workout starts.
+  // Neither the warm-up nor the switch count in the workout's times.
+  function wkStart(k, mode){
     if (logDay !== today) setLogDay(today);
-    var now = Date.now();
-    WK = {k:k, date:today, t0:now, i:0, sub:0, n:0, s:now, segs:[], items:wkItems(k), done:false};
+    if (!mode && (k === 'A' || k === 'B' || k === 'L')){
+      WK = {k:k, date:today, ask:true, t0:Date.now(), i:0, sub:0, n:0, s:Date.now(), segs:[], items:[], done:false};
+      wkOpen = true; wkEdit = null; wkSave(); wkButtons(); wkRender(); return;
+    }
+    var now = Date.now(), items = wkItems(k);
+    if (mode === 'bike'){
+      var S = setAt(today);
+      items = [{t:'one', lbl:'Aquecimento · fora do treino', kind:'a', spd:S.walk, cond:'5 min', target:300, note:'Grave à parte no relógio.'},
+               {t:'one', lbl:'Agora o treino', kind:'p', cond:'Pare e zere a esteira. Comece o treino no relógio.', note:'Toque em Começar quando o primeiro trote começar.'}].concat(items);
+    }
+    if (mode) store('tdd-arrive', mode);
+    WK = {k:k, date:today, t0:now, i:0, sub:0, n:0, s:now, segs:[], items:items, done:false};
     wkOpen = true; wkEdit = null; wkSave(); wkButtons(); wkRender();
   }
   // a second tap within 5 s of the last one is taken as the same tap
@@ -1579,7 +1589,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     var now = Date.now(), cur = wkStepOf(), nx = wkAfter(exit);
     if (now - wkLastTap < WK_GAP) return;
     wkLastTap = now;
-    WK.segs.push({lbl:cur.lbl, kind:cur.kind, s:WK.s, e:now, i:WK.i, sub:WK.sub, n:WK.n, log:cur.log || null, hr:0});
+    WK.segs.push({lbl:cur.lbl, kind:cur.kind, s:WK.s, e:now, i:WK.i, sub:WK.sub, n:WK.n, log:cur.log || null, hr:0, t0:WK.t0});
+    if (cur.kind === 'p') WK.t0 = now;
     WK.i = nx.i; WK.sub = nx.sub; WK.n = nx.n; WK.s = now;
     if (WK.i >= WK.items.length){ WK.done = true; WK.e = now; wkKeep(); }
     wkEdit = cur.log ? WK.segs.length - 1 : null;
@@ -1591,6 +1602,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     var g = WK.segs.pop();
     if (g.log && g.hr) saveBlock(g.log[0], g.log[1], null);
     WK.i = g.i; WK.sub = g.sub; WK.n = g.n; WK.s = g.s; WK.done = false; delete WK.e; wkEdit = null; wkLastTap = 0;
+    if (g.t0) WK.t0 = g.t0;
     wkSave(); wkButtons(); wkRender();
   }
   function wkDur(g){ return Math.round((g.e - g.s) / 1000); }
@@ -1620,7 +1632,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   // the whole session goes with the day's notes: [kind, seconds, FC] for each stretch
   function wkKeep(){
     var day = Object.assign({}, logs[today] || {});
-    day.W = {k:WK.k, segs:WK.segs.map(function(g){ return [g.kind, wkDur(g), g.hr || 0]; })};
+    day.W = {k:WK.k, segs:WK.segs.filter(function(g){ return g.kind !== 'a' && g.kind !== 'p'; }).map(function(g){ return [g.kind, wkDur(g), g.hr || 0]; })};
     logs[today] = day; persistLog(today);
   }
   // discarding also removes what this session wrote in the day's notes
@@ -1682,7 +1694,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function wkPaintClock(){
     if (!WK || !wkOpen) return;
     var now = Date.now(), tot = document.getElementById('wk-total'), ck = document.getElementById('wk-clock');
-    if (tot) tot.textContent = 'total '+wkClock((WK.done ? WK.e : now) - WK.t0);
+    var pre = !WK.done && !WK.ask && /^[ap]$/.test((wkStepOf() || {}).kind || '');
+    if (tot) tot.textContent = pre ? 'antes do treino' : 'total '+wkClock((WK.done ? WK.e : now) - WK.t0);
     if (!ck || WK.done) return;
     var cur = wkStepOf(), el = now - WK.s;
     ck.textContent = wkClock(el);
@@ -1706,6 +1719,19 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     el.appendChild(top);
     var lk = wkEl('div', 'lock' + (wl ? ' on' : ''), wl ? 'Tela sempre ligada' : 'Tela pode apagar'); lk.id = 'wk-lock'; el.appendChild(lk);
     el.classList.toggle('editing', wkEdit != null && !!WK.segs[wkEdit]);
+    if (WK.ask){
+      var q = wkEl('div', 'wk-main'), prev = store('tdd-arrive');
+      q.appendChild(wkEl('div', 'wk-lbl', 'Antes de começar'));
+      q.appendChild(wkEl('div', 'wk-cond', 'Como você chegou?'));
+      q.appendChild(wkEl('div', 'wk-note', 'A pé, a caminhada já foi o aquecimento. De bike, aqueça 5 min na esteira antes, fora do treino.'));
+      el.appendChild(q);
+      [['walk', 'Andando'], ['bike', 'De bike']].forEach(function(o){
+        var b = wkEl('button', o[0] === prev ? 'wk-go' : 'wk-alt', o[1]); b.id = 'wk-arrive-' + o[0];
+        b.addEventListener('click', function(){ wkStart(WK.k, o[0]); });
+        el.appendChild(b);
+      });
+      lock(); return;
+    }
     if (wkEdit != null && WK.segs[wkEdit]) el.appendChild(wkEditor(wkEdit));
     var last = WK.segs[WK.segs.length - 1];
     if (WK.done){
@@ -1727,16 +1753,17 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     } else {
       var cur = wkStepOf(), main = wkEl('div', 'wk-main');
       main.appendChild(wkEl('div', 'wk-lbl', cur.lbl));
-      var sp = wkEl('div', 'wk-spd', kmh(cur.spd)); sp.appendChild(wkEl('small', null, 'km/h')); main.appendChild(sp);
+      if (cur.spd != null){ var sp = wkEl('div', 'wk-spd', kmh(cur.spd)); sp.appendChild(wkEl('small', null, 'km/h')); main.appendChild(sp); }
       main.appendChild(wkCondEl(cur));
       if (cur.note) main.appendChild(wkEl('div', 'wk-note', cur.note));
       var ck = wkEl('div', 'wk-clock', ''); ck.id = 'wk-clock'; main.appendChild(ck);
       if (cur.target) main.appendChild(wkEl('div', 'wk-sub', 'de '+tfmt(cur.target)));
       if (cur.loop && cur.loop.until === 'time'){ var pt = wkEl('div', 'wk-sub', ''); pt.id = 'wk-part'; main.appendChild(pt); }
       var nx = wkAfter(false), nxt = wkAt(nx.i, nx.sub, nx.n);
-      main.appendChild(wkEl('div', 'wk-next', nxt ? 'Depois: '+nxt.lbl+' · '+kmh(nxt.spd)+' km/h · '+nxt.cond : 'Depois: fim do treino'));
+      main.appendChild(wkEl('div', 'wk-next', nxt ? 'Depois: '+nxt.lbl+(nxt.spd != null ? ' · '+kmh(nxt.spd)+' km/h · '+nxt.cond : '') : 'Depois: fim do treino'));
       el.appendChild(main);
       var go = wkEl('button', 'wk-go', cur.end ? 'Terminei o treino' : cur.loop ? (WK.sub ? 'Terminei a caminhada' : 'Terminei o trote') : 'Terminei'); go.id = 'wk-go';
+      if (cur.kind === 'p') go.textContent = 'Começar o treino';
       go.addEventListener('click', function(){ wkNext(false); }); el.appendChild(go);
       if (cur.loop){ var alt = wkEl('button', 'wk-alt', cur.loop.exit); alt.id = 'wk-alt'; alt.addEventListener('click', function(){ wkNext(true); }); el.appendChild(alt); }
       // right after a tap the buttons rest for 5 s, so one tap never counts twice
