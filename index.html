@@ -1006,7 +1006,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-14a';
+  var APP_VER = '2026-11-14b';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -1369,12 +1369,16 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var n = time.length;
     var out = {};
     var total = dist[n - 1] - dist[0];
+    // Half a metre of slack: a treadmill run adjusted to exactly 5,00 km is scaled to 4999,97 m by rounding
+    // and would lose its 5 km time.
+    var TOL = 0.5;
     DISTS.forEach(function(D){
-      if (total < D.m) return;
+      if (total < D.m - TOL) return;
       var best = Infinity, i = 0;
       for (var j = 1; j < n; j++) {
         var target = dist[j] - D.m;
-        if (target < dist[0]) continue;
+        if (target < dist[0] - TOL) continue;
+        if (target < dist[0]) target = dist[0];
         while (i + 1 < j && dist[i + 1] <= target) i++;
         var d0 = dist[i], d1 = dist[i + 1], t0 = time[i], t1 = time[i + 1];
         var tStart = d1 > d0 ? t0 + (target - d0) / (d1 - d0) * (t1 - t0) : t0;
@@ -3722,6 +3726,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (d.noStreams || failedToday(d)) return false;
       if (s.race && !d.splits && !d.noSplits) return true;
       if (s.env === 'esteira' && (d.tn !== 1 || d.tgt !== treadTarget(s))) return true;
+      // treadmill run of a round distance whose time for that distance was lost to rounding (fixed 14/11/2026)
+      if (s.env === 'esteira' && d.tgt && DISTS.some(function(D){ return Math.abs(D.m - d.tgt) < 1 && !(d.efforts && d.efforts[D.k]); })) return true;
       if (s.env === 'rua' && !s.walk && d.trot == null) return true;
       if (d.v === ALGO) return false;
       return (s.gpsMeters || s.meters) >= 4828;

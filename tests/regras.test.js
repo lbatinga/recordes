@@ -636,3 +636,13 @@ test('[M1][M2][B2][B4] formatos: segundos sozinhos, km com 2 casas cortadas, mei
   assert.equal(app.ev('fmtChip(1755.72)'), '29min15,72s');
   assert.equal(app.ev('parseChip(fmtChip(4008.57))'), 4008.57);
 });
+
+test('esteira ajustada pra exatamente 5,00 km: o tempo dos 5 km não some por arredondamento (14/11/2026)', () => {
+  const app = loadApp('2026-11-14T13:00:00');
+  // gravação de 5267 m, 3136 s, escalada pra 5000 m com o fator arredondado (0,9493) que o app guarda
+  const n = 3137, time = [], dist = [];
+  for (let i = 0; i < n; i++) { time.push(i); dist.push(i * 5267 / 3136 * 0.9493); }
+  const ef = app.json('bestEfforts(' + JSON.stringify(time) + ', ' + JSON.stringify(dist) + ')');
+  assert.ok(dist[n - 1] < 5000, 'o cenário precisa terminar abaixo de 5000 m');
+  assert.ok(ef['5000'] > 3130 && ef['5000'] <= 3136, 'tempo dos 5 km: ' + ef['5000']);
+});
