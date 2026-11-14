@@ -646,3 +646,26 @@ test('esteira ajustada pra exatamente 5,00 km: o tempo dos 5 km não some por ar
   assert.ok(dist[n - 1] < 5000, 'o cenário precisa terminar abaixo de 5000 m');
   assert.ok(ef['5000'] > 3130 && ef['5000'] <= 3136, 'tempo dos 5 km: ' + ef['5000']);
 });
+
+test('esteira com distância aumentada no relógio: o salto no fim da gravação não gera tempo falso (14/11/2026)', () => {
+  const app = loadApp('2026-11-14T15:00:00');
+  // A de 10/11: a gravação vai até 2845 m em 1736 s e salta pra 3000 m em 3 s; distância confirmada: 3000 m
+  const time = [], dist = [];
+  for (let i = 0; i <= 1736; i++) { time.push(i); dist.push(i * 2845 / 1736); }
+  time.push(1739); dist.push(3000);
+  const r = app.json('(function(st){ var f = treadFit(st, 3000, {painel: 0, gpsMeters: 3000}); return {f: f, ef: bestEfforts(st.time, st.dist)}; })(' + JSON.stringify({ time, dist }) + ')');
+  assert.equal(r.f.tread.jump, 155);
+  assert.equal(r.f.tread.sm, 2845);
+  // ritmo uniforme de 3000 m em 1739 s: 1 km em ~580 s (antes saía 8min34s por causa do salto)
+  assert.ok(r.ef['1000'] > 575 && r.ef['1000'] < 585, '1 km: ' + r.ef['1000']);
+  assert.ok(r.ef['3000'] > 1735, '3 km: ' + r.ef['3000']);
+});
+
+test('esteira sem salto no fim: nada muda', () => {
+  const app = loadApp('2026-11-14T15:00:00');
+  const time = [], dist = [];
+  for (let i = 0; i <= 2463; i++) { time.push(i); dist.push(i * 4000 / 2463); }
+  const r = app.json('(function(st){ var f = treadFit(st, 4000, {painel: 0, gpsMeters: 4000}); return {f: f, ef: bestEfforts(st.time, st.dist)}; })(' + JSON.stringify({ time, dist }) + ')');
+  assert.deepEqual([r.f.pf, r.f.tread.jump], [1, 0]);
+  assert.ok(Math.abs(r.ef['4000'] - 2463) < 1);
+});

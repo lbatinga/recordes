@@ -1006,7 +1006,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-14b';
+  var APP_VER = '2026-11-14c';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -3711,6 +3711,34 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      distance does (the total is fixed on the watch at the end, or the panel is entered here).
      The stream is stretched to end exactly at that distance, so the stretches agree with it. */
   function treadTarget(s){ return Math.round(s.painel > 0 ? s.painel * 1000 : s.gpsMeters); }
+  /* When the distance is raised on the watch at the end of a treadmill run, the watch adds the whole
+     difference as a jump in the last second of the recording (2.845 m -> 3.000 m in 3 s). Left there,
+     any stretch that ends at the finish gets those metres for free and the times turn out too fast.
+     The jump is flattened (anything over 5 m/s, 18 km/h, is not running) and the difference is spread
+     over the whole run, like when the watch measures too much. Fixed 14/11/2026. */
+  var JUMP_MS = 5;
+  function dropEndJump(time, dist){
+    var n = dist.length, k = n - 1, jump = 0;
+    while (k > 0 && n - 1 - k < 3) {
+      var dd = dist[k] - dist[k - 1], dt = Math.max(1, time[k] - time[k - 1]);
+      if (dd / dt <= JUMP_MS) break;
+      jump += dd; k--;
+    }
+    for (var i = k + 1; i < n; i++) dist[i] = dist[k];
+    return jump;
+  }
+  function treadFit(st, tgt, s){
+    var jump = dropEndJump(st.time, st.dist);
+    var sm = st.dist[st.dist.length - 1] - st.dist[0], pf = 1, tread = null;
+    if (sm > 0 && tgt > 0) {
+      pf = Math.round(tgt / sm * 10000) / 10000;
+      if (Math.abs(pf - 1) < 0.002) pf = 1;
+      // The watch's total differs from its own stream: the distance was confirmed at the end.
+      tread = { tn: 1, j: 1, jump: Math.round(jump), tgt: tgt, sm: Math.round(sm), cal: !(s.painel > 0) && s.gpsMeters > 0 && Math.abs(sm - s.gpsMeters) / s.gpsMeters > 0.02 };
+    }
+    if (pf !== 1) { var d0 = st.dist[0]; st.dist = st.dist.map(function(x){ return d0 + (x - d0) * pf; }); }
+    return { pf: pf, tread: tread };
+  }
   var rateWait = false;
   /* Strava's rate limit is shared by everyone, so a recording that could not be read is not asked
      for again right away: the doc keeps the time of the failure (failAt) and the run only goes back
@@ -3725,7 +3753,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (!d) return true;
       if (d.noStreams || failedToday(d)) return false;
       if (s.race && !d.splits && !d.noSplits) return true;
-      if (s.env === 'esteira' && (d.tn !== 1 || d.tgt !== treadTarget(s))) return true;
+      if (s.env === 'esteira' && (d.tn !== 1 || d.j !== 1 || d.tgt !== treadTarget(s))) return true;
       // treadmill run of a round distance whose time for that distance was lost to rounding (fixed 14/11/2026)
       if (s.env === 'esteira' && d.tgt && DISTS.some(function(D){ return Math.abs(D.m - d.tgt) < 1 && !(d.efforts && d.efforts[D.k]); })) return true;
       if (s.env === 'rua' && !s.walk && d.trot == null) return true;
@@ -3745,16 +3773,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var ex = effortDocs[s.id];
         var keepOld = ex && ex.efforts && Object.keys(ex.efforts).length;
         var pf = 1, tread = null;
-        if (st && s.env === 'esteira') {
-          var sm = st.dist[st.dist.length - 1] - st.dist[0], tgt = treadTarget(s);
-          if (sm > 0 && tgt > 0) {
-            pf = Math.round(tgt / sm * 10000) / 10000;
-            if (Math.abs(pf - 1) < 0.002) pf = 1;
-            // The watch's total differs from its own stream: the distance was confirmed at the end.
-            tread = { tn: 1, tgt: tgt, sm: Math.round(sm), cal: !(s.painel > 0) && s.gpsMeters > 0 && Math.abs(sm - s.gpsMeters) / s.gpsMeters > 0.02 };
-          }
-        }
-        if (st && pf !== 1) { var d0 = st.dist[0]; st.dist = st.dist.map(function(x){ return d0 + (x - d0) * pf; }); }
+        if (st && s.env === 'esteira') { var tr = treadFit(st, treadTarget(s), s); pf = tr.pf; tread = tr.tread; }
         var nd = st ? Object.assign({ v: ALGO, efforts: bestEfforts(st.time, st.dist), trot: longestTrot(st.time, st.dist), pf: pf }, tread || {})
           : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 }, failAt: Date.now() }) : { v: ALGO, efforts: {}, noStreams: true });
         if (st && s.race) { var sp = splitsFrom(st.time, st.dist); nd.splits = sp.splits; nd.half = sp.half; }
