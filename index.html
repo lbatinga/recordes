@@ -1006,7 +1006,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-14c';
+  var APP_VER = '2026-11-14d';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -3716,7 +3716,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      any stretch that ends at the finish gets those metres for free and the times turn out too fast.
      The jump is flattened (anything over 5 m/s, 18 km/h, is not running) and the difference is spread
      over the whole run, like when the watch measures too much. Fixed 14/11/2026. */
-  var JUMP_MS = 5;
+  var JUMP_MS = 5, PF_MAX = 1.25;
   function dropEndJump(time, dist){
     var n = dist.length, k = n - 1, jump = 0;
     while (k > 0 && n - 1 - k < 3) {
@@ -3736,6 +3736,9 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       // The watch's total differs from its own stream: the distance was confirmed at the end.
       tread = { tn: 1, j: 1, jump: Math.round(jump), tgt: tgt, sm: Math.round(sm), cal: !(s.painel > 0) && s.gpsMeters > 0 && Math.abs(sm - s.gpsMeters) / s.gpsMeters > 0.02 };
     }
+    // Recording far from the confirmed distance (the watch measured 925 m of a 2,85 km walk): it can't be
+    // stretched evenly, because the watch didn't lose distance evenly. No times from it at all.
+    if (tread && (pf > PF_MAX || pf < 1 / PF_MAX)) { tread.bad = 1; return { pf: 1, tread: tread }; }
     if (pf !== 1) { var d0 = st.dist[0]; st.dist = st.dist.map(function(x){ return d0 + (x - d0) * pf; }); }
     return { pf: pf, tread: tread };
   }
@@ -3754,6 +3757,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (d.noStreams || failedToday(d)) return false;
       if (s.race && !d.splits && !d.noSplits) return true;
       if (s.env === 'esteira' && (d.tn !== 1 || d.j !== 1 || d.tgt !== treadTarget(s))) return true;
+      if (s.env === 'esteira' && !d.bad && d.tgt && d.sm && (d.tgt / d.sm > PF_MAX || d.tgt / d.sm < 1 / PF_MAX)) return true;
       // treadmill run of a round distance whose time for that distance was lost to rounding (fixed 14/11/2026)
       if (s.env === 'esteira' && d.tgt && DISTS.some(function(D){ return Math.abs(D.m - d.tgt) < 1 && !(d.efforts && d.efforts[D.k]); })) return true;
       if (s.env === 'rua' && !s.walk && d.trot == null) return true;
@@ -3774,7 +3778,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var keepOld = ex && ex.efforts && Object.keys(ex.efforts).length;
         var pf = 1, tread = null;
         if (st && s.env === 'esteira') { var tr = treadFit(st, treadTarget(s), s); pf = tr.pf; tread = tr.tread; }
-        var nd = st ? Object.assign({ v: ALGO, efforts: bestEfforts(st.time, st.dist), trot: longestTrot(st.time, st.dist), pf: pf }, tread || {})
+        var bad = !!(tread && tread.bad);
+        var nd = st ? Object.assign({ v: ALGO, efforts: bad ? {} : bestEfforts(st.time, st.dist), trot: bad ? { t: 0, m: 0 } : longestTrot(st.time, st.dist), pf: pf }, tread || {})
           : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 }, failAt: Date.now() }) : { v: ALGO, efforts: {}, noStreams: true });
         if (st && s.race) { var sp = splitsFrom(st.time, st.dist); nd.splits = sp.splits; nd.half = sp.half; }
         // A treadmill recording with no usable distance can't be stretched: don't ask for it again today.

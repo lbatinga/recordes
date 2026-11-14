@@ -669,3 +669,14 @@ test('esteira sem salto no fim: nada muda', () => {
   assert.deepEqual([r.f.pf, r.f.tread.jump], [1, 0]);
   assert.ok(Math.abs(r.ef['4000'] - 2463) < 1);
 });
+
+test('esteira com gravação muito longe da distância confirmada (relógio mediu 925 m de 2,85 km): sem tempos por distância', () => {
+  const app = loadApp('2026-11-14T15:00:00');
+  const time = [], dist = [];
+  for (let i = 0; i <= 2058; i++) { time.push(i); dist.push(i * 925 / 2058); }
+  time.push(2059); dist.push(1390);
+  const r = app.json('(function(st){ return treadFit(st, 2850, {painel: 2.85, gpsMeters: 1390}); })(' + JSON.stringify({ time, dist }) + ')');
+  assert.equal(r.tread.bad, 1);
+  assert.equal(r.pf, 1);
+  assert.equal(r.tread.jump, 465);
+});
