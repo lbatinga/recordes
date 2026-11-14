@@ -383,3 +383,9 @@ test('sem aquecimento no treino: A fecha 3 km só com os blocos e a caminhada fi
   assert.deepEqual(t.json('aShape(5, 7.5, 3, setAt(today))'), { km: 3, min: 29 });
   assert.equal(t.ev('bEst(5)'), 51);
 });
+
+test('distância corrigida depois: o treino é lido de novo (R de 13/11: 1 km no Strava, 2,85 km no painel)', () => {
+  const t = semAgenda('2026-11-14T18:30:00');
+  assert.equal(t.ev('kmOf({distance: 2850})'), 2);
+  assert.equal(t.ev('kmOf({distance: 1390})'), 1);
+});

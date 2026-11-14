@@ -1291,7 +1291,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function analyze(type, st, sum, date){
     var S = setAt(date);
     var t = st.time||[], hr = st.heart_rate||[], v = st.velocity_smooth||[];
-    var out = {km: Math.floor(((sum.distance||0) + 100) / 1000 + 1e-9), time: Math.round(sum.moving_time||0)};
+    var out = {km: kmOf(sum), time: Math.round(sum.moving_time||0)};
     if (!t.length || !hr.length) return out;
     if (type==='B' || type==='L'){
       var lim = type==='B' ? S.bTop : S.lTop;
@@ -1391,6 +1391,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function payloadOf(r){ return r && (r.payload !== undefined ? r.payload : r); }
   // a run counts as a workout with 2 km or 20 min: a loose warm-up does not, but a treadmill session
   // whose distance the watch got wrong (an R of 34 min marked as 1,39 km) still does
+  function kmOf(sum){ return Math.floor(((sum.distance||0) + 100) / 1000 + 1e-9); }
   function isWorkout(sp, sm){
     return ['Run','VirtualRun','TrailRun'].indexOf(sp) >= 0 && ((sm.distance||0) >= 2000 || (sm.moving_time||0) >= 1200);
   }
@@ -1408,7 +1409,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         var d = String(a.start_local || a.start_date_local || '').slice(0,10); if (!d || d < '2026-11-02' || d < oldest) return;
         if (!byDay[d] || (sm.distance||0) > (byDay[d].summary.distance||0)) byDay[d] = {id:String(a.id), summary:sm, date:d};
       });
-      var todo = Object.keys(byDay).map(function(d){ return byDay[d]; }).filter(function(a){ return !stats[a.id]; }).slice(0, 8);
+      var todo = Object.keys(byDay).map(function(d){ return byDay[d]; }).filter(function(a){ var o = stats[a.id]; return !o || (o.km != null && o.km !== kmOf(a.summary || {})); }).slice(0, 8); // new, or its distance was corrected since
       for (var i=0;i<todo.length;i++){
         var a = todo[i], type = typeOn(a.date), doc;
         if (type==='X') doc = {date:a.date, type:'X'};

@@ -680,3 +680,13 @@ test('esteira com gravação muito longe da distância confirmada (relógio medi
   assert.equal(r.pf, 1);
   assert.equal(r.tread.jump, 465);
 });
+
+test('Treino do dia recebe a distância corrigida no Recordes (painel da esteira)', () => {
+  const app = loadApp('2026-11-14T18:30:00');
+  app.ev('PAINEL = {"20976910441": 2.85}; KM_OVERRIDE = {}');
+  const a = app.json('coachDist({id: "20976910441", summary: {distance: 1390, moving_time: 2059}})');
+  assert.equal(a.summary.distance, 2850);
+  assert.equal(a.summary.moving_time, 2059);
+  const b = app.json('coachDist({id: "1", summary: {distance: 5000}})');
+  assert.equal(b.summary.distance, 5000);
+});
