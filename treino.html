@@ -136,6 +136,11 @@ summary{cursor:pointer; list-style:none; padding:14px 0; font-weight:700; displa
 summary::-webkit-details-marker{display:none}
 summary::after{content:"+"; font-family:var(--font-num); font-size:28px; line-height:1; color:var(--muted)}
 details[open] summary::after{content:"–"}
+details.manual{background:transparent; border:2px dashed var(--line); border-radius:14px; padding:0 14px}
+details.manual summary{padding:12px 0; color:var(--muted); font-size:15px; gap:10px}
+details.manual summary small{display:block; font-weight:600; font-size:13px}
+details.manual[open]{padding-bottom:12px}
+details.manual .chips{margin-top:6px}
 details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:column; gap:8px; font-size:15px}
 .cal{display:flex; flex-direction:column; margin:0 0 10px; font-size:15px; font-variant-numeric:tabular-nums}
 .row{display:grid; grid-template-columns:72px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:52px; border-top:1px solid var(--line)}
@@ -291,10 +296,12 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         <p class="lvl" id="lvl-A" hidden></p>
         <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v" id="a-trote">6,5<span class="u">km/h</span></span><span class="d" id="a-dur">3 min</span></div></div>
         <div class="step"><span class="lbl" id="a-walk-l">Caminhada</span><div class="big"><span class="v" id="a-walk">5,0<span class="u">km/h</span></span><span class="d">1min30s</span></div></div>
-        <div class="chips-cap">Toque no bloco que terminou</div>
-        <div class="chips" data-reps="5"></div>
       </div>
       <div class="step"><span class="lbl">Final</span><div class="big"><span class="v" id="a-final">5,0<span class="u">km/h</span></span><span class="d" id="a-final-d">até 3 km</span></div></div>
+      <details class="manual"><summary><span>Anotar à mão<small>se treinou sem o Começar treino</small></span></summary>
+        <div class="chips-cap">Toque no bloco e anote a FC do relógio e a duração</div>
+        <div class="chips" data-reps="5"></div>
+      </details>
     </div>
     <div class="watch" id="a-watch">⌚ Guia de zona: <b>avisa acima de 175</b> · não precisa olhar</div>
       <div class="evo" data-evo="A"></div>
@@ -315,8 +322,6 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
           <div class="note">Se o relógio avisar <b><span data-s="bTop">165</span></b> antes, caminhe na hora.</div></div>
         <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" data-s="bWalk">2min</span></div>
           <div class="note">Tempo fixo. O próximo trote começa no horário, mesmo que o anterior tenha sido cortado.</div></div>
-        <div class="chips-cap">Toque no trote que terminou</div>
-        <div class="chips" data-reps="10"></div>
       </div>
     </div>
     <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="bTop">165</span></b> · não precisa olhar</div>
@@ -335,10 +340,12 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
         <p class="lvl" id="lvl-C" hidden></p>
         <div class="step run"><span class="lbl">Tiro</span><div class="big"><span class="v"><span id="c-speed">9,0</span><span class="u">km/h</span></span><span class="d">30 s</span></div></div>
         <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">1min30s</span></div></div>
-        <div class="chips-cap">Toque no tiro que terminou</div>
-        <div class="chips" data-reps="6"></div>
       </div>
       <div class="step"><span class="lbl">Final</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" id="c-final-d">até 3 km</span></div></div>
+      <details class="manual"><summary><span>Anotar à mão<small>se treinou sem o Começar treino</small></span></summary>
+        <div class="chips-cap">Toque no tiro e anote a FC do relógio e a duração</div>
+        <div class="chips" data-reps="6"></div>
+      </details>
     </div>
     <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="top">175</span></b> · não precisa olhar</div>
       <div class="evo" data-evo="C"></div>
@@ -355,19 +362,19 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       <p class="pre"><b>Antes:</b> veio andando? Mobilidade e começa direto no trote. Veio de bike? 5min a 5,0 numa atividade separada no relógio; depois pare e zere a esteira e comece o treino.</p>
       <div class="step run"><span class="lbl">Trote longo · 1º trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" id="l-long">5 min</span></div>
         <div class="note" id="l-long-note">Ou até a FC chegar a <b><span data-s="longTop">160</span></b>, o que vier antes. Depois, caminhada de <span data-s="lWalk">2min</span> e segue o resto.</div>
-        <p class="lvl" id="lvl-L" hidden></p>
-        <button class="mini" id="log-L" style="margin-top:10px">Anotar trote longo</button></div>
-      <div class="logp-wrap"></div>
-      <div class="loglist"></div>
+        <p class="lvl" id="lvl-L" hidden></p></div>
       <div class="rep" id="l-rep">
         <div class="rep-h"><b id="l-km">Até 5 km</b><span>Depois, repete</span></div>
         <div class="step run"><span class="lbl">Trote</span><div class="big"><span class="v"><span data-s="trote">6,5</span><span class="u">km/h</span></span><span class="d" data-s="lRun">2min</span></div>
           <div class="note">Se a FC chegar a <b><span data-s="lTop">160</span></b> antes, caminhe na hora.</div></div>
         <div class="step"><span class="lbl">Caminhada</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" data-s="lWalk">2min</span></div>
           <div class="note">Tempo fixo. O próximo trote começa no horário, mesmo que o anterior tenha sido cortado.</div></div>
-        <div class="chips-cap">Toque no trote que terminou</div>
-        <div class="chips" data-reps="12"></div>
       </div>
+      <details class="manual"><summary><span>Anotar à mão<small>se treinou sem o Começar treino</small></span></summary>
+        <button class="mini" id="log-L">Anotar trote longo</button>
+        <div class="logp-wrap"></div>
+        <div class="loglist"></div>
+      </details>
     </div>
     <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="lTop">160</span></b> · não precisa olhar</div>
     <div class="evo" data-evo="L"></div>
@@ -384,15 +391,17 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       <div class="step"><span class="lbl">O treino todo</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d" id="r-base">3%</span></div>
         <div class="note">Velocidade fixa. Sem segurar no corrimão.</div></div>
       <div class="rep">
-        <div class="rep-h"><b id="r-peak">7%</b><span>1 min nos minutos</span></div>
-        <div class="chips" data-labels="7,14,21,28"></div>
-        <div class="chips-cap">Toque quando fizer cada subida</div>
+        <div class="rep-h"><b id="r-peak">7%</b><span>Subidas de 1 min</span></div>
+        <div class="note">Nos minutos <b>7, 14, 21 e 28</b>, depois volta pra base.</div>
       </div>
       <p class="lvl" id="lvl-R" hidden></p>
       <div class="step"><span class="lbl">Final</span><div class="big"><span class="v"><span data-s="walk">5,0</span><span class="u">km/h</span></span><span class="d">até 3 km</span></div>
-        <button class="mini" id="log-R" style="margin-top:10px">Anotar inclinação usada</button></div>
-      <div class="logp-wrap"></div>
-      <div class="loglist"></div>
+</div>
+      <details class="manual"><summary><span>Mudou a inclinação?<small>anote pra evolução comparar certo</small></span></summary>
+        <button class="mini" id="log-R">Anotar inclinação usada</button>
+        <div class="logp-wrap"></div>
+        <div class="loglist"></div>
+      </details>
     </div>
     <div class="watch">⌚ Guia de zona: <b>avisa acima de <span data-s="rUp">150</span></b> · não precisa olhar</div>
       <div class="evo" data-evo="R"></div>
@@ -729,6 +738,8 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (k==='A' || k==='C'){ buildLogChips(sec, box, k, n); return; }
     if (k==='R'){ var rb = document.getElementById('log-R'); if (!rb.dataset.on){ rb.dataset.on = '1'; rb.addEventListener('click', openRPanel); } }
     if (k==='L'){ var lb = document.getElementById('log-L'); if (!lb.dataset.on){ lb.dataset.on = '1'; lb.addEventListener('click', function(){ openPanel('L', 0); }); } paintLog('L'); }
+    if (k==='R') paintLog('R');
+    if (!box) return; // B, L and R have no counter any more: the Começar treino mode keeps the count
     var labels = box.dataset.labels ? box.dataset.labels.split(',') : null;
     if (labels) n = labels.length;
     if (box.childElementCount === n && box.dataset.day === today) return;
@@ -976,7 +987,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     var rDay = firstOf(plan, end, function(x){ return x==='R' || x==='Rk'; }), rb = stFor(rDay).r;
     txt('r-base', rb+'%'); txt('r-peak', (rb+4)+'%');
     txt('r-low-b', Math.max(1, rb-1)+'%'); txt('r-up-i', 'Na subida: volta '+rb+'%');
-    ['B','C','L','R'].forEach(function(k){ var sec=document.getElementById('w-'+k); buildChips(sec, +sec.querySelector('.chips').dataset.reps || 0); });
+    ['B','C','L','R'].forEach(function(k){ var sec=document.getElementById('w-'+k), ch = sec.querySelector('.chips'); buildChips(sec, ch ? +ch.dataset.reps || 0 : 0); });
     renderLevels();
 
     var FP = fichaPlan(plan, end), fx = FP[today];
