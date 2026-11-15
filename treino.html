@@ -163,6 +163,9 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .evo-status{font-size:13px; color:var(--muted); font-weight:600; min-width:0}
 .gymnote{margin:0; border:2px solid var(--acc-today, var(--line)); border-radius:14px; padding:10px 14px; font-weight:700}
 .gymnote span{display:block; font-size:14px; color:var(--muted); font-weight:600}
+.gymnote .ficha{margin:8px 0 0; padding-left:18px; font-size:15px; font-weight:600}
+.gymnote .ficha li{margin:3px 0}
+.gymnote .ficha b{white-space:nowrap}
 .syncnote{font-size:13px; color:var(--muted); text-align:center; margin:0}
 .mini:focus-visible,.restbtn:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
 .foot{font-size:13px; color:var(--muted); text-align:center}
@@ -272,7 +275,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <button class="restbtn" id="kneebtn">Senti o joelho</button>
   </div>
   <p class="gymnote kneenote" id="kneenote" hidden></p>
-  <p class="gymnote" id="gymnote" hidden></p>
+  <div class="gymnote" id="gymnote" hidden></div>
   <p class="syncnote" id="syncnote" hidden></p>
   <div class="banner" id="banner" hidden></div>
 
@@ -411,7 +414,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     <ul>
       <li>Caminhada de recuperação sempre a <b><span data-s="walk">5,0</span></b>. Trote a <b><span data-s="trote">6,5</span></b>.</li>
       <li>Ciclo: <b>L → B → forte</b> (o forte alterna C e A), sempre com um R ou descanso entre eles.</li>
-      <li>Musculação depois do <b>B e do C</b>, sempre <b>depois</b> da esteira. Nunca depois do A nem do L, nunca todo dia.</li>
+      <li>Ficha da academia (A a F) <b>na ordem</b>, sempre <b>depois</b> da esteira: parte de cima nos dias de R e de B; perna (C e E) só depois do treino forte de corrida, nunca na semana da prova. Nada no dia do L, do A leve, da véspera e da prova.</li>
       <li>Semana da prova (6 dias antes): sem exercício de perna.</li>
       <li>Cansado? Baixe a intensidade, não só a distância. Muito cansado: troque por um R.</li>
       <li>Sentiu o joelho? Toque em <b>Senti o joelho</b>: o próximo forte vira R e a evolução para por 7 dias.</li>
@@ -504,13 +507,43 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   function aShape(n, spd, min, S){ var dist = n*(spd*min/60 + S.walk*1.5/60), km = Math.max(3, Math.ceil(dist - 0.05)); return {km:km, min:Math.round(n*(min+1.5) + Math.max(0, km-dist)/S.walk*60)}; }
   function cShape(n, spd, S){ var dist = 10*(S.trote+S.walk)/2/60 + n*(spd*0.5/60 + S.walk*1.5/60), km = Math.max(3, Math.ceil(dist - 0.05)); return {km:km, min:Math.round(10 + n*2 + Math.max(0, km-dist)/S.walk*60)}; }
 
-  // Strength: after the run on B and C days (the next day is always R), never after A or L; no legs in the 6 days before a race.
-  var GYM_FROM = '2026-11-22'; // strength starts after the Santander; the first session is light
-  function gymOn(d, t){
-    if (d < GYM_FROM || !(t==='B' || t==='C')) return false;
-    for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d >= addDays(r,-TIER[tier(RACES[i])].gym) && d <= r) return false; }
-    return true;
+  // Strength: the gym program "Masc. 5x PPL+UL" (A to F), done in order at the pace the running allows, always after the treadmill.
+  // Upper body (A, B, D) and F on R and B days, upper never two days in a row. Legs (C and E, alternating) only
+  // after the strong run (A or C), so the next day is R and then the easy L; never in a race week.
+  // Nothing on L, light A, rest, race eve or race days; F (stretching and abs) the day after a race.
+  // First weeks: 2 sets and nothing in the 3 days before a race (soreness from a new workout peaks ~48 h later).
+  var FICHA_FROM = '2026-11-17', FICHA_EASY = '2026-11-30', FICHA_ADAPT = 28;
+  var FICHA = {
+    A:{t:'Peito, ombro e tríceps', ex:[['Supino reto (máquina)',3,'8-12'],['Crucifixo no crossover (polia alta)',3,'8-12'],['Supino inclinado (máquina)',3,'8-12'],['Elevação lateral (halter)',3,'8-12'],['Desenvolvimento (máquina, pegada neutra)',3,'8-12'],['Tríceps pulley (barra)',3,'8-12'],['Tríceps francês unilateral (corda)',3,'8-12']]},
+    B:{t:'Costas e bíceps', ex:[['Puxada aberta pronada',3,'8-12'],['Remada baixa (triângulo)',3,'6-10'],['Retração escapular no banco 45°',3,'15'],['Rosca alternada (halteres)',2,'8-12'],['Rosca martelo (barra romana)',3,'8-12']]},
+    C:{t:'Perna (leg press unilateral)', legs:true, ex:[['Abdutor',3,'8-12'],['Flexora (mesa)',3,'8-12'],['Leg press 180 unilateral',3,'10-12 cada perna'],['Extensora (carga moderada)',3,'8-12']]},
+    D:{t:'Parte de cima', ex:[['Puxada (triângulo, neutra)',3,'6-10'],['Supino inclinado (máquina)',3,'6-10'],['Remada baixa (barra reta)',3,'8-12'],['Elevação lateral (máquina)',2,'8-12'],['Elevação frontal (corda, polia baixa)',3,'8-12'],['Tríceps francês (barra, polia alta)',3,'8-12'],['Rosca direta (barra, polia baixa)',3,'8-12']]},
+    E:{t:'Perna', legs:true, ex:[['Abdutor',3,'8-12'],['Elevação pélvica (máquina)',3,'8-12'],['Leg press horizontal',3,'8-12'],['Adutor',3,'8-12'],['Extensora (carga moderada)',3,'8-12'],['Cadeira flexora',3,'8-12']]},
+    F:{t:'Alongamento e abdômen', ex:[['Alongamentos: peito, dorsal, posterior de perna, glúteo',2,'10 s cada'],['Abdominal infra (solo)',3,'15'],['Abdominal supra (solo)',3,'15']]}
+  };
+  var UPPER = ['B','A','D','F'], LEGS = ['C','E'];
+  function legBlocked(d){ for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d >= addDays(r,-TIER[tier(RACES[i])].gym) && d <= r) return true; } return false; }
+  function preRaceDays(d, n){ for (var i=0;i<RACES.length;i++){ var r=RACES[i].d; if (d < r && d >= addDays(r,-n)) return true; } return false; }
+  function fichaPlan(plan, until){
+    var out = {}, ui = 0, li = 0, lastUp = null;
+    for (var d = FICHA_FROM; d <= until; d = addDays(d, 1)){
+      var t = plan[d]; if (!t) continue;
+      var early = daysBetween(FICHA_FROM, d) < FICHA_ADAPT;
+      if (isRest(t) || t==='race' || t==='L' || t==='A3' || preRaceDays(d, early ? 3 : 1)) continue;
+      var week = 0; for (var j=1;j<7;j++) if (out[addDays(d,-j)]) week++;
+      if (week >= 4) continue;
+      if (t==='A' || t==='C'){
+        if (!legBlocked(d) && (t==='C' || aVariant(d, t)==='normal')){ out[d] = {k: LEGS[li % 2], first: li===0}; li++; }
+        continue;
+      }
+      if (!(t==='R' || t==='Rk' || t==='B')) continue;
+      if (plan[addDays(d,-1)] === 'race'){ if (UPPER[ui % 4] === 'F') ui++; out[d] = {k:'F'}; continue; }
+      if (lastUp === addDays(d,-1)) continue;
+      var k = UPPER[ui % 4]; ui++; out[d] = {k:k}; if (k !== 'F') lastUp = d;
+    }
+    return out;
   }
+  function fichaTag(x){ return x ? ' + ficha '+x.k : ''; }
   // Training days in a row ending on PLAN_START (01/11 to 08/11).
   var START_STREAK = 8, MAX_STREAK = 6;
   function isRest(t){ return t==='off' || t==='eve' || t==='auto'; }
@@ -946,15 +979,23 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     ['B','C','L','R'].forEach(function(k){ var sec=document.getElementById('w-'+k); buildChips(sec, +sec.querySelector('.chips').dataset.reps || 0); });
     renderLevels();
 
-    var gymToday = gymOn(today, t);
-    txt('dayline', br(today) + (t ? ' · hoje: '+label(t, today, ST.today) + (gymToday ? ' + musculação' : '') : ''));
-    var firstGym = null; for (var q2 = GYM_FROM; q2 <= end; q2 = addDays(q2,1)) if (gymOn(q2, plan[q2])){ firstGym = q2; break; }
+    var FP = fichaPlan(plan, end), fx = FP[today];
+    txt('dayline', br(today) + (t ? ' · hoje: '+label(t, today, ST.today) + fichaTag(fx) : ''));
     var gn = document.getElementById('gymnote'); gn.textContent = '';
-    if (gymToday){
-      gn.appendChild(document.createTextNode('Depois da esteira: musculação' + (today===firstGym ? ' leve (1ª sessão)' : '')));
-      var gs = document.createElement('span'); gs.textContent = 'Ficha da academia. Esteira primeiro, sempre.'; gn.appendChild(gs);
+    if (fx){
+      var fd = FICHA[fx.k], easy = today <= FICHA_EASY || (fd.legs && fx.first);
+      gn.appendChild(document.createTextNode('Depois da esteira: ficha '+fx.k+' · '+fd.t));
+      var gs = document.createElement('span');
+      gs.textContent = (easy ? 'Começo: 2 séries de cada, com carga que ainda daria mais 3 ou 4 repetições. ' : '')
+        + (fd.legs ? 'Perna: amanhã é R. Extensora com carga moderada; se doer na frente do joelho, pare ela. ' : '')
+        + 'Pule o trote de 20 min da ficha: a esteira de hoje já conta.';
+      gn.appendChild(gs);
+      var ul = document.createElement('ul'); ul.className = 'ficha';
+      fd.ex.forEach(function(e){ var li = document.createElement('li'); var n = easy && e[1] > 2 ? 2 : e[1];
+        li.appendChild(document.createTextNode(e[0]+' ')); var b = document.createElement('b'); b.textContent = n+' × '+e[2]; li.appendChild(b); ul.appendChild(li); });
+      gn.appendChild(ul);
     }
-    gn.hidden = !gymToday;
+    gn.hidden = !fx;
 
     restBtn.hidden = !todayK;
     if (restBtn.hidden) disarm();
@@ -996,7 +1037,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var tt = plan[d], row = document.createElement('div');
       row.className = 'row' + (d===today ? ' now' : '') + (isRest(tt) ? ' off' : '');
       var a = document.createElement('span'); a.className='dt'; a.textContent = br(d);
-      var w = document.createElement('span'); w.className='what'; w.textContent = label(tt, d, stFor(d)) + (gymOn(d, tt) ? ' + musculação' : '');
+      var w = document.createElement('span'); w.className='what'; w.textContent = label(tt, d, stFor(d)) + fichaTag(FP[d]);
       row.appendChild(a); row.appendChild(w);
       if (tt !== 'race' && tt !== 'eve'){
         var b = document.createElement('button'); b.id = 'rest-'+d;
@@ -1137,6 +1178,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   }
   function summaryText(){
     var S = setAt(today), st = ST.next, P = buildPlan(rests, addDays(today, 7)), out = [];
+    var FPs = fichaPlan(P, addDays(today, 7));
     var byDay = {}; Object.keys(stats).forEach(function(id){ var s = stats[id]; if (s && s.date) byDay[s.date] = s; });
     out.push('Resumo do Treino do dia (app Recordes), '+ddmm(today)+'/'+today.slice(0,4));
     out.push('Atleta: corredor iniciante, treina na esteira. Objetivos: correr 5 km sem caminhar, depois chegar aos 10 km e baixar o tempo dos 5 km, sempre protegendo os joelhos.');
@@ -1169,7 +1211,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       out.push('- '+br(d)+': '+name+(parts.length ? ' · '+parts.join('; ') : ''));
     }
     out.push('');
-    out.push('Próximos 7 dias: '+[1,2,3,4,5,6,7].map(function(i){ var x = addDays(today, i); return br(x)+' '+label(P[x], x, st); }).join('; ')+'.');
+    out.push('Próximos 7 dias: '+[1,2,3,4,5,6,7].map(function(i){ var x = addDays(today, i); return br(x)+' '+label(P[x], x, st)+fichaTag(FPs[x]); }).join('; ')+'.');
     var hs = (st.hist || []).filter(function(x){ return x.k !== 'p'; }).slice(-8);
     out.push('Mudanças de degrau: '+(hs.length ? hs.map(function(x){ return ddmm(x.d)+' '+KNAME[x.k]+' '+stepName(x.k, x.f)+' → '+stepName(x.k, x.t); }).join('; ') : 'nenhuma ainda')+'.');
     out.push('');
@@ -1434,7 +1476,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
   render();
   renderEvo();
   // read-only view for automated tests
-  try { window.__tdd = { st: function(){ return JSON.parse(JSON.stringify(ST)); }, plan: function(to){ return buildPlan(rests, to); }, summary: summaryText, races: function(){ return RACES; },
+  try { window.__tdd = { st: function(){ return JSON.parse(JSON.stringify(ST)); }, plan: function(to){ return buildPlan(rests, to); }, ficha: function(to){ var P = buildPlan(rests, to), F = fichaPlan(P, to), o = {}; Object.keys(F).forEach(function(d){ o[d] = F[d].k + (F[d].first ? '*' : ''); }); return o; }, summary: summaryText, races: function(){ return RACES; },
     planned: function(d){ var s = replay(addDays(d,-1), d), S = setAt(d), lk = lPlanKm(d, s.l); return {tl: Math.min(TL[s.tl], wholeMin(lk, S)), km: lk, a: A_ST[s.a], c: C_ST[s.c], r: s.r}; },
     inject: function(lg, sx){ Object.keys(lg).forEach(function(d){ logs[d] = Object.assign({}, logs[d] || {}, lg[d]); }); Object.assign(stats, sx); recompute(); } }; } catch(e){}
 
