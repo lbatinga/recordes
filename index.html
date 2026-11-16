@@ -4577,7 +4577,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function fmtWx(w){
     return Math.round(w.t) + '°C, umidade ' + Math.round(w.rh) + '%' + (w.f - w.t >= 2 ? ', sensação ' + Math.round(w.f) + '°C' : '') +
-      (w.p != null && w.p >= 20 ? ', chuva ' + Math.round(w.p) + '%' : '');
+      (w.p != null ? ', chuva ' + Math.round(w.p) + '%' : '');
   }
   function wxOfSession(s){
     if (!s || !s.d || s.env === 'esteira') return null;
