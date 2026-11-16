@@ -68,6 +68,13 @@ body{
 .dayline{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:14px; color:var(--muted); font-weight:600}
 .lock{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
 .lock.on{color:var(--r)}
+.surf{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.surf button{appearance:none; min-height:48px; border:2px solid var(--line); background:var(--surface); color:var(--muted); border-radius:14px; font:inherit; font-size:16px; font-weight:700; cursor:pointer}
+.surf button[aria-pressed="true"]{border-color:var(--fg); color:var(--fg); background:var(--surface2)}
+.surf button:focus-visible{outline:3px solid var(--fg); outline-offset:2px}
+body.road .w:not([data-k="R"]) .big .v{font-size:44px; white-space:nowrap}
+body.road .w:not([data-k="R"]) .big .v .u{font-size:20px; margin-left:6px}
+.surf-note{margin:0; font-size:14px; font-weight:600; color:var(--muted)}
 
 .banner{background:var(--surface); border:2px solid var(--line); border-radius:16px; padding:14px 16px; font-weight:600}
 .banner strong{display:block; font-family:var(--font-num); font-size:30px; line-height:1.05; font-weight:800; letter-spacing:.01em}
@@ -223,6 +230,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
 .wk-lbl{font-size:20px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--acc)}
 .wk-spd{font-family:var(--font-num); font-weight:800; font-size:64px; line-height:.95}
 .wk-spd small{font-size:28px; color:var(--muted); margin-left:4px}
+.wk-spd.road small{display:block; margin:6px 0 0}
 .wk-cond{font-family:var(--font-num); font-size:34px; line-height:1.05; font-weight:800; text-wrap:balance; display:flex; flex-direction:column; align-items:center; gap:2px}
 /* the FC limit is what gets read from far away, without glasses: huge, with an arrow and its own colour */
 .wk-fc{display:flex; align-items:center; gap:12px; line-height:.9}
@@ -273,6 +281,11 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       <button class="tab" id="t-R" data-k="R" aria-pressed="false"><b>R</b><small>Regen.</small></button>
     </div>
     <div class="dayline"><span id="dayline">Hoje</span><span class="lock" id="lock">Tela pode apagar</span></div>
+    <div class="surf" id="surf" role="group" aria-label="Onde vai treinar hoje">
+      <button type="button" data-road="0" aria-pressed="true">Esteira</button>
+      <button type="button" data-road="1" aria-pressed="false">Rua</button>
+    </div>
+    <p class="surf-note" id="surf-note" hidden>Na rua: siga o pace do relógio no lugar da velocidade. Tempos, distância e teto de FC são os mesmos.</p>
   </div>
 
   <div class="daybtns">
@@ -895,11 +908,45 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     paintLog(k);
   }
 
+  // where today's workout happens: treadmill (speeds in km/h) or street (same speeds shown as pace). Chosen per day; back to treadmill the next day. R is always the treadmill (incline).
+  var ROAD = store('tdd-road') === today, shownK = null;
+  function spdNum(v, k){ return ROAD && k !== 'R' ? pace(v) : kmh(v); }
+  function spdUnit(k){ return ROAD && k !== 'R' ? 'por km' : 'km/h'; }
+  function applyRoad(){
+    document.querySelectorAll('.w .big .v').forEach(function(v){
+      var u = v.querySelector('.u'); if (!u) return;
+      if (u.dataset.o == null) u.dataset.o = u.textContent;
+      var road = ROAD && v.closest('.w').dataset.k !== 'R';
+      u.textContent = road ? 'por km' : u.dataset.o;
+      if (!road) return;
+      var n = v.querySelector('span:not(.u)') || v.firstChild, x = n ? parseFloat(String(n.textContent).replace(',', '.')) : NaN;
+      if (n && x > 0 && /^\s*\d+,\d\s*$/.test(n.textContent)) n.textContent = pace(x);
+    });
+    document.querySelectorAll('.w .pre').forEach(function(e){
+      if (e.dataset.o == null) e.dataset.o = e.innerHTML;
+      var road = ROAD && e.closest('.w').dataset.k !== 'R';
+      if (road){ e.textContent = ''; var b = document.createElement('b'); b.textContent = 'Antes:'; e.appendChild(b); e.appendChild(document.createTextNode(' mobilidade e uns minutos caminhando, fora do treino. Comece a gravar no relógio no 1º trote.')); }
+      else if (e.innerHTML !== e.dataset.o) e.innerHTML = e.dataset.o;
+    });
+    document.body.classList.toggle('road', ROAD);
+    var on = ROAD && shownK !== 'R', bar = document.getElementById('surf');
+    bar.hidden = shownK === 'R';
+    bar.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', (b.dataset.road === '1') === ROAD ? 'true' : 'false'); });
+    document.getElementById('surf-note').hidden = !on;
+  }
+  document.getElementById('surf').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    ROAD = b.dataset.road === '1'; store('tdd-road', ROAD ? today : '');
+    render(); if (typeof wkRender === 'function') wkRender();
+  });
+
   function show(k){
+    shownK = k;
     ['A','B','C','L','R'].forEach(function(x){ document.getElementById('w-'+x).hidden = x!==k; });
     tabs.forEach(function(t){ t.setAttribute('aria-pressed', t.dataset.k===k?'true':'false'); });
     document.documentElement.style.setProperty('--acc-today', getComputedStyle(document.getElementById('t-'+k)).getPropertyValue('--acc'));
     store('tdd-last', k);
+    applyRoad();
   }
 
   function txt(id, s){ var e = document.getElementById(id); if (e) e.textContent = s; }
@@ -955,8 +1002,9 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       var ast = document.createElement('strong'); ast.textContent = av==='light' ? 'A leve: ensaio da prova' : 'Ensaio do pace da prova';
       an.appendChild(ast);
       an.appendChild(document.createTextNode(av==='light'
-        ? 'Só 3 blocos, trote a '+kmh(S.race)+' com 1% de inclinação pra simular a rua. Na prova, confira o pace no relógio ('+pace(S.race)+' por km) a cada uns 20 s no 1º km.'
-        : 'Trote a '+kmh(S.race)+': é o pace planejado pra '+(pr ? pr.name : 'prova')+' ('+pace(S.race)+' por km). Teto de '+S.top+' continua valendo.'));
+        ? (ROAD ? 'Só 3 blocos, trote no pace da prova: '+pace(S.race)+' por km. Confira o pace no relógio a cada uns 20 s, como vai fazer no 1º km da prova.'
+               : 'Só 3 blocos, trote a '+kmh(S.race)+' com 1% de inclinação pra simular a rua. Na prova, confira o pace no relógio ('+pace(S.race)+' por km) a cada uns 20 s no 1º km.')
+        : 'Trote a '+(ROAD ? pace(S.race)+' por km' : kmh(S.race))+': é o pace planejado pra '+(pr ? pr.name : 'prova')+(ROAD ? '. ' : ' ('+pace(S.race)+' por km). ')+'Teto de '+S.top+' continua valendo.'));
     }
     an.hidden = av==='normal';
     document.getElementById('a-watch').innerHTML = '⌚ Guia de zona: <b>avisa acima de '+S.top+'</b> · não precisa olhar';
@@ -1070,6 +1118,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
       if (!/^[ABCLR]$/.test(start)) start = 'B';
       show(start);
     }
+    applyRoad();
   }
 
   // rests and the days trained through stay forever (small), since the whole plan is rebuilt from its first day
@@ -1570,7 +1619,7 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     if (k === 'A'){
       var av = aVariant(today, plan === 'A3' ? 'A3' : 'A'), sp = av === 'normal' ? A_ST[st.a][0] : S.race, mn = av === 'normal' ? A_ST[st.a][1] : S.raceRun, n = plan === 'A3' ? 3 : 5;
       for (i=0;i<n;i++){
-        one('Bloco '+(i+1)+' de '+n+' · trote', 'r', sp, mn+' min'+(av === 'light' ? ' · 1% de inclinação' : ''), {target:mn*60, log:['A', i], note:'Teto de FC '+S.top+'. Passou? Encerre o bloco e caminhe.'});
+        one('Bloco '+(i+1)+' de '+n+' · trote', 'r', sp, mn+' min'+(av === 'light' && !ROAD ? ' · 1% de inclinação' : ''), {target:mn*60, log:['A', i], note:'Teto de FC '+S.top+'. Passou? Encerre o bloco e caminhe.'});
         if (i < n-1) one('Caminhada', 'w', S.walk, '1min30s', {target:90});
       }
       one('Final', 'w', S.walk, 'até '+aShape(n, sp, mn, S).km+' km', {end:1});
@@ -1807,14 +1856,14 @@ details ul{margin:0 0 14px; padding-left:20px; display:flex; flex-direction:colu
     } else {
       var cur = wkStepOf(), main = wkEl('div', 'wk-main');
       main.appendChild(wkEl('div', 'wk-lbl', cur.lbl));
-      if (cur.spd != null){ var sp = wkEl('div', 'wk-spd', kmh(cur.spd)); sp.appendChild(wkEl('small', null, 'km/h')); main.appendChild(sp); }
+      if (cur.spd != null){ var sp = wkEl('div', 'wk-spd'+(ROAD && WK.k !== 'R' ? ' road' : ''), spdNum(cur.spd, WK.k)); sp.appendChild(wkEl('small', null, spdUnit(WK.k))); main.appendChild(sp); }
       main.appendChild(wkCondEl(cur));
       if (cur.note) main.appendChild(wkEl('div', 'wk-note', cur.note));
       var ck = wkEl('div', 'wk-clock', ''); ck.id = 'wk-clock'; main.appendChild(ck);
       if (cur.target) main.appendChild(wkEl('div', 'wk-sub', 'de '+tfmt(cur.target)));
       if (cur.loop && cur.loop.until === 'time'){ var pt = wkEl('div', 'wk-sub', ''); pt.id = 'wk-part'; main.appendChild(pt); }
       var nx = wkAfter(false), nxt = wkAt(nx.i, nx.sub, nx.n);
-      main.appendChild(wkEl('div', 'wk-next', nxt ? 'Depois: '+nxt.lbl+(nxt.spd != null ? ' · '+kmh(nxt.spd)+' km/h · '+nxt.cond : '') : 'Depois: fim do treino'));
+      main.appendChild(wkEl('div', 'wk-next', nxt ? 'Depois: '+nxt.lbl+(nxt.spd != null ? ' · '+spdNum(nxt.spd, WK.k)+' '+spdUnit(WK.k)+' · '+nxt.cond : '') : 'Depois: fim do treino'));
       el.appendChild(main);
       var go = wkEl('button', 'wk-go', cur.end ? 'Terminei o treino' : cur.loop ? (WK.sub ? 'Terminei a caminhada' : 'Terminei o trote') : 'Terminei'); go.id = 'wk-go';
       if (cur.kind === 'p') go.textContent = 'Começar o treino';
