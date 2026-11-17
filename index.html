@@ -4938,7 +4938,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function asOfMonth(end){
     var c = buildSummaryCore();
     return { v: c.v, month: c.month, ag: c.ag, agMiss: c.agMiss, agK: c.agK, agT: c.agT, agD: c.agD, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
-      recNow: c.recNow, recPrev: c.recPrev, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
+      recNow: c.recNow, recPrev: c.recPrev, recNowD: c.recNowD, recPrevD: c.recPrevD, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
       daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
       recDaysM: c.recDaysM, recDaysE: c.recDaysE, beatsM: c.beatsM };
   }
@@ -5167,6 +5167,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       ag: ag, agMiss: (SEX !== 'M' && SEX !== 'F') || !BIRTH ? 1 : 0, agK: agB ? agB.k : null, agT: agB ? Math.round(agB.t * 10) / 10 : null, agD: agB ? agB.d : null,
       best5: best5 ? Math.round(best5.t) : null, first5: first5 ? Math.round(first5.t) : null, evo: evo,
       rec: rec, recNow: cur90 ? Math.round(cur90.t) : null, recPrev: prev90 ? Math.round(prev90.t) : null,
+      recNowD: cur90 ? isoOf(cur90.s.d) : null, recPrevD: prev90 ? isoOf(prev90.s.d) : null,
       streak: st.current, bestStreak: st.best.len, thisWeek: st.thisWeek, act12: act12, wkc: wkc, trot90: trot90, trot90m: trot90m,
       kmMonth: Math.round(kmNow * 1000) / 1000, daysMonth: dNow, kmTier: kt, daysTier: dt,
       medals: (kt + 1) + (dt + 1), beats: beats
@@ -5595,8 +5596,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return '<span class="g-u">abriu o app em ' + pad(t.getDate()) + '/' + pad(t.getMonth() + 1) + ' às ' + pad(t.getHours()) + 'h' + pad(t.getMinutes()) + '</span>';
   }
   function recSub(x){
-    if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + ' → ' + fmtTime(x.recNow);
-    return x.recNow ? 'só um 5 km nos últimos 120 dias' : 'sem 5 km nos últimos 120 dias';
+    // the date of each time shows when the first 5 km leaves the 120-day window (people on an older app version publish no dates)
+    function on(iso){ var d = iso ? parseIso(iso) : null; return d ? ' (' + fmtShort(d) + ')' : ''; }
+    if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + on(x.recPrevD) + ' → ' + fmtTime(x.recNow) + on(x.recNowD);
+    return x.recNow ? 'só um 5 km nos últimos 120 dias' + on(x.recNowD) : 'sem 5 km nos últimos 120 dias';
   }
   function duplaTab(){
     if (!partnerLoaded) return skeleton();
