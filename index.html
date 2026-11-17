@@ -605,6 +605,7 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg form{padding:6px 18px 18px;display:grid;gap:12px}
 .dlg label{display:grid;gap:4px;font-size:14px;font-weight:600;color:var(--muted)}
 .dlg .hint{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.dlg .pd-s{font-size:15px}
 .dlg select{font:inherit;font-size:16px;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);min-height:44px;width:100%;box-sizing:border-box}
 .pz-weeks{border:0;margin:0;padding:0;display:grid;gap:6px;min-width:0}
 .pz-weeks legend{font-size:14px;font-weight:600;color:var(--muted);padding:0;margin-bottom:6px}
@@ -988,6 +989,13 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
   </form>
 </dialog>
 
+<dialog id="push-dlg" class="dlg" aria-labelledby="push-dlg-title">
+  <div class="help-head"><h2 id="push-dlg-title">Receber avisos?</h2></div>
+  <form method="dialog">
+    <p class="hint pd-s" id="push-dlg-s"></p>
+    <div class="acts" id="push-dlg-acts"></div>
+  </form>
+</dialog>
 <dialog id="pause-dlg" class="dlg" aria-labelledby="pause-dlg-title">
   <div class="help-head"><h2 id="pause-dlg-title">Pausar uma semana</h2></div>
   <form id="pause-form" method="dialog" novalidate>
@@ -3277,11 +3285,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         { h: 'Quando chegam', li: [
           '<strong>Quinta e sexta às 18h, sábado às 8h:</strong> se faltar treino pra manter a sequência da semana.',
           '<strong>Às 20h:</strong> quando um treino novo no Strava ainda não entrou no placar porque você não abriu o app.',
-          '<strong>Dias 1, 4, 7, 10, 15, 20 e 25 às 9h:</strong> se você ainda não abriu o app pra fechar o mês que passou.'
+          '<strong>Dias 1, 4, 7, 10, 15, 20 e 25 às 9h:</strong> se você ainda não abriu o app pra fechar o mês que passou.',
+          '<strong>Entre 8h e 21h:</strong> quando o app tiver novidade pro grupo e você ainda estiver na versão antiga. Tocar no aviso abre a versão nova.'
         ] },
         { h: 'Ligar e desligar', li: [
-          'Ao abrir, o app pergunta se você quer avisos. Em Agora não, ele pergunta de novo depois de 7 dias.',
-          'Dá pra ligar ou desligar quando quiser em Conquistas, no card Constância.',
+          'Ao abrir, o app pergunta numa janela se você quer avisos. Em Agora não, ele pergunta de novo depois de 7 dias.',
+          'Pra ligar depois, use Ativar avisos em Conquistas, no card Constância. Pra desligar, use as configurações de notificação do celular.',
           'No iPhone, os avisos só funcionam com o app na tela de início.'
         ] }
       ] },
@@ -3542,7 +3551,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     maybeUpdateGoal();
     publishSummary();
     syncDuoNav();
-    var pinv = $('#push-invite'); if (pinv) pinv.innerHTML = pushInvite();
+    maybePushDlg();
     if (!editingGoal) $('#races').innerHTML = racesSection();
     var panel = $('#panel');
     var ae = document.activeElement;
@@ -4664,23 +4673,36 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function isStandalone(){ return navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
   var PUSH_LATER_DAYS = 7;
   function pushLater(){ try { return Number(localStorage.getItem(lsKey('rc-push-later'))) || 0; } catch(e) { return 0; } }
+  /* Ask once, in a floating window, like the big apps do (17/11/2026): when the avisos are off on this
+     phone (or it's an iPhone outside the home screen), at most once per app open, and after "Agora não"
+     not again for a week. The Constância card keeps the "Ativar avisos" button for later. */
   function pushInvite(){
-    if (pushLater() > Date.now() - PUSH_LATER_DAYS * 86400000) return '';
+    if (pushLater() > Date.now() - PUSH_LATER_DAYS * 86400000) return null;
     var ios = pushState === 'unsupported' && isIOS() && !isStandalone();
-    if (!ios && pushState !== 'off' && pushState !== 'busy') return '';
-    var later = '<button type="button" class="btn" data-push-later="1">Agora não</button>';
-    if (ios) return '<section class="panel push-card" aria-label="Avisos"><p class="pc-t">Avisos no iPhone</p>' +
-      '<p class="pc-s">Só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o Recordes pelo ícone.</p>' +
-      '<div class="pc-a">' + later + '</div></section>';
-    return '<section class="panel push-card" aria-label="Avisos"><p class="pc-t">Receber avisos?</p>' +
-      '<p class="pc-s">Quando faltar treino pra manter a sequência, quando um treino novo ainda não entrou no placar e no fechamento do mês.</p>' +
-      '<div class="pc-a">' + (pushState === 'busy' ? '<span class="pc-s">Um instante…</span>' :
-        '<button type="button" class="btn primary" data-push="on">Ativar avisos</button>' + later) + '</div></section>';
+    if (ios) return { t: 'Avisos no iPhone', s: 'Só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o Recordes pelo ícone.',
+      a: '<button type="button" class="btn" data-push-later="1">Entendi</button>' };
+    if (pushState !== 'off') return null;
+    return { t: 'Receber avisos?', s: 'Quando faltar treino pra manter a sequência, quando um treino novo ainda não entrou no placar, no fechamento do mês e quando o app for atualizado.',
+      a: '<button type="button" class="btn" data-push-later="1">Agora não</button><button type="button" class="btn primary" data-push="on">Ativar avisos</button>' };
   }
+  var pushDlgShown = false;
+  function maybePushDlg(){
+    var d = $('#push-dlg');
+    if (!d || d.open || pushDlgShown || document.querySelector('dialog[open]')) return;
+    var c = pushInvite();
+    if (!c) return;
+    $('#push-dlg-title').textContent = c.t;
+    $('#push-dlg-s').textContent = c.s;
+    $('#push-dlg-acts').innerHTML = c.a;
+    pushDlgShown = true;
+    try { d.showModal(); } catch(e) {}
+  }
+  function closePushDlg(){ var d = $('#push-dlg'); if (d && d.open) d.close(); }
   document.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('[data-push-later]');
     if (!b) return;
     try { localStorage.setItem(lsKey('rc-push-later'), String(Date.now())); } catch(e) {}
+    closePushDlg();
     render();
   });
   function pushControl(){
@@ -4689,12 +4711,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (pushState === 'unsupported' || pushState === 'unknown') return '';
     if (pushState === 'denied') return '<p class="ch-push">Avisos bloqueados nas configurações do celular.</p>';
     if (pushState === 'busy') return '<p class="ch-push">Um instante…</p>';
-    if (pushState === 'on') return '<p class="ch-push">Avisos ligados neste celular · <button type="button" class="linkbtn" data-push="off">Desligar</button></p>';
+    // Avisos ligados: nothing to show (17/11/2026). Turning them off is done in the phone's settings.
+    if (pushState === 'on') return '';
     return '<button type="button" class="btn ch-push-btn" data-push="on">Ativar avisos</button>';
   }
   document.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('[data-push]');
     if (!b) return;
+    closePushDlg();
     if (b.getAttribute('data-push') === 'on') enablePush(); else disablePush();
   });
 
