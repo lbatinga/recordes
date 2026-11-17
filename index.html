@@ -990,7 +990,7 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
 </dialog>
 
 <dialog id="push-dlg" class="dlg" aria-labelledby="push-dlg-title">
-  <div class="help-head"><h2 id="push-dlg-title">Receber avisos?</h2></div>
+  <div class="help-head"><h2 id="push-dlg-title">Receber notificações?</h2></div>
   <form method="dialog">
     <p class="hint pd-s" id="push-dlg-s"></p>
     <div class="acts" id="push-dlg-acts"></div>
@@ -999,7 +999,7 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
 <dialog id="pause-dlg" class="dlg" aria-labelledby="pause-dlg-title">
   <div class="help-head"><h2 id="pause-dlg-title">Pausar uma semana</h2></div>
   <form id="pause-form" method="dialog" novalidate>
-    <p class="hint">A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 corridas nela, conta normal. Nessa semana não chega aviso.</p>
+    <p class="hint">A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 corridas nela, conta normal. Nessa semana não chega notificação.</p>
     <fieldset class="pz-weeks"><legend>Semana</legend><div id="pause-weeks"></div></fieldset>
     <label>Motivo<input name="reason" type="text" maxlength="80" autocomplete="off" placeholder="Atestado, crise de coluna"></label>
     <p class="err" id="pause-err" hidden></p>
@@ -3271,7 +3271,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         '<strong>Onde:</strong> Conquistas, card Constância, em Pausar uma semana. Escolha a semana e escreva o motivo.',
         'A semana pausada não conta pra sequência, mas também não zera. Se tiver 2 corridas, conta normal.',
         'Dá pra pausar a semana atual e as 8 anteriores.',
-        'Na semana pausada não chega aviso.',
+        'Na semana pausada não chega notificação.',
         'Vale do mesmo jeito no Grupo.'
       ] }] },
       peso: { t: 'Peso', r: 'Vem do peso que está no seu perfil do Strava.', g: [{ li: [
@@ -3281,17 +3281,17 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'O peso não aparece pro grupo.'
       ] }] },
       atualizar: { t: 'Atualizar', r: 'Puxe a tela pra baixo no topo, ou toque em Atualizar no menu ⋮.' },
-      avisos: { t: 'Avisos', r: 'Lembretes no celular pra não perder a sequência nem o fechamento do mês.', g: [
+      avisos: { t: 'Notificações', r: 'Lembretes no celular pra não perder a sequência nem o fechamento do mês.', g: [
         { h: 'Quando chegam', li: [
           '<strong>Quinta e sexta às 18h, sábado às 8h:</strong> se faltar treino pra manter a sequência da semana.',
           '<strong>Às 20h:</strong> quando um treino novo no Strava ainda não entrou no placar porque você não abriu o app.',
           '<strong>Dias 1, 4, 7, 10, 15, 20 e 25 às 9h:</strong> se você ainda não abriu o app pra fechar o mês que passou.',
-          '<strong>Entre 8h e 21h:</strong> quando o app tiver novidade pro grupo e você ainda estiver na versão antiga. Tocar no aviso abre a versão nova.'
+          '<strong>Entre 8h e 21h:</strong> quando o app tiver novidade pro grupo e você ainda estiver na versão antiga. Tocar na notificação abre a versão nova.'
         ] },
         { h: 'Ligar e desligar', li: [
-          'Ao abrir, o app pergunta numa janela se você quer avisos. Em Agora não, ele pergunta de novo depois de 7 dias.',
-          'Pra ligar depois, use Ativar avisos em Conquistas, no card Constância. Pra desligar, use as configurações de notificação do celular.',
-          'No iPhone, os avisos só funcionam com o app na tela de início.'
+          'Ao abrir, o app pergunta numa janela se você quer receber notificações. Em Agora não, ele pergunta de novo depois de 7 dias.',
+          'Pra ligar depois, use Ativar notificações em Conquistas, no card Constância. Pra desligar, use as configurações de notificação do celular.',
+          'No iPhone, as notificações só funcionam com o app na tela de início.'
         ] }
       ] },
       clima: { t: 'Clima', r: 'Temperatura, umidade e sensação térmica na hora em que a corrida começou.', g: [{ li: [
@@ -4009,7 +4009,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     html += table('Situação',
       row('Última abertura', others.map(function(p){ var s = p.summary; return s && s.at ? admWhen(s.at) : 'nunca'; })) +
       row('Versão do app', others.map(function(p){ var s = p.summary; return s && s.app === APP_VER ? 'atual' : 'antiga'; })) +
-      row('Avisos', others.map(function(p){ return p.push > 0 ? 'ligados' : 'desligados'; })) +
+      row('Notificações', others.map(function(p){ return p.push > 0 ? 'ligadas' : 'desligadas'; })) +
       row('Semanas pausadas', others.map(function(p){ var w = (p.pauses || []).slice().sort(); return w.length ? w.map(admDay).join(', ') : 'nenhuma'; })));
 
     // Provas: one block per race (same date), upcoming first, then the last 60 days.
@@ -4652,7 +4652,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       pushState = 'on';
     } catch (e) {
       pushState = 'off';
-      $('#status').textContent = 'Não consegui ligar os avisos agora.';
+      $('#status').textContent = 'Não consegui ligar as notificações agora.';
     }
     render();
   }
@@ -4675,15 +4675,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function pushLater(){ try { return Number(localStorage.getItem(lsKey('rc-push-later'))) || 0; } catch(e) { return 0; } }
   /* Ask once, in a floating window, like the big apps do (17/11/2026): when the avisos are off on this
      phone (or it's an iPhone outside the home screen), at most once per app open, and after "Agora não"
-     not again for a week. The Constância card keeps the "Ativar avisos" button for later. */
+     not again for a week. The Constância card keeps the "Ativar notificações" button for later. */
   function pushInvite(){
     if (pushLater() > Date.now() - PUSH_LATER_DAYS * 86400000) return null;
     var ios = pushState === 'unsupported' && isIOS() && !isStandalone();
-    if (ios) return { t: 'Avisos no iPhone', s: 'Só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o Recordes pelo ícone.',
+    if (ios) return { t: 'Notificações no iPhone', s: 'Só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o Recordes pelo ícone.',
       a: '<button type="button" class="btn" data-push-later="1">Entendi</button>' };
     if (pushState !== 'off') return null;
-    return { t: 'Receber avisos?', s: 'Quando faltar treino pra manter a sequência, quando um treino novo ainda não entrou no placar, no fechamento do mês e quando o app for atualizado.',
-      a: '<button type="button" class="btn" data-push-later="1">Agora não</button><button type="button" class="btn primary" data-push="on">Ativar avisos</button>' };
+    return { t: 'Receber notificações?', s: 'Quando faltar treino pra manter a sequência, quando um treino novo ainda não entrou no placar, no fechamento do mês e quando o app for atualizado.',
+      a: '<button type="button" class="btn" data-push-later="1">Agora não</button><button type="button" class="btn primary" data-push="on">Ativar notificações</button>' };
   }
   var pushDlgShown = false;
   function maybePushDlg(){
@@ -4707,13 +4707,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   });
   function pushControl(){
     if (pushState === 'unsupported' && isIOS() && !isStandalone())
-      return '<p class="ch-push">No iPhone, os avisos só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o app pelo ícone.</p>';
+      return '<p class="ch-push">No iPhone, as notificações só funcionam com o app na tela de início: no Safari, toque em Compartilhar, depois em Adicionar à Tela de Início, e abra o app pelo ícone.</p>';
     if (pushState === 'unsupported' || pushState === 'unknown') return '';
-    if (pushState === 'denied') return '<p class="ch-push">Avisos bloqueados nas configurações do celular.</p>';
+    if (pushState === 'denied') return '<p class="ch-push">Notificações bloqueadas nas configurações do celular.</p>';
     if (pushState === 'busy') return '<p class="ch-push">Um instante…</p>';
     // Avisos ligados: nothing to show (17/11/2026). Turning them off is done in the phone's settings.
     if (pushState === 'on') return '';
-    return '<button type="button" class="btn ch-push-btn" data-push="on">Ativar avisos</button>';
+    return '<button type="button" class="btn ch-push-btn" data-push="on">Ativar notificações</button>';
   }
   document.addEventListener('click', function(ev){
     var b = ev.target.closest && ev.target.closest('[data-push]');

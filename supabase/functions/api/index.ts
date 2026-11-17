@@ -673,7 +673,7 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const subs = (await readSubs(aid)).filter((x) => x.endpoint !== sub.endpoint);
     subs.push({ endpoint: sub.endpoint, keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) }, at: new Date().toISOString() });
     await writeSubs(aid, subs.slice(-5));
-    const r = await sendPush(aid, { title: 'Avisos ligados', body: 'Vão chegar avisos quando faltar treino na semana, quando um treino novo não entrar no placar e no fechamento do mês.', tag: 'teste' });
+    const r = await sendPush(aid, { title: 'Notificações ligadas', body: 'Vão chegar notificações quando faltar treino na semana, quando um treino novo não entrar no placar e no fechamento do mês.', tag: 'teste' });
     return json(req, { ok: true, ...r });
   }
   if (path === '/push/unsubscribe' && req.method === 'POST') {
