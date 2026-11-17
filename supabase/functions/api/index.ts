@@ -431,6 +431,11 @@ function mergeLive(summary: any, live: any) {
   return { summary: out, live_at: new Date(live.at).toISOString() };
 }
 
+// Strava ids become 64-bit after 01/06/2027 (e-mail of 17/11/2026). JSON numbers above 2^53 lose
+// digits, so the id is taken from id_str (same value as text) whenever Strava sends it.
+// deno-lint-ignore no-explicit-any
+function idOf(o: any): string { return o?.id_str != null && o.id_str !== '' ? String(o.id_str) : String(o?.id ?? ''); }
+
 // Same shape the page already understood (id, sport_type, start_local, summary…).
 // deno-lint-ignore no-explicit-any
 function mapActivity(a: any) {
@@ -440,7 +445,7 @@ function mapActivity(a: any) {
   if (w === 2) tags.push('LongRun');
   if (w === 3 || w === 12) tags.push('Workout');
   return {
-    id: String(a.id),
+    id: idOf(a),
     name: a.name ?? '',
     sport_type: a.sport_type || a.type,
     start_local: String(a.start_date_local ?? '').replace(/Z$/, ''),
@@ -490,17 +495,22 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     const { ok, t } = await stravaOAuth({ grant_type: 'authorization_code', code });
     if (!ok || !t.access_token || !t.athlete) throw new HttpError(400, 'auth_failed');
     const ath = t.athlete;
+    // Athlete ids travel as numbers all over this server and the app. Today's accounts are far below
+    // 2^53; a new account with a 64-bit id (after 01/06/2027) would get mixed up, so it is refused
+    // with a clear code instead of saving it wrong.
+    const athId = idOf(ath);
+    if (!/^\d{1,15}$/.test(athId)) throw new HttpError(400, 'athlete_id_too_big');
     const { error } = await sb.from('athletes').upsert({
-      athlete_id: ath.id, firstname: ath.firstname ?? null, lastname: ath.lastname ?? null,
+      athlete_id: Number(athId), firstname: ath.firstname ?? null, lastname: ath.lastname ?? null,
       profile: ath.profile_medium ?? ath.profile ?? null,
       access_token: t.access_token, refresh_token: t.refresh_token, expires_at: t.expires_at,
       scope, updated_at: new Date().toISOString(),
     });
     if (error) throw new HttpError(500, 'db_error', error.message);
     const session = newToken();
-    const ins = await sb.from('sessions').insert({ token_hash: await sha256(session), athlete_id: ath.id });
+    const ins = await sb.from('sessions').insert({ token_hash: await sha256(session), athlete_id: Number(athId) });
     if (ins.error) throw new HttpError(500, 'db_error', ins.error.message);
-    return json(req, { session, athlete: { id: ath.id, firstname: ath.firstname, lastname: ath.lastname, profile: ath.profile_medium ?? null } });
+    return json(req, { session, athlete: { id: Number(athId), firstname: ath.firstname, lastname: ath.lastname, profile: ath.profile_medium ?? null } });
   }
 
   if (path === '/webhook' && req.method === 'GET') {

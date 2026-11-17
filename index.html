@@ -1022,7 +1022,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-17b';
+  var APP_VER = '2026-11-17c';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -1545,6 +1545,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         return ['Faltou uma permissão', 'Na tela do Strava, deixe marcada a opção de ver suas atividades e conecte de novo.'];
       case 'access_denied':
         return ['Conexão cancelada', 'Sem a autorização do Strava o app não consegue ler seus treinos.'];
+      case 'athlete_id_too_big':
+        return ['Conta nova ainda não aceita', 'Essa conta do Strava usa um número de identificação novo que o app ainda não aceita. Fale com o Lucas.'];
       case 'auth_failed':
       case 'bad_state':
         return ['Não deu pra conectar', 'Tente conectar com o Strava de novo.'];
