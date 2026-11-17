@@ -4917,7 +4917,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return oc && f ? oc / f / sec * 100 : null;
   }
   function agSub(s){
-    if (s && s.agK && DIST_BY[s.agK]) return DIST_BY[s.agK].label + ' em ' + fmtTime(s.agT) + (s.agD ? ', ' + fmtShort(parseIso(s.agD)) : '');
+    if (s && s.agK && DIST_BY[s.agK]) return DIST_BY[s.agK].label + ' em ' + fmtTime(s.agT) + dmOn(s.agD);
     if (s && s.agMiss) return 'falta informar sexo e data de nascimento';
     if (s && s.v >= 10) return 'sem 5 km ou mais na rua em 90 dias';
     return s && s.best5 ? '5 km em ' + fmtTime(s.best5) : 'sem 5 km na rua';
@@ -4938,7 +4938,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function asOfMonth(end){
     var c = buildSummaryCore();
     return { v: c.v, month: c.month, ag: c.ag, agMiss: c.agMiss, agK: c.agK, agT: c.agT, agD: c.agD, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
-      recNow: c.recNow, recPrev: c.recPrev, recNowD: c.recNowD, recPrevD: c.recPrevD, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
+      recNow: c.recNow, recPrev: c.recPrev, recNowD: c.recNowD, recPrevD: c.recPrevD, recDaysED: c.recDaysED, beatsMD: c.beatsMD, miss12: c.miss12, trot90D: c.trot90D, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
       daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
       recDaysM: c.recDaysM, recDaysE: c.recDaysE, beatsM: c.beatsM };
   }
@@ -4976,10 +4976,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       sub: function(s){ return agSub(s); } },
     { id: 'trot', k: 'Correndo sem parar, últimos 90 dias', w: 3, v: 8, get: function(s){ return s.trot90; },
       f: function(v){ return v == null ? '--' : fmtTime(v); },
-      sub: function(s){ return s.trot90 ? fmtKm(s.trot90m / 1000) + ' km sem caminhar, na rua' : 'sem corrida na rua com GPS'; } },
+      sub: function(s){ return s.trot90 ? fmtKm(s.trot90m / 1000) + ' km sem caminhar, na rua' + dmOn(s.trot90D) : 'sem corrida na rua com GPS'; } },
     { id: 'beats', k: 'Metas batidas, últimos 90 dias', w: 2, v: 2, get: function(s){ return s.beats; }, f: numF, sub: function(){ return ''; } },
     { id: 'act', k: 'Constância, últimas 12 semanas', w: 1, v: 8, get: function(s){ return s.act12; },
-      f: function(v){ return v == null ? '--' : v + ' de 12'; }, sub: function(){ return 'semanas com 2 corridas ou mais'; } },
+      f: function(v){ return v == null ? '--' : v + ' de 12'; }, sub: function(s){ return actSub(s); } },
     { id: 'medals', k: 'Medalhas do mês', w: 1, v: 1, get: function(s, ref){ return s.month === ref ? s.medals : (s.nm && s.nm.month === ref && s.nm.medals != null ? s.nm.medals : 0); }, f: numF,
       sub: function(s, ref){ return s.month === ref ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
     { id: 'recDays', k: 'Dias com recorde, últimos 90 dias', w: 1, v: 5, get: function(s){ return s.recDays; }, f: numF, sub: function(){ return ''; } }
@@ -4992,7 +4992,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   // past month would be scored again by today's rules): see closeMonths.
   var LINES_FROM = '2000-01';
   var SCORE_LINES_M = SCORE_LINES.map(function(L){
-    if (L.id === 'beats') return { id: 'beats', k: 'Metas batidas no mês', w: 2, v: 9, get: function(s, ref){ return s.month === ref ? s.beatsM : 0; }, f: numF, sub: function(){ return ''; } };
+    if (L.id === 'beats') return { id: 'beats', k: 'Metas batidas no mês', w: 2, v: 9, get: function(s, ref){ return s.month === ref ? s.beatsM : 0; }, f: numF, sub: function(s, ref){ return s.month === ref ? dmList(s.beatsMD) : ''; } };
     if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 9, get: function(s, ref){ return s.month === ref ? s.recDaysM : 0; }, f: numF, sub: function(){ return ''; } };
     return L;
   });
@@ -5000,7 +5000,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      treadmill each with itself. October and before keep the rule they had. */
   var REC_SPLIT_FROM = '2026-11';
   var SCORE_LINES_N = SCORE_LINES_M.map(function(L){
-    if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 11, get: function(s, ref){ return s.month === ref ? s.recDaysE : 0; }, f: numF, sub: function(){ return ''; } };
+    if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 11, get: function(s, ref){ return s.month === ref ? s.recDaysE : 0; }, f: numF, sub: function(s, ref){ return s.month === ref ? dmList(s.recDaysED) : ''; } };
     return L;
   });
   function linesFor(ref){ return ref && ref >= REC_SPLIT_FROM ? SCORE_LINES_N : ref && ref >= LINES_FROM ? SCORE_LINES_M : SCORE_LINES; }
@@ -5094,20 +5094,20 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var st = streakInfo(all.slice());
     // Constância for the board: weeks with 2+ runs among the last 12 (paused weeks are skipped;
     // the current week only counts once it has 2 runs).
-    var wks = st.weeks.slice(), act12 = 0, used = 0;
+    var wks = st.weeks.slice(), act12 = 0, used = 0, miss12 = [];
     if (wks.length && wks[wks.length - 1].n < WEEK_TARGET) wks.pop();
     for (var wi = wks.length - 1; wi >= 0 && used < 12; wi--) {
       if (wks[wi].n < WEEK_TARGET && wks[wi].pause) continue;
-      used++; if (wks[wi].n >= WEEK_TARGET) act12++;
+      used++; if (wks[wi].n >= WEEK_TARGET) act12++; else miss12.push(isoOf(wks[wi].start));
     }
     var wkc = {};
     st.weeks.slice(-16).forEach(function(w){ wkc[isoOf(w.start)] = w.n; });
     // Longest stretch running without walking in the last 90 days (street only, needs GPS).
-    var trot90 = null, trot90m = null, since90t = isoMinus(89);
+    var trot90 = null, trot90m = null, trot90D = null, since90t = isoMinus(89);
     all.forEach(function(x){
       if (x.env !== 'rua' || x.walk || !x.d || isoOf(x.d) < since90t) return;
       var tr = (effortDocs[x.id] || {}).trot;
-      if (tr && tr.t > 0 && (trot90 == null || tr.t > trot90)) { trot90 = tr.t; trot90m = tr.m; }
+      if (tr && tr.t > 0 && (trot90 == null || tr.t > trot90)) { trot90 = tr.t; trot90m = tr.m; trot90D = isoOf(x.d); }
     });
     // Days in the last 90 with at least one best time beaten (any distance, street, treadmill or race).
     // A day counts when a time that already existed was beaten (any distance, street, treadmill
@@ -5141,7 +5141,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var kmNow = ms.km[now] || 0, dNow = ms.days[now] || 0;
     var kT = kmTiers(ms, now), dT = daysTiers(ms, now);
     var kt = tierOf(kmNow, kT), dt = tierOf(dNow, dT);
-    var beats = 0, beatsM = 0, since90 = isoMinus(89), byId = {};
+    var beats = 0, beatsM = 0, beatsMD = {}, since90 = isoMinus(89), byId = {};
     state.sessions.forEach(function(x){ byId[x.id] = x; });
     GOAL_KEYS.forEach(function(k){
       var tb = rua.tables[k];
@@ -5150,11 +5150,13 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       Object.keys(sim).forEach(function(id){
         var x = byId[id];
         if (sim[id].beat && x && x.d && isoOf(x.d) >= since90) beats++;
-        if (sim[id].beat && x && x.d && isoOf(x.d) >= mStart) beatsM++;
+        if (sim[id].beat && x && x.d && isoOf(x.d) >= mStart) { beatsM++; beatsMD[isoOf(x.d)] = 1; }
       });
     });
     return {
       v: 11, app: APP_VER, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, recDaysE: Object.keys(recDayE).length, beatsM: beatsM,
+      // dates behind the line-by-line details (17/11/2026)
+      recDaysED: Object.keys(recDayE).sort(), beatsMD: Object.keys(beatsMD).sort(), miss12: miss12.reverse(), trot90D: trot90D,
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       // km and active days of the 3 months before: with them the server works out the medal tiers of
@@ -5595,11 +5597,22 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     if (!t || isNaN(t)) return '<span class="g-u">ainda sem números</span>';
     return '<span class="g-u">abriu o app em ' + pad(t.getDate()) + '/' + pad(t.getMonth() + 1) + ' às ' + pad(t.getHours()) + 'h' + pad(t.getMinutes()) + '</span>';
   }
+  // Dates in the line-by-line details (17/11/2026). People on an older app version publish no dates:
+  // their details stay as before until they open the app.
+  function dmOn(iso){ var d = iso ? parseIso(iso) : null; return d ? ' (' + fmtShort(d) + ')' : ''; }
+  function dmList(a){ return a && a.length ? 'em ' + joinPt(a.map(function(iso){ return fmtShort(parseIso(iso)); })) : ''; }
+  function actSub(s){
+    var base = 'semanas com 2 corridas ou mais';
+    if (!s || !s.miss12 || s.act12 == null) return base;
+    var n = 12 - s.act12;
+    if (!n) return 'todas as 12 semanas com 2 corridas ou mais';
+    if (s.miss12.length === n && n <= 3) return (n === 1 ? 'faltou a semana de ' : 'faltaram as semanas de ') + joinPt(s.miss12.map(function(iso){ return fmtShort(parseIso(iso)); }));
+    return 'faltaram ' + n + ' semanas com 2 corridas ou mais';
+  }
   function recSub(x){
     // the date of each time shows when the first 5 km leaves the 120-day window (people on an older app version publish no dates)
-    function on(iso){ var d = iso ? parseIso(iso) : null; return d ? ' (' + fmtShort(d) + ')' : ''; }
-    if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + on(x.recPrevD) + ' → ' + fmtTime(x.recNow) + on(x.recNowD);
-    return x.recNow ? 'só um 5 km nos últimos 120 dias' + on(x.recNowD) : 'sem 5 km nos últimos 120 dias';
+    if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + dmOn(x.recPrevD) + ' → ' + fmtTime(x.recNow) + dmOn(x.recNowD);
+    return x.recNow ? 'só um 5 km nos últimos 120 dias' + dmOn(x.recNowD) : 'sem 5 km nos últimos 120 dias';
   }
   function duplaTab(){
     if (!partnerLoaded) return skeleton();
