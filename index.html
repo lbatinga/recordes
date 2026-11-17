@@ -4938,7 +4938,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   function asOfMonth(end){
     var c = buildSummaryCore();
     return { v: c.v, month: c.month, ag: c.ag, agMiss: c.agMiss, agK: c.agK, agT: c.agT, agD: c.agD, best5: c.best5, first5: c.first5, evo: c.evo, rec: c.rec,
-      recNow: c.recNow, recPrev: c.recPrev, recNowD: c.recNowD, recPrevD: c.recPrevD, recDaysED: c.recDaysED, beatsMD: c.beatsMD, miss12: c.miss12, trot90D: c.trot90D, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
+      recNow: c.recNow, recPrev: c.recPrev, recNowD: c.recNowD, recPrevD: c.recPrevD, beatsMD: c.beatsMD, trot90D: c.trot90D, streak: c.streak, bestStreak: c.bestStreak, kmMonth: c.kmMonth,
       daysMonth: c.daysMonth, medals: c.medals, recDays: c.recDays, beats: c.beats, act12: c.act12, trot90: c.trot90, trot90m: c.trot90m,
       recDaysM: c.recDaysM, recDaysE: c.recDaysE, beatsM: c.beatsM };
   }
@@ -4979,7 +4979,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       sub: function(s){ return s.trot90 ? fmtKm(s.trot90m / 1000) + ' km sem caminhar, na rua' + dmOn(s.trot90D) : 'sem corrida na rua com GPS'; } },
     { id: 'beats', k: 'Metas batidas, últimos 90 dias', w: 2, v: 2, get: function(s){ return s.beats; }, f: numF, sub: function(){ return ''; } },
     { id: 'act', k: 'Constância, últimas 12 semanas', w: 1, v: 8, get: function(s){ return s.act12; },
-      f: function(v){ return v == null ? '--' : v + ' de 12'; }, sub: function(s){ return actSub(s); } },
+      f: function(v){ return v == null ? '--' : v + ' de 12'; }, sub: function(){ return 'semanas com 2 corridas ou mais'; } },
     { id: 'medals', k: 'Medalhas do mês', w: 1, v: 1, get: function(s, ref){ return s.month === ref ? s.medals : (s.nm && s.nm.month === ref && s.nm.medals != null ? s.nm.medals : 0); }, f: numF,
       sub: function(s, ref){ return s.month === ref ? fmtKm(s.kmMonth || 0) + ' km, ' + (s.daysMonth || 0) + ' dias' : 'mês sem dados'; } },
     { id: 'recDays', k: 'Dias com recorde, últimos 90 dias', w: 1, v: 5, get: function(s){ return s.recDays; }, f: numF, sub: function(){ return ''; } }
@@ -5000,7 +5000,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
      treadmill each with itself. October and before keep the rule they had. */
   var REC_SPLIT_FROM = '2026-11';
   var SCORE_LINES_N = SCORE_LINES_M.map(function(L){
-    if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 11, get: function(s, ref){ return s.month === ref ? s.recDaysE : 0; }, f: numF, sub: function(s, ref){ return s.month === ref ? dmList(s.recDaysED) : ''; } };
+    if (L.id === 'recDays') return { id: 'recDays', k: 'Dias com recorde no mês', w: 1, v: 11, get: function(s, ref){ return s.month === ref ? s.recDaysE : 0; }, f: numF, sub: function(){ return ''; } };
     return L;
   });
   function linesFor(ref){ return ref && ref >= REC_SPLIT_FROM ? SCORE_LINES_N : ref && ref >= LINES_FROM ? SCORE_LINES_M : SCORE_LINES; }
@@ -5094,11 +5094,11 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var st = streakInfo(all.slice());
     // Constância for the board: weeks with 2+ runs among the last 12 (paused weeks are skipped;
     // the current week only counts once it has 2 runs).
-    var wks = st.weeks.slice(), act12 = 0, used = 0, miss12 = [];
+    var wks = st.weeks.slice(), act12 = 0, used = 0;
     if (wks.length && wks[wks.length - 1].n < WEEK_TARGET) wks.pop();
     for (var wi = wks.length - 1; wi >= 0 && used < 12; wi--) {
       if (wks[wi].n < WEEK_TARGET && wks[wi].pause) continue;
-      used++; if (wks[wi].n >= WEEK_TARGET) act12++; else miss12.push(isoOf(wks[wi].start));
+      used++; if (wks[wi].n >= WEEK_TARGET) act12++;
     }
     var wkc = {};
     st.weeks.slice(-16).forEach(function(w){ wkc[isoOf(w.start)] = w.n; });
@@ -5156,7 +5156,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     return {
       v: 11, app: APP_VER, at: Date.now(), month: now, recDays: Object.keys(recDayMap).length, recDaysM: Object.keys(recDayM).length, recDaysE: Object.keys(recDayE).length, beatsM: beatsM,
       // dates behind the line-by-line details (17/11/2026)
-      recDaysED: Object.keys(recDayE).sort(), beatsMD: Object.keys(beatsMD).sort(), miss12: miss12.reverse(), trot90D: trot90D,
+      beatsMD: Object.keys(beatsMD).sort(), trot90D: trot90D,
       // v7: what the server needs to keep streak, medals and runs current between app opens
       week: isoOf(weekStart(nowD())), kmT: kT, dT: dT,
       // km and active days of the 3 months before: with them the server works out the medal tiers of
@@ -5601,14 +5601,6 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   // their details stay as before until they open the app.
   function dmOn(iso){ var d = iso ? parseIso(iso) : null; return d ? ' (' + fmtShort(d) + ')' : ''; }
   function dmList(a){ return a && a.length ? 'em ' + joinPt(a.map(function(iso){ return fmtShort(parseIso(iso)); })) : ''; }
-  function actSub(s){
-    var base = 'semanas com 2 corridas ou mais';
-    if (!s || !s.miss12 || s.act12 == null) return base;
-    var n = 12 - s.act12;
-    if (!n) return 'todas as 12 semanas com 2 corridas ou mais';
-    if (s.miss12.length === n && n <= 3) return (n === 1 ? 'faltou a semana de ' : 'faltaram as semanas de ') + joinPt(s.miss12.map(function(iso){ return fmtShort(parseIso(iso)); }));
-    return 'faltaram ' + n + ' semanas com 2 corridas ou mais';
-  }
   function recSub(x){
     // the date of each time shows when the first 5 km leaves the 120-day window (people on an older app version publish no dates)
     if (x.recNow && x.recPrev && Math.round(x.recPrev) !== Math.round(x.recNow)) return fmtTime(x.recPrev) + dmOn(x.recPrevD) + ' → ' + fmtTime(x.recNow) + dmOn(x.recNowD);
