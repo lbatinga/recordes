@@ -172,7 +172,7 @@ async function writeSubs(aid: number, subs: PushSub[]) {
   await sb.from('docs').upsert({ athlete_id: aid, col: 'config', id: 'push', data: { subs }, updated_at: new Date().toISOString() });
 }
 // Sends to every device of the athlete; drops subscriptions the push service says are gone.
-async function sendPush(aid: number, msg: { title: string; body: string; tag?: string }): Promise<{ sent: number; failed: number }> {
+async function sendPush(aid: number, msg: { title: string; body: string; tag?: string; reload?: boolean }): Promise<{ sent: number; failed: number }> {
   const subs = await readSubs(aid);
   if (!subs.length) return { sent: 0, failed: 0 };
   const k = await vapid();
@@ -566,6 +566,31 @@ async function handle(req: Request, path: string, url: URL): Promise<Response> {
     if (!r.ok || !t.id) return json(req, { ok: false, status: r.status, body: t }, 502);
     await sb.from('docs').upsert({ athlete_id: 0, col: 'system', id: 'webhook', data: { verify, id: t.id }, updated_at: new Date().toISOString() });
     return json(req, { ok: true, id: t.id });
+  }
+  if (path === '/cron/news' && req.method === 'POST') {
+    // App updates (17/11/2026): system/news holds { ver, title, body, only?, force?, sent }. One push per
+    // person per version, only to whoever still runs an older app (summary.app), between 8h and 21h.
+    // Tapping it reloads the app on the new version.
+    const h = brNow().getUTCHours();
+    if (h < 8 || h > 21) return json(req, { skipped: 'hour' });
+    // deno-lint-ignore no-explicit-any
+    const news: any = await systemDoc('news');
+    if (!news?.ver || !news?.body) return json(req, { skipped: 'none' });
+    const done: Record<string, string> = news.sent && typeof news.sent === 'object' ? { ...news.sent } : {};
+    const only: number[] | null = Array.isArray(news.only) ? news.only.map(Number) : null;
+    const { data } = await sb.from('docs').select('athlete_id, data').eq('col', 'config').eq('id', 'summary');
+    let sent = 0, upToDate = 0;
+    for (const row of data ?? []) {
+      const aid = Number(row.athlete_id);
+      if ((only && !only.includes(aid)) || done[String(aid)]) continue;
+      // deno-lint-ignore no-explicit-any
+      const app = (row.data as any)?.app;
+      if (!news.force && typeof app === 'string' && app >= news.ver) { upToDate++; continue; }
+      const r = await sendPush(aid, { title: news.title || 'Recordes atualizado', body: news.body, tag: 'novidade', reload: true });
+      if (r.sent) { done[String(aid)] = new Date().toISOString(); sent++; }
+    }
+    if (sent) await sb.from('docs').upsert({ athlete_id: 0, col: 'system', id: 'news', data: { ...news, sent: done }, updated_at: new Date().toISOString() });
+    return json(req, { sent, upToDate });
   }
   if (path === '/cron/nudge' && req.method === 'POST') {
     // A run the app hasn't seen for a day: one push asking to open it, once per run.

@@ -2,7 +2,7 @@
 // Keeps the app shell available offline. The page itself is always fetched
 // from the network first so updates show up on the next open; Strava data
 // is never cached here (it goes through the backend with no-store).
-const CACHE = 'rc-shell-v43';
+const CACHE = 'rc-shell-v44';
 const SHELL = ['./', './index.html', './treino.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -45,17 +45,21 @@ self.addEventListener('push', (e) => {
     icon: './icon-192.png',
     badge: './badge-96.png',
     tag: d.tag || 'recordes',
-    data: { url: './' },
+    data: { url: './', reload: !!d.reload },
   }));
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const target = new URL('./', self.registration.scope).href;
+  // Update notices reload an app left open in the background, so the tap lands on the new version.
+  const reload = !!(e.notification.data && e.notification.data.reload);
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) {
-        if (c.url.startsWith(self.registration.scope) && 'focus' in c) return c.focus();
+        if (!c.url.startsWith(self.registration.scope) || !('focus' in c)) continue;
+        if (!reload || !c.navigate) return c.focus();
+        return c.navigate(target).then((w) => (w || c).focus()).catch(() => c.focus());
       }
       return self.clients.openWindow(target);
     })
