@@ -614,6 +614,12 @@ dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg .pz-opt small{margin-left:auto;color:var(--muted);font-weight:500;font-size:13px;text-align:right}
 .dlg .pz-opt:has(input:checked){border-color:var(--prova-txt)}
 .pz-nudge{margin:12px 0 0;font-size:14px;color:var(--ink);line-height:1.4}
+.pz-fold{margin:12px 0 0;font-size:13px;color:var(--muted)}
+.pz-fold summary{cursor:pointer;min-height:32px;display:flex;align-items:center;gap:6px;list-style:none}
+.pz-fold summary::-webkit-details-marker{display:none}
+.pz-fold summary::after{content:'▾';font-size:11px}
+.pz-fold[open] summary::after{content:'▴'}
+.pz-fold .pz-list{margin-top:6px}
 .pz-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
 .pz-list li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:14px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px}
 .pz-w{font-weight:700;color:var(--ink)}
@@ -4709,11 +4715,15 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   }
   function pauseBlock(){
     var from = isoOf(new Date(Date.now() - 182 * 86400000));
-    var rows = Object.keys(PAUSES).filter(function(k){ return k >= from; }).sort().reverse().map(function(k){
-      return '<li><span class="pz-w">Pausada: ' + weekLabel(parseIso(k)) + '</span><span class="pz-r">' + esc(PAUSES[k]) + '</span>' +
+    // Weeks already paused stay folded in one small line (17/11/2026): they were dealt with, so they
+    // shouldn't compete with the card. Opening it shows the reason and the button to undo.
+    var keys = Object.keys(PAUSES).filter(function(k){ return k >= from; }).sort().reverse();
+    var rows = keys.map(function(k){
+      return '<li><span class="pz-w">' + weekLabel(parseIso(k)) + '</span><span class="pz-r">' + esc(PAUSES[k]) + '</span>' +
         '<button type="button" class="linkbtn" data-unpause="' + k + '">Tirar pausa</button></li>';
     }).join('');
-    return pauseNudge() + (rows ? '<ul class="pz-list" aria-label="Semanas pausadas">' + rows + '</ul>' : '') +
+    var sum = keys.length === 1 ? '1 semana pausada (' + weekLabel(parseIso(keys[0])) + ')' : keys.length + ' semanas pausadas';
+    return pauseNudge() + (rows ? '<details class="pz-fold"><summary>' + sum + '</summary><ul class="pz-list" aria-label="Semanas pausadas">' + rows + '</ul></details>' : '') +
       '<p class="ch-push"><button type="button" class="linkbtn" data-pause-open>Pausar uma semana</button> (atestado, viagem)</p>';
   }
   function pauseField(n){ return $('#pause-form').elements.namedItem(n); }
