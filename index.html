@@ -1022,7 +1022,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-22a';
+  var APP_VER = '2026-11-23a';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -2299,9 +2299,10 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     { k:'1000', t:480, label:'1 km abaixo de 8 min' }, { k:'5000', t:3300, label:'5 km abaixo de 55 min' },
     { k:'5000', t:3000, label:'5 km abaixo de 50 min' }, { k:'5000', t:2700, label:'5 km abaixo de 45 min' }
   ];
-  var TROT_MIN_MS = 6 / 3.6; // above 6.0 km/h over 15 s counts as trotting
+  var TROT_MIN_MS = 6 / 3.6; // above 6.0 km/h over 10 s counts as trotting
+  var TROT_V = 2; // 2 = group rule of 23/11/2026: up to 15 s without running (10 s window + 5 s grace)
   /* Longest stretch trotting without walking, from GPS streams (street only).
-     Speed is smoothed over 15 s; dips shorter than 10 s don't break the stretch. */
+     Speed is smoothed over 10 s; dips shorter than 5 s don't break the stretch. */
   function longestTrot(time, dist){
     var n = time.length, i = 0, best = { t: 0, m: 0 }, start = -1, lastRun = -1;
     function close(){
@@ -2313,14 +2314,14 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     }
     for (var j = 1; j < n; j++) {
       if (time[j] - time[j - 1] > 30) close();
-      while (i < j - 1 && time[j] - time[i + 1] >= 15) i++;
+      while (i < j - 1 && time[j] - time[i + 1] >= 10) i++;
       var dt = time[j] - time[i];
-      if (dt < 15) continue;
+      if (dt < 10) continue;
       var running = (dist[j] - dist[i]) / dt >= TROT_MIN_MS;
       if (running) {
         if (start < 0) start = j;
         lastRun = j;
-      } else if (start >= 0 && time[j] - time[lastRun] > 10) close();
+      } else if (start >= 0 && time[j] - time[lastRun] > 5) close();
     }
     close();
     return best;
@@ -3213,7 +3214,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         'A primeira vez numa distância aparece no treino com o selo de recorde, mas não conta em Dias com recorde no placar. O primeiro treino de todos não ganha selo.'
       ] }] },
       portreino: { t: 'Recordes por treino', r: 'Aqui conta o treino inteiro, não só um trecho.', g: [{ li: [
-        '<strong>Mais tempo correndo sem parar:</strong> o maior trecho acima de 6 km/h sem caminhar. Pausas de até 10 s não quebram. Só vale na rua, porque precisa do GPS.',
+        '<strong>Mais tempo correndo sem parar:</strong> o maior trecho acima de 6 km/h sem caminhar. Até 15 s sem correr não quebram. Só vale na rua, porque precisa do GPS.',
         '<strong>Pace:</strong> separado por faixa de distância: de 2 a 2,99 km, de 3 a 4,99 km e 5 km ou mais. Cada treino só disputa a faixa dele.'
       ] }] },
       provas: { t: 'Provas', r: 'Como a prova entra no app e qual tempo vale.', g: [
@@ -3779,7 +3780,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       if (s.env === 'esteira' && !d.bad && d.tgt && d.sm && (d.tgt / d.sm > PF_MAX || d.tgt / d.sm < 1 / PF_MAX)) return true;
       // treadmill run of a round distance whose time for that distance was lost to rounding (fixed 14/11/2026)
       if (s.env === 'esteira' && d.tgt && DISTS.some(function(D){ return Math.abs(D.m - d.tgt) < 1 && !(d.efforts && d.efforts[D.k]); })) return true;
-      if (s.env === 'rua' && !s.walk && d.trot == null) return true;
+      if (s.env === 'rua' && !s.walk && (d.trot == null || d.tv !== TROT_V)) return true;
       if (d.v === ALGO) return false;
       return (s.gpsMeters || s.meters) >= 4828;
     });
@@ -3798,7 +3799,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         var pf = 1, tread = null;
         if (st && s.env === 'esteira') { var tr = treadFit(st, treadTarget(s), s); pf = tr.pf; tread = tr.tread; }
         var bad = !!(tread && tread.bad);
-        var nd = st ? Object.assign({ v: ALGO, efforts: bad ? {} : bestEfforts(st.time, st.dist), trot: bad ? { t: 0, m: 0 } : longestTrot(st.time, st.dist), pf: pf }, tread || {})
+        var nd = st ? Object.assign({ v: ALGO, tv: TROT_V, efforts: bad ? {} : bestEfforts(st.time, st.dist), trot: bad ? { t: 0, m: 0 } : longestTrot(st.time, st.dist), pf: pf }, tread || {})
           : (keepOld ? Object.assign({}, ex, { noSplits: true, trot: ex.trot || { t: 0, m: 0 }, failAt: Date.now() }) : { v: ALGO, efforts: {}, noStreams: true });
         if (st && s.race) { var sp = splitsFrom(st.time, st.dist); nd.splits = sp.splits; nd.half = sp.half; }
         // A treadmill recording with no usable distance can't be stretched: don't ask for it again today.
