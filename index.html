@@ -1022,7 +1022,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-23a';
+  var APP_VER = '2026-11-26a';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -4267,10 +4267,12 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     var rua = analyze(state.sessions, 'rua');
     analyze(state.sessions, 'esteira');
     var tudo = analyze(state.sessions, 'tudo');
-    var treinos = [['Data', 'Origem', 'Prova', 'Km', 'Tempo em movimento', 'Tempo total', 'Pace', 'FC média', 'Cadência', 'Recordes na época']];
+    var treinos = [['Data', 'Origem', 'Prova', 'Km', 'Tempo em movimento', 'Tempo total', 'Pace', 'FC média', 'Cadência (passos/min)', 'Esforço relativo', 'Correndo sem parar (rua)', 'Recordes na época']];
     tudo.list.forEach(function(s){
+      var tr = effortDocs[s.id] && effortDocs[s.id].trot;
       treinos.push([fmtDate(s.d), origName(s), s.race ? raceShort(s) : '', Number(s.km.toFixed(3)), fmtTime(s.time), fmtTime(s.elapsed), fmtPace(s.pace),
-        s.hr != null ? s.hr : '', s.cadence || '', s.prs.map(function(k){ return DIST_BY[k].label; }).join(', ')]);
+        s.hr != null ? s.hr : '', s.cadence || '', s.effort != null ? s.effort : '', s.env === 'rua' && tr && tr.t > 0 ? fmtTime(tr.t) + ' (' + tr.m + ' m)' : '',
+        s.prs.map(function(k){ return DIST_BY[k].label; }).join(', ')]);
     });
     var esf = [['Ambiente', 'Distância', 'Posição', 'Tempo', 'Pace', 'Data', 'Origem']];
     ['esteira', 'rua', 'tudo'].forEach(function(env){
