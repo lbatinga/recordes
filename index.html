@@ -604,6 +604,7 @@ dialog.dlg{border:0;border-radius:14px;padding:0;width:min(520px,calc(100vw - 24
 dialog.dlg::backdrop{background:rgba(0,0,0,.55)}
 .dlg form{padding:6px 18px 18px;display:grid;gap:12px}
 .dlg label{display:grid;gap:4px;font-size:14px;font-weight:600;color:var(--muted)}
+.dlg label[hidden],.dlg .hint[hidden]{display:none}
 .dlg .hint{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
 .dlg .pd-s{font-size:15px}
 #push-dlg .acts{flex-direction:column-reverse;align-items:stretch}
@@ -966,6 +967,8 @@ details.gm-r[open] .gm-d::after{transform:translateY(1px) rotate(225deg)}
     </div>
     <label>Cidade<input name="cidade" type="text" autocomplete="off" placeholder="Automática, pelo GPS"></label>
     <label>Observação<input name="note" type="text" autocomplete="off"></label>
+    <label id="race-kit-lbl">Retirada do kit<input name="kit" type="text" autocomplete="off" placeholder="Dia, horário, local e documentos"></label>
+    <p class="hint" id="kit-hint">Retirada do kit: aparece só enquanto a prova não chega.</p>
     <p class="hint">Cidade: só preencha se a do GPS vier errada, como Recife, PE ou Lisboa, Portugal.</p>
     <p class="hint" id="chip-hint">Tempo oficial: o líquido, do resultado da prova. Quando preenchido, vale no lugar do tempo do Strava nos recordes e nas metas.</p>
     <p class="err" id="race-err" hidden></p>
@@ -1022,7 +1025,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
   /* Backend: Supabase Edge Function that talks to Strava for each signed-in athlete. */
   var API = 'https://npekkekabsoyoagnelsp.supabase.co/functions/v1/api';
   // App version published in the summary, so the Conferência screen can tell who still runs an older one.
-  var APP_VER = '2026-11-26a';
+  var APP_VER = '2026-11-27a';
   // Only these accounts see the Conferência item; the server checks it again on every request.
   var ADMIN_IDS = [3938024];
   var STRAVA_CLIENT_ID = '285788';
@@ -3138,6 +3141,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
           '<p class="bib-sub">' + fmtDate(d) + ', ' + esc(r.local && r.local !== 'A confirmar' ? r.local : 'local a confirmar') + '</p>' +
           targetBlock(k, r.km) + '<table class="tbl era-tbl"><tbody>' + rows + '</tbody></table>' +
           (fc ? '<p class="bib-note wx">' + WX_ICON + 'Previsão' + (r.time ? ' às ' + r.time.replace(':', 'h') : ' do dia') + ': ' + fc + '</p>' : '') +
+          (r.kit ? '<p class="bib-note kit"><b>Kit:</b> ' + esc(r.kit) + '</p>' : '') +
           (r.note ? '<p class="rc-note">' + esc(r.note) + '</p>' : '') +
           '<button type="button" class="btn race-edit" data-race-edit="' + r.date + '">Editar</button>' +
         '</div><div class="bib-foot"></div></article>';
@@ -5729,6 +5733,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
     raceField('local').value = r && r.local !== 'A confirmar' ? r.local : '';
     raceField('bib').value = r ? r.bib || '' : '';
     raceField('note').value = r ? r.note || '' : '';
+    raceField('kit').value = r ? r.kit || '' : '';
+    $('#race-kit-lbl').hidden = $('#kit-hint').hidden = !!pastId;
     raceField('cidade').value = r ? r.cidade || '' : '';
     raceField('time').value = r ? r.time || '' : '';
     raceField('chip').value = r && r.chip > 0 ? fmtChip(r.chip) : '';
@@ -5769,6 +5775,8 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
       local: raceField('local').value.trim() || 'A confirmar', bib: raceField('bib').value.trim(), note: raceField('note').value.trim(),
       time: /^\d{2}:\d{2}$/.test(raceField('time').value) ? raceField('time').value : '', chip: chip || 0 };
     if (cidade) item.cidade = cidade;
+    var kitV = raceField('kit').value.trim();
+    if (kitV) item.kit = kitV; else if (raceEdit && raceEdit.past && old && old.kit) item.kit = old.kit;
     var list = RACE_INFO.filter(function(x){ return !old || x !== old; }).concat([item]);
     setRaces(list);
     saveRaces();
@@ -5847,6 +5855,7 @@ if (location.hostname === 'lbatinga.github.io') location.replace('https://record
         km: Number(r.km), local: r.local || '', note: r.note || '', time: /^\d{2}:\d{2}$/.test(r.time || '') ? r.time : '',
         chip: Number(r.chip) > 0 ? Number(r.chip) : 0 });
       if (r.cidade) RACE_INFO[RACE_INFO.length - 1].cidade = String(r.cidade);
+      if (r.kit) RACE_INFO[RACE_INFO.length - 1].kit = String(r.kit);
     });
     RACE_INFO.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
   }
